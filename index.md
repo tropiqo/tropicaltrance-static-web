@@ -14,11 +14,6 @@ header:
       class: "btn btn--primary"
 ---
 
-# Hello World!
+# 🚧 Coming Soon
 
-This is your new homepage. You can use Markdown to write anything you want here.
-
-✨ **Things you can do next**:
-- Add blog posts in `_posts/`
-- Create custom pages like `/about/` or `/projects/`
-- Tweak styles and layout
+We're working hard to bring something awesome. Stay tuned!
