@@ -23,6 +23,8 @@
 >
   {% if page.header.overlay_color or page.header.overlay_image %}
     <div class="wrapper">
+      {% comment %} Only show title if show_title is not false {% endcomment %}
+      {% unless page.show_title == false %}
       <h1 id="page-title" class="page__title" itemprop="headline">
         {% if paginator and site.paginate_show_page_num %}
           {{ site.title }}{% unless paginator.page == 1 %} {{ site.data.ui-text[site.locale].page | default: "Page" }} {{ paginator.page }}{% endunless %}
@@ -30,6 +32,7 @@
           {{ page.title | default: site.title | markdownify | remove: "<p>" | remove: "</p>" }}
         {% endif %}
       </h1>
+      {% endunless %}
       {% if page.tagline %}
         <p class="page__lead">{{ page.tagline | markdownify | remove: "<p>" | remove: "</p>" }}</p>
       {% elsif page.header.show_overlay_excerpt != false and page.excerpt %}
@@ -38,9 +41,34 @@
       {% include page__meta.html %}
       {% if page.header.actions %}
         <p>
-        {% for action in page.header.actions %}
+          {% if page.header.actions %}
+            {% if page.url == "/" %}
+              <div class="hero-layout">
+                <div class="hero-content">
+                  {% unless page.show_title == false %}
+                    <h1 id="page-title" class="page__title" itemprop="headline">{{ page.title }}</h1>
+                  {% endunless %}
+                  {% if page.tagline %}
+                    <p class="page__lead">{{ page.tagline | markdownify | remove: "<p>" | remove: "</p>" }}</p>
+                  {% endif %}
+                </div>
+                <div class="hero-actions">
+                  {% for action in page.header.actions %}
+                    <a href="{{ action.url | relative_url }}" class="btn btn--light-outline btn--large {{ action.class }}">{{ action.label | default: site.data.ui-text[site.locale].more_label | default: "Learn More" }}</a>
+                  {% endfor %}
+                </div>
+              </div>
+            {% else %}
+              <p class="hero-actions">
+                {% for action in page.header.actions %}
+                  <a href="{{ action.url | relative_url }}" class="btn btn--light-outline btn--large {{ action.class }}">{{ action.label | default: site.data.ui-text[site.locale].more_label | default: "Learn More" }}</a>
+                {% endfor %}
+              </p>
+            {% endif %}
+          {% endif %}
+        <!-- {% for action in page.header.actions %}
           <a href="{{ action.url | relative_url }}" class="btn btn--light-outline btn--large">{{ action.label | default: site.data.ui-text[site.locale].more_label | default: "Learn More" }}</a>
-        {% endfor %}
+        {% endfor %} -->
         </p>
       {% endif %}
     </div>

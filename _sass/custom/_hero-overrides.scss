@@ -1,0 +1,56 @@
+// masthead area
+
+.masthead,
+.masthead__inner-wrap,
+.greedy-nav {
+  background-color: #000 !important;
+  color: #eee;
+}
+
+.masthead a,
+.masthead__inner-wrap a,
+.greedy-nav a {
+  color: #eee;
+}
+
+.masthead a:hover,
+.masthead__inner-wrap a:hover,
+.greedy-nav a:hover {
+  color: #1db954;
+}
+
+
+
+
+
+.hero-layout {
+  position: relative; // So the absolute child positions within this container
+  display: flex;
+  flex-direction: column; // Stack content vertically
+  justify-content: flex-start;
+  gap: 1rem;
+  padding-top: 1rem;
+  min-height: 300px; // Adjust based on your hero height
+}
+
+.hero-actions {
+  position: absolute;
+  top: -4rem;
+  right: 1rem;
+
+  a.btn {
+    margin: 0;
+  }
+}
+
+body.layout--splash {
+  background-color: #000;
+  color: #eee;
+}
+
+code {
+  background-color: transparent; /* No ugly white background */
+  color: #1db954; /* Tropical green text */
+  font-weight: 600; /* Semi-bold to make it pop */
+  padding: 0; /* Remove extra padding */
+}

@@ -19,7 +19,7 @@ locale                   : "en-US"
 rtl                      : # true, false (default) # turns direction of the page into right to left for RTL languages
 title                    : "Tropical Trance"
 title_separator          : "-"
-subtitle                 : # site tagline that appears below site title in masthead
+subtitle                 : "Your gateway to groove 🌴"
 name                     : ""
 description              : "An amazing website."
 url                      : "https://tropicaltrance.io/"

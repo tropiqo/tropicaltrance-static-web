@@ -10,6 +10,28 @@
   </head>
 
   <body class="layout--{{ page.layout | default: layout.layout }}{% if page.classes or layout.classes %}{{ page.classes | default: layout.classes | join: ' ' | prepend: ' ' }}{% endif %}" dir="{% if site.rtl %}rtl{% else %}ltr{% endif %}">
+  
+    {%- comment -%} 🔥 DYNAMIC BACKGROUND COLOR 🔥 {%- endcomment -%}
+    {% if page.background_color %}
+    <style>
+      body {
+        background-color: {{ page.background_color }};
+      }
+      #main, .initial-content {
+        background-color: {{ page.background_color }};
+      }
+    </style>
+    {% else %}
+      <style>
+        body {
+          background-color: #000;
+        }
+        #main, .initial-content {
+          background-color: #000;
+        }
+      </style>
+    {% endif %}
+
     {% include_cached skip-links.html %}
     {% include_cached masthead.html %}
 
@@ -24,13 +46,7 @@
       </div>
     {% endif %}
 
-    <div id="footer" class="page__footer">
-      <footer>
-        {% include footer/custom.html %}
-        {% include_cached footer.html %}
-      </footer>
-    </div>
-
+    {% include bottom-nav.html %}
     {% include scripts.html %}
   </body>
 </html>
