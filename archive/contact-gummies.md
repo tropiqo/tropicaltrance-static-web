@@ -3,7 +3,7 @@ layout: default
 title: "Contact Us"
 permalink: /contact/
 show_title: true
-background_color: "#000000" # dark tropical blue
+background_color: "#001f1f" # dark tropical blue
 ---
 
 <section style="text-align: center; padding: 3rem 1rem;">

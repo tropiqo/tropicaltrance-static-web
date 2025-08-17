@@ -19,9 +19,40 @@
   color: #1db954;
 }
 
+/* Make the entire splash layout dark (containers included) */
+body.layout--splash,
+body.layout--splash #main,
+body.layout--splash .initial-content {
+  background-color: #000 !important;
+  color: #eee;
+}
 
+/* Make the overlay hero edge-to-edge and fit the image without cropping */
+.page__hero--overlay {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  background-size: contain;       /* keep full image visible */
+  background-position: center center;
+  background-repeat: no-repeat;
+  border-radius: 0; /* just in case */
+  min-height: 300px;               /* ensure enough height for logo */
+}
 
+/* Remove inner padding that can create side gutters on some breakpoints */
+.page__hero--overlay .wrapper {
+  padding-left: 0;
+  padding-right: 0;
+}
 
+/* Optional: if hero image is an <img>, make sure it scales down */
+.page__hero--overlay img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
 
 .hero-layout {
   position: relative; // So the absolute child positions within this container
