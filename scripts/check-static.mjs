@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { loadRelease, rejectFixture, digest } from './public-inputs.mjs';
 import { trancy, trancyMedia, validateTrancy } from './trancy-static.mjs';
-import { emeraldGatewayAssets } from './emerald-gateway-static.mjs';
+import { emeraldGatewayAssets, localizationAssets } from './emerald-gateway-static.mjs';
 import { readdir, readFile, lstat } from 'node:fs/promises';
 import { resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditRendered } from './rendered-audit.mjs';
 import sharp from 'sharp';
+import { getMessages } from '../src/i18n/messages.mjs';
 
 export const routes = ['index.html', 'about/index.html', 'contact/index.html', 'flavors/index.html', '404.html'];
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -22,10 +23,12 @@ async function files(dir) {
 }
 export function checkInventory(paths, deliveries = [], flavors = []) {
   const expectedRoutes = [...routes,...flavors.map(f=>'flavors/'+f.slug+'/index.html')];
-  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length))];
-  assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), expectedRoutes.sort(), 'Unexpected static routes');
+  const spanishRoutes = ['es/index.html','es/about/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
+  const allRoutes = [...expectedRoutes,...spanishRoutes];
+  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length)), ...localizationAssets.map(asset => asset.path.slice('public-astro/'.length))];
+  assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), allRoutes.sort(), 'Unexpected static routes');
   assert.equal(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)).length, 1, 'Exactly one referenced stylesheet');
-  assert(paths.every(p => expectedRoutes.includes(p) || assets.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p) || /^_astro\/[A-Za-z0-9_.-]+\.js$/.test(p)), 'Unexpected copied/generated file');
+  assert(paths.every(p => allRoutes.includes(p) || assets.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p) || /^_astro\/[A-Za-z0-9_.-]+\.js$/.test(p)), 'Unexpected copied/generated file');
   assert(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.js$/.test(p)).length <= 1, 'Unexpected client script count');
   assert.deepEqual(paths.filter(p => assets.includes(p)).sort(), assets.sort(), 'Selected output media inventory mismatch');
 }
@@ -37,22 +40,26 @@ function decodeAttribute(text) {
 function htmlAttributes(source) {
   return new Map([...source.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(match => [match[1].toLowerCase(),decodeAttribute(match[2]??match[3])]));
 }
-export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null, aboutHeroMedia = null) {
-  assert.match(html, /<html[^>]*lang="en"/);
+export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null, aboutHeroMedia = null, locale = 'en') {
+  const isSpanish = locale === 'es-MX';
+  assert.match(html, new RegExp(`<html[^>]*lang="${locale}"`));
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1);
   assert.equal((html.match(/<main(?:\s|>)/g) || []).length, 1);
   assert.match(html, /id="main"/);
   assert.match(html, /href="#main"/);
-  assert.match(html, /aria-label="Primary"/);
+  assert.match(html, new RegExp(`aria-label="${isSpanish?'Principal':'Primary'}"`));
   assert.match(html, /<title>[^<]+<\/title>/);
   assert.match(html, /name="description" content="[^"]+"/);
   assert.match(html, /noindex, nofollow/);
-  assert.match(html, /Development-only foundation/);
+  assert.match(html, isSpanish ? /Sitio exclusivo de desarrollo/ : /Development-only foundation/);
   assert(!/<(?:iframe|form|input|object|embed|audio|canvas|astro-island)\b/i.test(html), 'Unapproved media or client runtime');
   const videoTags = [...html.matchAll(/<video\b([^>]*)><\/video>/gi)];
   const scriptTags = [...html.matchAll(/<script\b([^>]*)><\/script>/gi)];
   assert.equal(videoTags.length, aboutHeroMedia ? 1 : 0, 'Cinematic video belongs only to the About hero');
-  assert.equal(scriptTags.length, aboutHeroMedia ? 1 : 0, 'Cinematic controls use one About-only script');
+  assert.equal(scriptTags.length, aboutHeroMedia ? 2 : 1, 'Expected language script and optional About video controls');
+  const scriptSources=scriptTags.map(tag=>htmlAttributes(tag[1]).get('src')).sort();
+  assert(scriptSources.includes('/assets/language-preference.js'),'Language preference script missing');
+  assert.deepEqual(scriptSources.filter(src=>src==='/assets/cinematic-hero-video.js').length,aboutHeroMedia?1:0);
   if (aboutHeroMedia) {
     const attrs = htmlAttributes(videoTags[0][1]);
     assert.equal(attrs.get('src'), aboutHeroMedia.src);
@@ -61,11 +68,8 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
     assert.equal(attrs.get('preload'), 'none');
     assert.equal(attrs.get('aria-describedby'), 'emerald-gateway-description');
     assert(!attrs.has('autoplay'), 'Autoplay must be gated by reduced-motion preference');
-    const scriptAttrs = htmlAttributes(scriptTags[0][1]);
-    assert.equal(scriptAttrs.get('type'), 'module');
-    assert.equal(scriptAttrs.get('src'), '/assets/cinematic-hero-video.js');
-    assert.match(html, /<button\b[^>]*aria-label="Play Emerald Gateway video"[^>]*aria-pressed="false"[^>]*aria-controls="emerald-gateway-video"/);
-    assert.match(html, /id="emerald-gateway-description"[^>]*>A camera approaches a luminous emerald gateway/);
+    assert.match(html, new RegExp(`<button\\b[^>]*aria-label="${isSpanish?'Reproducir video de la Puerta Esmeralda':'Play Emerald Gateway video'}"[^>]*aria-pressed="false"[^>]*aria-controls="emerald-gateway-video"`));
+    assert.match(html, new RegExp(`id="emerald-gateway-description"[^>]*>${isSpanish?'Una cámara se acerca':'A camera approaches'}`));
   }
   const images = [...html.matchAll(/<img\b([^>]*)>/gi)];
   assert.equal(images.length, media.length, 'Unapproved or missing role image');
@@ -86,7 +90,7 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
   }
   const salesSection = (html.match(/class="sales-channels"/g) || []).length;
   assert.equal(salesSection,salesChannels.length?1:0,'Sales-channel section presence must match validated enabled links');
-  if (salesChannels.length) assert.match(html,/Where to Find Us/);
+  if (salesChannels.length) assert.match(html,isSpanish?/Dónde encontrarnos/:/Where to Find Us/);
   else assert(!html.includes('Where to Find Us'),'Disabled channels must not render a placeholder section');
   const external = [...html.matchAll(/<a\b([^>]*)>/gi)].map(match=>htmlAttributes(match[1])).filter(attrs=>(attrs.get('href')||'').startsWith('https:'));
   const expectedExternal = [...salesChannels.map(channel=>channel.destinationUrl), ...(whatsappBusinessUrl ? [whatsappBusinessUrl] : [])];
@@ -95,7 +99,8 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
     const channel=salesChannels[index];
     assert.equal(attrs.get('target'),'_blank','External links open in a new tab');
     assert.deepEqual(new Set((attrs.get('rel')||'').split(/\s+/)),new Set(['noopener','noreferrer']),'External links require safe rel attributes');
-    const expectedLabel = channel?.accessibleLabel ?? 'Message Tropical Trance on WhatsApp (opens in a new tab)';
+    const channelFlavor = channel?.accessibleLabel?.match(/^Find (.+) at /)?.[1] || '';
+    const expectedLabel = channel ? (isSpanish ? `Encontrar ${channelFlavor} en ${channel.name} (se abre en una pestaña nueva)` : channel.accessibleLabel) : isSpanish ? getMessages('es-MX').contact.whatsappLabel : 'Message Tropical Trance on WhatsApp (opens in a new tab)';
     assert.equal(attrs.get('aria-label'),expectedLabel,'External link needs a descriptive accessible name');
   }
   assert(!/\b(?:srcset|imagesrcset)\s*=/i.test(html),'Unapproved media variant');
@@ -125,17 +130,14 @@ export async function checkSource(base = root) {
   checkConfig(config);
   const source = await files(resolve(base, 'src'));
   const pages = source.map(p => relative(resolve(base, 'src/pages'), p)).filter(p => !p.startsWith('..'));
-  assert.deepEqual(pages.sort(), ['404.astro','about.astro','contact.astro','flavors/[slug].astro','flavors/index.astro','index.astro'].sort());
+  assert.deepEqual(pages.sort(), ['404.astro','about.astro','contact.astro','flavors/[slug].astro','flavors/index.astro','index.astro','es/index.astro','es/about.astro','es/contact.astro','es/404.astro','es/flavors/index.astro','es/flavors/[slug].astro'].sort());
   for (const path of source) {
     const text = await readFile(path, 'utf8');
     assert(!/fetch\s*\(|https?:|tropical-trance-studio|artwork-workspace|prerender\s*=\s*false|astro:actions|astro:content/.test(text), `Forbidden source dependency: ${path}`);
-    if (/<script\b/i.test(text)) {
-      assert(path.endsWith('/pages/about.astro'), `Unexpected script source: ${path}`);
-      assert.equal((text.match(/<script\b/g)||[]).length,1);
-      assert.match(text, /set:html=\{'<script type="module" src="\/assets\/cinematic-hero-video\.js"><\/script>'\}/);
-    }
+    if (/<script\b/i.test(text)) assert(path.endsWith('/components/LocalizedPage.astro') || path.endsWith('/layouts/SiteLayout.astro'), `Unexpected script source: ${path}`);
   }
   assert.match(await readFile(resolve(base, 'src/pages/flavors/[slug].astro'), 'utf8'), /release\.flavors\.map/);
+  assert.match(await readFile(resolve(base, 'src/pages/es/flavors/[slug].astro'), 'utf8'), /release\.flavors\.(?:filter\([^\n]+\)\.)?map/);
   const selected = loadRelease({base}).flavors;
   assert(selected.every(f=>/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(f.slug) && f.flavor.id===f.slug), 'Invalid normal Flavor selection');
   await checkFlavorMedia(base,{flavors:selected});
@@ -157,28 +159,34 @@ export async function checkOutput(base = root) {
     if (servedPath === trancy.path) validateTrancy(bytes);
     else rejectFixture(bytes);
     if (delivery) assert.equal(digest(bytes),delivery.asset.contentId,'Output delivery digest mismatch');
-    const aboutAsset=emeraldGatewayAssets.find(asset=>asset.path===servedPath);
+    const aboutAsset=[...emeraldGatewayAssets,...localizationAssets].find(asset=>asset.path===servedPath);
     if (aboutAsset) {
       assert.equal(bytes.length,aboutAsset.size,'Emerald Gateway output byte size mismatch');
       assert.equal(digest(bytes),aboutAsset.contentId,'Emerald Gateway output digest mismatch');
     }
     assert(!/tropical-trance-studio|artwork-workspace:|(?:\/Users\/|\/private\/)|authorityEvidence|reviewEvidenceContentId|candidateContentId|publication-decision|projection\.schema\.json/.test(bytes.toString('utf8')), 'Private schema/evidence/output leak');
   }
-  for (const page of [...routes,...release.flavors.map(f=>'flavors/'+f.slug+'/index.html')]) {
+  const spanishRoutes=['es/index.html','es/about/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
+  for (const page of [...routes,...release.flavors.map(f=>'flavors/'+f.slug+'/index.html'),...spanishRoutes]) {
     const path = resolve(dist, page);
     const html = await readFile(path, 'utf8');
-    const role = page==='index.html'?'home-hero':page==='about/index.html'?'about-mascot':undefined;
-    const detail = release.flavors.find(f=>page==='flavors/'+f.slug+'/index.html');
-    const media = page==='index.html' ? [trancyMedia,...release.flavors] : role ? [trancyMedia] : page==='flavors/index.html' ? release.flavors : detail ? [detail] : [];
+    const isSpanish=page.startsWith('es/');
+    const basePage=isSpanish?page.slice(3):page;
+    const locale=isSpanish?'es-MX':'en';
+    const role = basePage==='index.html'?'home-hero':basePage==='about/index.html'?'about-mascot':undefined;
+    const pageFlavors=isSpanish?release.flavors.map(f=>({...f,...(f.translations?.['es-MX']||{})})):release.flavors;
+    const pageTrancy=isSpanish?{...trancyMedia,alt:getMessages('es-MX').home.trancyAlt}:trancyMedia;
+    const detail = pageFlavors.find(f=>basePage==='flavors/'+f.slug+'/index.html');
+    const media = basePage==='index.html' ? [pageTrancy,...pageFlavors] : role ? [pageTrancy] : basePage==='flavors/index.html' ? pageFlavors : detail ? [detail] : [];
     const salesChannels=detail?.salesChannels||[];
-    const whatsappBusinessUrl=page==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
-    checkHtml(html,media,salesChannels,whatsappBusinessUrl,page==='about/index.html'?release.aboutHeroMedia:null);
+    const whatsappBusinessUrl=basePage==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
+    checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = decodeAttribute(match[1]).split('#');
       assert(href !== trancyMedia.mediaUrl && !release.deliveries.some(m => href==='/' + m.path.slice('public-astro/'.length)),'Unapproved media link');
       if (href.startsWith('https:')) {
-        assert(salesChannels.some(channel=>channel.destinationUrl===href) || (page==='contact/index.html' && href===release.site.contact?.whatsappBusinessUrl),'Unapproved external destination');
+        assert(salesChannels.some(channel=>channel.destinationUrl===href) || (basePage==='contact/index.html' && href===release.site.contact?.whatsappBusinessUrl),'Unapproved external destination');
         continue;
       }
       assert(!/^(?:\/\/|[a-z][a-z0-9+.-]*:)/i.test(href), 'Unexpected external destination');

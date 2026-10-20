@@ -88,7 +88,8 @@ class Document(HTMLParser):
         require(self.doctype, "Missing HTML doctype")
         for tag in ["html", "head", "body", "main", "header", "footer", "title", "h1"]:
             require(len(self.find(tag)) == 1, f"Expected one {tag}")
-        require(self.find("html")[0].attrs.get("lang") == "en", "Missing/incorrect lang")
+        locale = self.find("html")[0].attrs.get("lang")
+        require(locale in {"en", "es-MX"}, "Missing/incorrect lang")
         require(self.find("title")[0].within("head") and self.find("title")[0].text(), "Missing title")
         charset = [n for n in self.find("meta") if "charset" in n.attrs]
         require(len(charset) == 1 and charset[0].within("head") and charset[0].attrs["charset"].lower() == "utf-8", "Missing/incorrect charset")
@@ -116,15 +117,20 @@ class Document(HTMLParser):
                 require(n.text() and level <= previous + 1, "Empty/skipped heading level")
                 previous = level
         nav = self.find("nav")
-        require(len(nav) == 2 and {n.attrs.get("aria-label") for n in nav} == {"Primary", "Footer"}, "Navigation landmarks need distinct labels")
-        require(all(n.within("header" if n.attrs["aria-label"] == "Primary" else "footer") for n in nav), "Invalid navigation placement")
+        primary, footer = ("Primary", "Footer") if locale == "en" else ("Principal", "Pie de página")
+        require(len(nav) == 2 and {n.attrs.get("aria-label") for n in nav} == {primary, footer}, "Navigation landmarks need distinct localized labels")
+        require(all(n.within("header" if n.attrs["aria-label"] == primary else "footer") for n in nav), "Invalid navigation placement")
         scripts = self.find("script")
         videos = self.find("video")
-        require(len(scripts) == len(videos) and len(scripts) <= (1 if page == "about/index.html" else 0), "Unexpected client script/video placement/count")
+        about = page in {"about/index.html", "es/about/index.html"}
+        require(len(videos) <= 1 and (not videos or about), "Unexpected video placement/count")
+        require(len(scripts) == 1 + len(videos), "Unexpected client script count")
+        script_sources = [node.attrs.get("src") for node in scripts]
+        require(script_sources.count("/assets/language-preference.js") == 1 and script_sources.count("/assets/cinematic-hero-video.js") == len(videos), "Unexpected client script source/count")
         for n in self.nodes:
             require(n.tag not in {"iframe", "form", "input", "object", "embed", "audio", "canvas", "astro-island"}, f"Unexpected runtime/control: {n.tag}")
             if n.tag == "script":
-                require(set(n.attrs) == {"type", "src"} and n.attrs["type"] == "module" and n.attrs["src"] == "/assets/cinematic-hero-video.js", "Unexpected script source/attributes")
+                require(set(n.attrs) == {"type", "src"} and n.attrs["type"] == "module" and n.attrs["src"] in {"/assets/cinematic-hero-video.js", "/assets/language-preference.js"}, "Unexpected script source/attributes")
                 require(not n.text().strip(), "Inline script is forbidden")
             if n.tag == "video":
                 required = {"src", "poster", "muted", "loop", "playsinline", "preload", "aria-describedby", "tabindex", "class", "id"}

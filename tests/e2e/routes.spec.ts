@@ -72,8 +72,8 @@ test('navigation works between primary routes and footer links are available', a
 });
 
 test('disabled sales channels and unset WhatsApp Business stay placeholders', async ({ page }) => {
-  for (const flavor of ['grape', 'lime']) {
-    await page.goto(`/flavors/${flavor}/`);
+  for (const route of ['/flavors/grape/', '/flavors/lime/', '/es/flavors/grape/', '/es/flavors/lime/']) {
+    await page.goto(route);
     await expect(page.getByRole('heading', { name: 'Where to Find Us' })).toHaveCount(0);
     await expect(page.locator('a[href*="splift"], a[href*="cannaland"], a[href*="wa.me"], a[href*="whatsapp.com"]')).toHaveCount(0);
   }
@@ -81,6 +81,137 @@ test('disabled sales channels and unset WhatsApp Business stay placeholders', as
   await expect(page.getByRole('heading', { name: 'WhatsApp Business' })).toBeVisible();
   await expect(page.getByText('Coming Soon')).toBeVisible();
   await expect(page.getByRole('link', { name: /Message us on WhatsApp/ })).toHaveCount(0);
+  await page.goto('/es/contact/');
+  await expect(page.getByRole('heading', { name: 'WhatsApp Business' })).toBeVisible();
+  await expect(page.getByText('Próximamente')).toBeVisible();
+  await expect(page.getByRole('link', { name: /Escríbenos por WhatsApp/ })).toHaveCount(0);
+});
+
+const spanishPages = [
+  { path: '/es/', heading: 'Escapa de lo Ordinario.', en: '/' },
+  { path: '/es/about/', heading: 'Más allá de lo ordinario', en: '/about/' },
+  { path: '/es/flavors/', heading: 'Sabores', en: '/flavors/' },
+  { path: '/es/flavors/grape/', heading: 'Grape', en: '/flavors/grape/' },
+  { path: '/es/flavors/lime/', heading: 'Lime', en: '/flavors/lime/' },
+  { path: '/es/contact/', heading: 'Conectemos', en: '/contact/' },
+  { path: '/es/404/', heading: 'Página no encontrada', en: '/404.html' },
+];
+
+for (const localized of spanishPages) {
+  for (const width of viewports) {
+    test(`${localized.path} renders Spanish metadata, navigation, and no overflow at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const response = await page.goto(localized.path);
+      expect(response).not.toBeNull();
+      await expect(page.locator('html')).toHaveAttribute('lang', 'es-MX');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(localized.heading);
+      await expect(page).toHaveTitle(/Tropical Trance/);
+      await expect(page.locator('meta[name="description"]')).not.toHaveAttribute('content', '');
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex,\s*nofollow/);
+      await expect(page.getByText('Sitio exclusivo de desarrollo. El contenido público y la aprobación de lanzamiento están pendientes.')).toBeVisible();
+      const primary = page.getByRole('navigation', { name: 'Principal' });
+      for (const [label, path] of [['Inicio', '/es/'], ['Sabores', '/es/flavors/'], ['Acerca de', '/es/about/'], ['Contacto', '/es/contact/']]) {
+        await expect(primary.getByRole('link', { name: label, exact: true })).toHaveAttribute('href', path);
+      }
+      const languageSelector = page.getByRole('group', { name: 'Elegir idioma' });
+      await expect(languageSelector.getByRole('link', { name: 'Ver esta página en inglés' })).toHaveAttribute('href', localized.en);
+      await expect(languageSelector.getByRole('link', { name: 'Ver esta página en español' })).toHaveAttribute('aria-current', 'true');
+      const dimensions = await page.evaluate(() => ({viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth}));
+      expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+      expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);
+    });
+  }
+}
+
+test('browser language detection respects supported-language priority and runs only at the default entry', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'languages', { configurable: true, get: () => ['fr-FR', 'es-MX', 'en-US'] }));
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/es\/$/);
+  await page.goto('/es/about/');
+  await expect(page).toHaveURL(/\/es\/about\/$/);
+  await page.goto('/about/');
+  await expect(page).toHaveURL(/\/about\/$/);
+});
+
+test('unsupported browser languages fall back to English; language property is used when the list is unavailable', async ({ browser }) => {
+  const unsupported = await browser.newPage();
+  await unsupported.addInitScript(() => Object.defineProperty(navigator, 'languages', { configurable: true, get: () => ['fr-FR', 'de-DE'] }));
+  await unsupported.goto('/');
+  await expect(unsupported).toHaveURL(/\/$/);
+  await expect(unsupported.locator('html')).toHaveAttribute('lang', 'en');
+  await unsupported.close();
+
+  const fallback = await browser.newPage();
+  await fallback.addInitScript(() => {
+    Object.defineProperty(navigator, 'languages', { configurable: true, get: () => undefined });
+    Object.defineProperty(navigator, 'language', { configurable: true, get: () => 'es-ES' });
+  });
+  await fallback.goto('/');
+  await expect(fallback).toHaveURL(/\/es\/$/);
+  await fallback.close();
+});
+
+test('blocked local storage does not block detection or real language links', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'languages', { configurable: true, get: () => ['es-MX'] });
+    Object.defineProperty(window, 'localStorage', { configurable: true, get: () => { throw new Error('Storage blocked'); } });
+  });
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/es\/$/);
+  await page.getByRole('group', { name: 'Elegir idioma' }).getByRole('link', { name: 'Ver esta página en inglés' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
+test('manual English selection wins over Spanish detection when storage is blocked', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'languages', { configurable: true, get: () => ['es-MX'] });
+    Object.defineProperty(window, 'localStorage', { configurable: true, get: () => { throw new Error('Storage blocked'); } });
+  });
+  await page.goto('/es/');
+  await page.getByRole('group', { name: 'Elegir idioma' }).getByRole('link', { name: 'Ver esta página en inglés' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
+test('manual language selection persists and overrides browser preference while keeping the current route', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'languages', { configurable: true, get: () => ['es-MX', 'en-US'] }));
+  await page.goto('/about/');
+  await page.getByRole('group', { name: 'Choose language' }).getByRole('link', { name: 'View this page in Spanish' }).click();
+  await expect(page).toHaveURL(/\/es\/about\/$/);
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/es\/$/);
+  await page.getByRole('group', { name: 'Elegir idioma' }).getByRole('link', { name: 'Ver esta página en inglés' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await page.getByRole('group', { name: 'Choose language' }).getByRole('link', { name: 'View this page in Spanish' }).click();
+  await expect(page).toHaveURL(/\/es\/$/);
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/es\/$/);
+  await page.goto('/es/flavors/lime/');
+  await page.getByRole('group', { name: 'Elegir idioma' }).getByRole('link', { name: 'Ver esta página en inglés' }).click();
+  await expect(page).toHaveURL(/\/flavors\/lime\/$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
+test('manual English preference overrides Spanish browser language on the default route', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'languages', { configurable: true, get: () => ['es-MX', 'en-US'] });
+    localStorage.setItem('tropical-trance-language', 'en');
+  });
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
+test('language selector links work without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto('/flavors/lime/');
+  await page.getByRole('group', { name: 'Choose language' }).getByRole('link', { name: 'View this page in Spanish' }).click();
+  await expect(page).toHaveURL(/\/es\/flavors\/lime\/$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es-MX');
+  await context.close();
 });
 
 const discoveryRoutes = ['/', '/flavors/'];

@@ -1,24 +1,4 @@
 ---
-import SiteLayout from '../layouts/SiteLayout.astro';
-import release from '#public-release';
-import EditorialHero from '../components/EditorialHero.astro';
-import EditorialSection from '../components/EditorialSection.astro';
-import FlavorDiscovery from '../components/FlavorDiscovery.astro';
+import LocalizedPage from '../components/LocalizedPage.astro';
 ---
-<SiteLayout title="Escape the Ordinary" description="Step into a world where tropical inspiration meets imagination. Discover vibrant flavors, surreal landscapes, and unexpected adventures with Trancy.">
-  <EditorialHero title="Escape the" emphasis="Ordinary." description="Step into a world where tropical inspiration meets imagination. Discover vibrant flavors, surreal landscapes, and unexpected adventures with Trancy." eyebrow="A tropical state of mind" decoration="orbit" atmosphere media={release.brandMedia['home-hero']}>
-    <div class="actions"><a class="button button--solid" href="/flavors/">Explore the Flavors <span aria-hidden="true">↗</span></a></div>
-  </EditorialHero>
-  <EditorialSection variant="split" title="Every Flavor. A New Adventure." eyebrow="Explore Tropical Trance">
-    <p class="lead">No two adventures are alike. From cosmic landscapes to tropical escapes, each flavor opens the door to a different world.</p>
-    <div slot="visual"><FlavorDiscovery flavors={release.flavors} /></div>
-  </EditorialSection>
-  <EditorialSection variant="text" title="Meet Trancy" eyebrow="Tropical Trance">
-    <p class="lead">The face of Tropical Trance. The explorer of extraordinary worlds. Wherever the adventure leads, Trancy brings the Tropical Trance universe to life.</p>
-    <div class="actions"><a class="button" href="/about/">Get to Know Trancy <span aria-hidden="true">↗</span></a></div>
-  </EditorialSection>
-  <EditorialSection variant="band" title="Stay Connected" eyebrow="Tropical Trance">
-    <p class="lead">Follow the Tropical Trance journey and discover what's coming next.</p>
-    <div class="actions"><a class="button" href="/contact/">Contact Us <span aria-hidden="true">↗</span></a></div>
-  </EditorialSection>
-</SiteLayout>
+<LocalizedPage page="home" locale="en" />

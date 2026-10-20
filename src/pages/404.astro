@@ -1,9 +1,4 @@
 ---
-import SiteLayout from '../layouts/SiteLayout.astro';
-import EditorialHero from '../components/EditorialHero.astro';
+import LocalizedPage from '../components/LocalizedPage.astro';
 ---
-<SiteLayout title="Page not found" description="Development-only missing-page recovery.">
-  <EditorialHero title="Page not found" description="The requested page is not available in this local foundation." eyebrow="404">
-    <div class="actions"><a class="button button--solid" href="/">Return Home <span aria-hidden="true">↗</span></a><a class="button" href="/flavors/">Flavors <span aria-hidden="true">↗</span></a></div>
-  </EditorialHero>
-</SiteLayout>
+<LocalizedPage page="notFound" locale="en" />

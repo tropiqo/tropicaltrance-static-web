@@ -1,13 +1,13 @@
 ---
 import type { PublicFlavor } from './public-view';
 import FlavorCard from './FlavorCard.astro';
-interface Props { flavors: PublicFlavor[]; }
-const { flavors } = Astro.props;
+interface Props { flavors: PublicFlavor[]; locale?: 'en' | 'es-MX'; messages: any; }
+const { flavors, locale = 'en', messages } = Astro.props;
 const hasMultipleFlavors = flavors.length > 1;
 ---
 <div class="flavor-discovery">
-  {hasMultipleFlavors && <p class="flavor-swipe-hint" aria-hidden="true">Swipe to explore <span>→</span></p>}
-  <div class:list={['flavor-grid', { 'flavor-grid--carousel': hasMultipleFlavors }]} role="list" aria-label="Tropical Trance flavors">
-    {flavors.map(flavor => <FlavorCard flavor={flavor} />)}
+  {hasMultipleFlavors && <p class="flavor-swipe-hint" aria-hidden="true">{messages.flavors.swipe} <span>→</span></p>}
+  <div class:list={['flavor-grid', { 'flavor-grid--carousel': hasMultipleFlavors }]} role="list" aria-label={messages.flavors.listLabel}>
+    {flavors.map(flavor => <FlavorCard flavor={flavor} locale={locale} />)}
   </div>
 </div>

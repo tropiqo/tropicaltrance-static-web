@@ -11,7 +11,7 @@ const root = process.cwd();
 const text = path => readFileSync(resolve(root,path),'utf8');
 const normal = path => text('dist/'+path);
 const fixture = path => text('.review-build/'+path);
-const navs = html => [...html.matchAll(/<nav\b[^>]*>[\s\S]*?<\/nav>/g)].map(m=>m[0]);
+const navs = html => [...html.matchAll(/<nav\b[^>]*>[\s\S]*?<\/nav>/g)].map(m=>m[0]).filter(nav=>/aria-label="(?:Primary|Footer)"/.test(nav));
 before(() => {
   const result = spawnSync(process.execPath, ['scripts/build-review.mjs'], { cwd: root, env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' }, encoding: 'utf8', timeout: 60000, maxBuffer: 1024 * 1024 });
   assert.equal(result.status, 0, result.stdout + '\n' + result.stderr);
@@ -34,7 +34,7 @@ test('shared shell, semantic heading and working static primary/footer navigatio
     for (const part of nav) { assert.deepEqual([...part.matchAll(/href="([^"]+)"/g)].map(m=>m[1]),['/','/flavors/','/about/','/contact/']); assert(!/world|Trancy/i.test(part)); }
     assert.match(html,/<a[^>]*class="skip-link"[^>]*href="#main"/);assert.match(html,/<main id="main" tabindex="-1"/);
     assert(!/<(?:iframe|form|input|astro-island)\b/i.test(html));
-    assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?1:0);
+    assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?2:1);
   }
 });
 test('Home uses approved copy and renders release-derived flavor previews',()=>{
@@ -50,7 +50,7 @@ test('Home uses approved copy and renders release-derived flavor previews',()=>{
   assert.match(html,/The face of Tropical Trance\. The explorer of extraordinary worlds\. Wherever the adventure leads, Trancy brings the Tropical Trance universe to life\./);
   assert.match(html,/Get to Know Trancy/);
   assert.match(html,/Stay Connected/);
-  assert.match(html,/Follow the Tropical Trance journey and discover what's coming next\./);
+  assert.match(html,/Follow the Tropical Trance journey and discover what(?:'|&#39;)s coming next\./);
   assert.match(html,/Contact Us/);
   assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);
   for (const flavor of release.flavors) assert(html.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`) && html.includes(`/flavors/${flavor.slug}/`));
@@ -116,13 +116,30 @@ test('About uses the pinned Emerald Gateway delivery and preserves its copy; oth
   for(const route of routes.filter(route=>route!=='about/index.html')) assert(!/<video\b|emerald-gateway/.test(normal(route)));
   for(const asset of ['public-astro/assets/emerald-gateway-web.mp4','public-astro/assets/emerald-gateway-poster.webp']) assert(readFileSync(resolve(root,asset)).length>0);
 });
+test('Spanish pages localize interface, metadata, accessibility text, flavor content, and video controls',()=>{
+  const home=normal('es/index.html'),about=normal('es/about/index.html'),collection=normal('es/flavors/index.html'),grape=normal('es/flavors/grape/index.html'),contact=normal('es/contact/index.html');
+  for(const html of [home,about,collection,grape,contact])assert.match(html,/<html lang="es-MX"/);
+  for(const phrase of ['Saltar al contenido','Inicio','Sabores','Acerca de','Contacto','Sitio exclusivo de desarrollo.','Sigue con curiosidad. Vive lo tropical.'])assert(home.includes(phrase));
+  assert(home.includes('Cada sabor. Una nueva aventura.'));
+  assert(home.includes('Trancy, el camaleón verde de Tropical Trance'));
+  assert(collection.includes('Desliza para explorar'));
+  assert(collection.includes('Explora el sabor Grape de Tropical Trance.'));
+  assert(collection.includes('Ilustración de Grape con Trancy'));
+  assert(grape.includes('Volver a sabores'));
+  assert(contact.includes('WhatsApp Business')&&contact.includes('Próximamente'));
+  assert(about.includes('Más allá de lo ordinario'));
+  assert(about.includes('Trancy es la constante. La aventura cambia.'));
+  assert.match(about,/aria-label="Reproducir video de la Puerta Esmeralda"/);
+  assert.match(about,/data-pause-label="Pausar video de la Puerta Esmeralda"/);
+  assert.match(about,/meta name="robots" content="noindex, nofollow"/);
+});
 test('decoration is hidden, static and separate from approved media; no remote CSS/font/image dependencies',()=>{
   const release=loadRelease();
   for(const route of routes) {
     const html=normal(route);for(const block of html.matchAll(/<div class="decorative-background[^>]*>/g))assert.match(block[0],/aria-hidden="true"/);
     assert(!/<(?:svg|canvas|audio|iframe)\b/i.test(html));
     assert.equal((html.match(/<video\b/g)||[]).length,route==='about/index.html'?1:0);
-    assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?1:0);
+    assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?2:1);
     const expectedFlavorImages=['index.html','flavors/index.html'].includes(route)?release.flavors.length:0;
     const expectedTrancyImages=['index.html','about/index.html'].includes(route)?1:0;
     assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages);
@@ -164,8 +181,8 @@ test('presentation reads validated props only; contracts, fixture roots and publ
     const source=text(`src/components/${name}.astro`);assert(!/readFile|loadRelease|fetch\s*\(|fixture-|grape|cherry|lime|JSON\.parse|content\//.test(source));
   }
   const release=loadRelease();
-  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/trancy-web-r1.webp','public-astro/assets/cinematic-hero-video.js','public-astro/assets/emerald-gateway-poster.webp','public-astro/assets/emerald-gateway-web.mp4'].sort());
-  assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`)].sort());
+  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/trancy-web-r1.webp','public-astro/assets/cinematic-hero-video.js','public-astro/assets/emerald-gateway-poster.webp','public-astro/assets/emerald-gateway-web.mp4','public-astro/assets/language-preference.js'].sort());
+  assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`),'es/index.html','es/about/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)].sort());
 });
 
 test('local Trancy candidate anchors Home and About with one intact delivery', async () => {

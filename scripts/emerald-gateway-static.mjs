@@ -2,8 +2,8 @@
 export const emeraldGatewayAssets = Object.freeze([
   Object.freeze({
     path: 'public-astro/assets/cinematic-hero-video.js',
-    contentId: 'sha256:75845f5607dad236de263234fec29c72e3eb506a14fd9631ded9d70a9c99690e',
-    size: 1817,
+    contentId: 'sha256:636e8352e3a76c198fda0502b53cfb89d1c914006ac8d26e1e316d7a129a3328',
+    size: 1961,
     format: 'js',
   }),
   Object.freeze({
@@ -27,3 +27,12 @@ export const emeraldGatewayMedia = Object.freeze({
   poster: '/assets/emerald-gateway-poster.webp',
   description: 'A camera approaches a luminous emerald gateway in a tropical forest before revealing a surreal waterfall landscape.',
 });
+
+export const localizationAssets = Object.freeze([
+  Object.freeze({
+    path: 'public-astro/assets/language-preference.js',
+    contentId: 'sha256:23cd70a1b63f846211d40874a9bb759b78efc6fa3f7c6203bcfa98134ad2fbbc',
+    size: 1558,
+    format: 'js',
+  }),
+]);

@@ -25,16 +25,17 @@ async function addFlavorRecord(base,slug){
  const bytes=await sharp({create:{width:32,height:48,channels:3,background:{r:70,g:180,b:80}}}).webp({lossless:true}).toBuffer();
  const mediaPath=`assets/${slug}-web-r1.webp`;
  writeFileSync(join(base,'public-astro',mediaPath),bytes);
- writeFileSync(join(base,`content/flavors/${slug}.json`),JSON.stringify({contractVersion:'1',slug,revision:'1',name:slug[0].toUpperCase()+slug.slice(1),shortDescription:`Explore ${slug}.`,alt:`${slug} test artwork.`,media:{path:mediaPath,contentId:digest(bytes)}},null,2)+'\n');
+ writeFileSync(join(base,`content/flavors/${slug}.json`),JSON.stringify({contractVersion:'1',slug,revision:'1',name:slug[0].toUpperCase()+slug.slice(1),shortDescription:`Explore ${slug}.`,alt:`${slug} test artwork.`,translations:{'es-MX':{shortDescription:`Explora ${slug}.`,alt:`Ilustración de ${slug}.`}},media:{path:mediaPath,contentId:digest(bytes)}},null,2)+'\n');
 }
 
 test('new flavor can be prepared and rendered in an isolated Astro preview build then cancelled without website changes',async()=>{
  const base=sandbox(),image=join(base,'input.png');await sample(image);
  const before=loadRelease({base});const original=readFileSync(join(base,'content/flavors/grape.json'));
- const candidate=await createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:image,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi flavor artwork.'});
+ const candidate=await createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:image,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi flavor artwork.',esShortDescription:'Explora Kiwi.',esAlt:'Ilustración de Kiwi.'});
  try {
   assert.deepEqual(loadRelease({base}).flavors.map(f=>f.slug),['grape']);
   assert(readFileSync(join(candidate.candidateRoot,'dist/flavors/kiwi/index.html'),'utf8').includes('Kiwi flavor artwork.'));
+  assert(readFileSync(join(candidate.candidateRoot,'dist/es/flavors/kiwi/index.html'),'utf8').includes('Ilustración de Kiwi.'));
   assert.deepEqual(loadRelease({base}).flavors,before.flavors);cancelCandidate(candidate);
   assert.deepEqual(readFileSync(join(base,'content/flavors/grape.json')),original);
  } finally {rmSync(base,{recursive:true,force:true});}
@@ -56,7 +57,7 @@ test('confirmed replacement applies one new revision and safely withdraws old un
 test('new sample flavor can be confirmed without touching the accepted Grape record',async()=>{
  const base=sandbox(),image=join(base,'new-flavor.png');await sample(image);
  const grapeBefore=readFileSync(join(base,'content/flavors/grape.json'));
- const candidate=await createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:image,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi flavor artwork.'});
+ const candidate=await createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:image,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi flavor artwork.',esShortDescription:'Explora Kiwi.',esAlt:'Ilustración de Kiwi.'});
  try {
   const changed=applyCandidate(candidate,{validate:false});assert.match(changed.contentPath,/content\/flavors\/kiwi\.json$/);
   const release=loadRelease({base});assert.deepEqual(release.flavors.map(f=>f.slug),['grape','kiwi']);
@@ -80,7 +81,7 @@ test('failed post-apply validation restores prior content and image bytes',async
 
 test('failed new-flavor validation rolls back its record and prepared artwork',async()=>{
  const base=sandbox(),image=join(base,'failed-add.png');await sample(image);
- const candidate=await createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:image,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi flavor artwork.'});
+ const candidate=await createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:image,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi flavor artwork.',esShortDescription:'Explora Kiwi.',esAlt:'Ilustración de Kiwi.'});
  const asset=join(base,'public-astro',candidate.projection.media.path);
  try {
   assert.throws(()=>applyCandidate(candidate,{runValidation:()=>{throw Error('fixture add validation failure');}}),/fixture add validation failure/);
@@ -92,10 +93,10 @@ test('failed new-flavor validation rolls back its record and prepared artwork',a
 
 test('stale candidates and invalid or symlinked image inputs are rejected before application',async()=>{
  const base=sandbox(),image=join(base,'sample.png');await sample(image);
- const candidate=await createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:image,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi artwork.'});
+ const candidate=await createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:image,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi artwork.',esShortDescription:'Explora Kiwi.',esAlt:'Ilustración de Kiwi.'});
  try {writeFileSync(join(base,'content/site.json'),readFileSync(join(base,'content/site.json')));writeFileSync(join(base,'content/site.json'),JSON.stringify({contractVersion:'1',kind:'development-site',lang:'en',title:'Changed locally',description:'No publication approval.'},null,2)+'\n');assert.throws(()=>applyCandidate(candidate,{validate:false}),/stale/);} finally {cancelCandidate(candidate);}
- const bad=join(base,'bad.png');writeFileSync(bad,'not an image');await assert.rejects(()=>createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:bad,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi artwork.'}));
- const link=join(base,'linked.png');symlinkSync(image,link);await assert.rejects(()=>createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:link,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi artwork.'}));
+ const bad=join(base,'bad.png');writeFileSync(bad,'not an image');await assert.rejects(()=>createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:bad,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi artwork.',esShortDescription:'Explora Kiwi.',esAlt:'Ilustración de Kiwi.'}));
+ const link=join(base,'linked.png');symlinkSync(image,link);await assert.rejects(()=>createCandidate({mode:'add',websiteRoot:base,slug:'kiwi',imagePath:link,name:'Kiwi',shortDescription:'Explore Kiwi.',alt:'Kiwi artwork.',esShortDescription:'Explora Kiwi.',esAlt:'Ilustración de Kiwi.'}));
  rmSync(base,{recursive:true,force:true});
 });
 

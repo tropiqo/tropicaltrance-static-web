@@ -3,11 +3,13 @@ import '../styles/global.css';
 import release from '#public-release';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
-interface Props { title: string; description: string; }
-const { title, description } = Astro.props;
+import { getMessages } from '../i18n/messages.mjs';
+interface Props { title: string; description: string; locale?: 'en' | 'es-MX'; }
+const { title, description, locale = 'en' } = Astro.props;
+const t = getMessages(locale);
 ---
 <!doctype html>
-<html lang={release.site.lang}>
+<html lang={t.language}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -16,8 +18,8 @@ const { title, description } = Astro.props;
     <meta name="description" content={description} />
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to content</a>
-    <SiteHeader />
+    <a class="skip-link" href="#main">{t.skip}</a>
+    <SiteHeader locale={locale} />
     {release.review ? <aside class="review-note" aria-label="Local review status">
       <div class="container">
         <details class="review-indicator">
@@ -25,8 +27,9 @@ const { title, description } = Astro.props;
           <p>INTERNAL SYNTHETIC TEST ONLY — Flavor fixtures. LOCAL MASCOT REVIEW ONLY — Trancy is a real reference. This website is not approved for public publication.</p>
         </details>
       </div>
-    </aside> : <div class="development-note"><div class="container">Development-only foundation. Public content and release approval are pending.</div></div>}
+    </aside> : <div class="development-note"><div class="container">{t.developmentNotice}</div></div>}
     <main id="main" tabindex="-1"><slot /></main>
-    <SiteFooter />
+    <SiteFooter locale={locale} />
+    <Fragment set:html={'<script type="module" src="/assets/language-preference.js"></script>'} />
   </body>
 </html>

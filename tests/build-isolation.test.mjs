@@ -33,9 +33,9 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const selectedPaths=initial.flavors.flatMap(f=>[`content/flavors/${f.slug}.json`,`public-astro/${f.mediaUrl.slice(1)}`]);
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
   for(const p of selectedPaths)rmSync(join(base,p));
-  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,10);
-  const baselineHashes={'index.html':'38c6cfe8b500eb430f6e33453ca1b4a1969c661e6816760327755c15e2a6e8bc','about/index.html':'4835208486c12df13b1338d162650db1bf3def62c7f325b7320ab521e72d8840','flavors/index.html':'5e1605dead87df4f2ae3640038881adce1ec67abb181cb2f36ae3f18a4251ee6'};
-  for(const [p,h]of empty)assert.equal(h,p in baselineHashes?'sha256:'+baselineHashes[p]:normal.find(([n])=>n===p)[1]);
+  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,16);
+  const baselineHashes={'index.html':'2ff7131d2975fc1514fa1c9f63886737e9ac561dc4e25de2653e52e87c99e993','about/index.html':'4bda11ce6844985578ff1eb78323eba168bb3ee5c13eb71f0bb1df08abd78dde','flavors/index.html':'8ab0f5bf410e3f48c226e30f79a9ec97cf8b045475bbf6d994b8923df508ba6c','es/flavors/index.html':'814473987f589424d955f4ba7e258553299a55094238cbac39c3269e59618428','es/index.html':'4dd836b6bbcfc6f0466e5afe67b45aee10b5259a521329ad78a2d6da024f2403'};
+  for(const [p,h]of empty)assert.equal(h,p in baselineHashes?'sha256:'+baselineHashes[p]:normal.find(([n])=>n===p)[1],p);
   // Leftover bytes are not a valid withdrawal even without references.
   const firstMedia=initial.flavors[0].mediaUrl.slice(1),strayPath=`public-astro/${firstMedia}`;
   writeFileSync(join(base,strayPath),selectedBytes[strayPath]);assert.throws(()=>loadRelease({base}),/Unlisted/);rmSync(join(base,strayPath));

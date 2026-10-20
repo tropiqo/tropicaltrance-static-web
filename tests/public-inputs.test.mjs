@@ -26,7 +26,7 @@ function webp(label='sample') { const body=Buffer.from(label);const b=Buffer.all
 function addFlavor(base,slug='mango',bytes=webp()) {
   const path=`assets/${slug}-web-r1.webp`;
   writeFileSync(join(base,'public-astro',path),bytes);
-  writeFileSync(join(base,`content/flavors/${slug}.json`),JSON.stringify({contractVersion:'1',slug,revision:'1',name:slug[0].toUpperCase()+slug.slice(1),shortDescription:`Explore ${slug}.`,alt:`${slug} flavor artwork.`,media:{path,contentId:digest(bytes)}},null,2)+'\n');
+  writeFileSync(join(base,`content/flavors/${slug}.json`),JSON.stringify({contractVersion:'1',slug,revision:'1',name:slug[0].toUpperCase()+slug.slice(1),shortDescription:`Explore ${slug}.`,alt:`${slug} flavor artwork.`,translations:{'es-MX':{shortDescription:`Explora ${slug}.`,alt:`Ilustración de ${slug}.`}},media:{path,contentId:digest(bytes)}},null,2)+'\n');
 }
 test('current Grape maps through the simple local content record and exact delivery',()=>{
  const r=loadRelease();const grape=r.flavors.find(f=>f.slug==='grape');assert(grape);

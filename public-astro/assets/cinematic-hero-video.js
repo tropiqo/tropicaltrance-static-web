@@ -4,10 +4,12 @@ document.querySelectorAll('[data-cinematic-hero]').forEach(hero => {
   if (!video || !toggle) return;
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const playLabel = toggle.dataset.playLabel || 'Play Emerald Gateway video';
+  const pauseLabel = toggle.dataset.pauseLabel || 'Pause Emerald Gateway video';
   const updateControl = () => {
     const playing = !video.paused && !video.ended;
-    toggle.textContent = playing ? 'Pause' : 'Play';
-    toggle.setAttribute('aria-label', `${playing ? 'Pause' : 'Play'} Emerald Gateway video`);
+    toggle.textContent = playing ? pauseLabel : playLabel;
+    toggle.setAttribute('aria-label', playing ? pauseLabel : playLabel);
     toggle.setAttribute('aria-pressed', String(playing));
   };
   let autoplayAttempted = false;

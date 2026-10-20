@@ -3,27 +3,28 @@ import type { PublicFlavor } from './public-view';
 interface Props { flavor: PublicFlavor; }
 import MediaFrame from './MediaFrame.astro';
 import FlavorStory from './FlavorStory.astro';
-const { flavor } = Astro.props;
+import { localizePath } from '../i18n/messages.mjs';
+const { flavor, locale = 'en', messages } = Astro.props;
 ---
 <div class="container flavor-detail">
-  <a class="detail-return" href="/flavors/">Return to Flavors</a>
+  <a class="detail-return" href={localizePath('/flavors/', locale)}>{messages.flavors.return}</a>
   <div class="detail-grid">
     <div class="detail-copy">
-      <p class="eyebrow">Flavors</p>
+      <p class="eyebrow">{messages.flavors.detailEyebrow}</p>
       <h1>{flavor.name}</h1>
       <p class="lead muted">{flavor.shortDescription}</p>
     </div>
     <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} loading="eager" />
   </div>
-  <FlavorStory editorial={flavor.editorial} />
+  <FlavorStory editorial={flavor.editorial} messages={messages} />
   {flavor.salesChannels?.length > 0 && <section class="sales-channels" aria-labelledby={`sales-channels-${flavor.slug}`}>
     <div class="section-heading">
-      <p class="eyebrow">Find this flavor</p>
-      <h2 id={`sales-channels-${flavor.slug}`}>Where to Find Us</h2>
+      <p class="eyebrow">{messages.flavors.find}</p>
+      <h2 id={`sales-channels-${flavor.slug}`}>{messages.flavors.where}</h2>
     </div>
     <ul class="sales-channel-list">
       {flavor.salesChannels.map(channel => <li>
-        <a class="button" href={channel.destinationUrl} target="_blank" rel="noopener noreferrer" aria-label={channel.accessibleLabel}>{channel.name}</a>
+        <a class="button" href={channel.destinationUrl} target="_blank" rel="noopener noreferrer" aria-label={locale === 'es-MX' ? `Encontrar ${flavor.name} en ${channel.name} (se abre en una pestaña nueva)` : channel.accessibleLabel}>{channel.name}</a>
       </li>)}
     </ul>
   </section>}

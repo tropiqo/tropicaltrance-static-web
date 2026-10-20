@@ -5,6 +5,12 @@
   "name": "Grape",
   "shortDescription": "Explore the Grape flavor from Tropical Trance.",
   "alt": "Grape artwork featuring Trancy in a purple cosmic landscape.",
+  "translations": {
+    "es-MX": {
+      "shortDescription": "Explora el sabor Grape de Tropical Trance.",
+      "alt": "Ilustración de Grape con Trancy en un paisaje cósmico morado."
+    }
+  },
   "media": {
     "path": "assets/grape-web-r1.webp",
     "contentId": "sha256:66c5313e7bb9dd8bc733f51aa56b1c7d5679a463a67a1c11deffd9326aade839"

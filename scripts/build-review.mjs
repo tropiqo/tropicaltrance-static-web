@@ -18,5 +18,7 @@ await build({ root: fileURLToPath(root), configFile: false, output: 'static', tr
 loadTrancyReview();
 mkdirSync(resolve('.review-build', 'review-media'), { recursive: true });
 copyFileSync(selected.path, resolve('.review-build', selected.outputPath));
+mkdirSync(resolve('.review-build', 'assets'), { recursive: true });
+copyFileSync(resolve('public-astro/assets/language-preference.js'), resolve('.review-build/assets/language-preference.js'));
 await checkReviewOutput();
 console.log('LOCAL MASCOT REVIEW ONLY + INTERNAL SYNTHETIC Flavor examples: isolated review build PASS');

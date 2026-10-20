@@ -1,0 +1,78 @@
+---
+import release from '#public-release';
+import EditorialHero from './EditorialHero.astro';
+import EditorialSection from './EditorialSection.astro';
+import FlavorDiscovery from './FlavorDiscovery.astro';
+import FlavorCollection from './FlavorCollection.astro';
+import FlavorDetail from './FlavorDetail.astro';
+import ContactPanel from './ContactPanel.astro';
+import TrancyMedia from './TrancyMedia.astro';
+import CinematicHeroVideo from './CinematicHeroVideo.astro';
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { getMessages, localizePath } from '../i18n/messages.mjs';
+import { localizeFlavor } from '../i18n/localize.mjs';
+import { emeraldGatewayMedia } from '../../scripts/emerald-gateway-static.mjs';
+interface Props { page: 'home' | 'about' | 'flavors' | 'detail' | 'contact' | 'notFound'; locale?: 'en' | 'es-MX'; flavor?: any; }
+const { page, locale = 'en', flavor: sourceFlavor } = Astro.props;
+const t = getMessages(locale);
+const flavors = release.flavors.map(flavor => localizeFlavor(flavor, locale, release.review));
+const flavor = sourceFlavor ? localizeFlavor(sourceFlavor, locale, release.review) : undefined;
+const href = path => localizePath(path, locale);
+const homeMedia = locale === 'en' ? release.brandMedia['home-hero'] : { ...release.brandMedia['home-hero'], alt: t.home.trancyAlt };
+const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...release.brandMedia['about-mascot'], alt: t.about.trancyAlt };
+---
+{page === 'home' && <SiteLayout locale={locale} title={t.home.metaTitle} description={t.home.description}>
+  <EditorialHero title={t.home.title} emphasis={t.home.emphasis} description={t.home.description} eyebrow={t.home.eyebrow} decoration="orbit" atmosphere media={homeMedia}>
+    <div class="actions"><a class="button button--solid" href={href('/flavors/')}>{t.home.explore} <span aria-hidden="true">↗</span></a></div>
+  </EditorialHero>
+  <EditorialSection variant="split" title={t.home.discoveryTitle} eyebrow={t.home.discoveryEyebrow}>
+    <p class="lead">{t.home.discoveryLead}</p>
+    <div slot="visual"><FlavorDiscovery flavors={flavors} locale={locale} messages={t} /></div>
+  </EditorialSection>
+  <EditorialSection variant="text" title={t.home.meetTitle} eyebrow="Tropical Trance">
+    <p class="lead">{t.home.meetLead}</p>
+    <div class="actions"><a class="button" href={href('/about/')}>{t.home.meetAction} <span aria-hidden="true">↗</span></a></div>
+  </EditorialSection>
+  <EditorialSection variant="band" title={t.home.connectedTitle} eyebrow="Tropical Trance">
+    <p class="lead">{t.home.connectedLead}</p>
+    <div class="actions"><a class="button" href={href('/contact/')}>{t.home.contactAction} <span aria-hidden="true">↗</span></a></div>
+  </EditorialSection>
+</SiteLayout>}
+
+{page === 'about' && <SiteLayout locale={locale} title={t.about.title} description={locale === 'en' ? t.about.description1 : `${t.about.description1} ${t.about.description2}`}>
+  <EditorialHero title={t.about.title} description={[t.about.description1, t.about.description2]} eyebrow="Tropical Trance" decoration={release.aboutHeroMedia ? 'none' : 'tide'} atmosphere>
+    {release.aboutHeroMedia && <CinematicHeroVideo slot="visual" {...emeraldGatewayMedia} playLabel={t.about.playVideo} pauseLabel={t.about.pauseVideo} description={t.about.videoDescription} />}
+  </EditorialHero>
+  {release.aboutHeroMedia && <Fragment set:html={'<script type="module" src="/assets/cinematic-hero-video.js"></script>'} />}
+  {release.brandMedia['about-mascot'] && <EditorialSection variant="split" title={t.about.meet} eyebrow="Tropical Trance" atmosphere>
+    <p class="lead">{t.about.meetLead}</p><p>{t.about.meet1}</p><p>{t.about.meet2}</p>
+    <TrancyMedia slot="visual" media={aboutMedia} />
+  </EditorialSection>}
+  <EditorialSection variant="text" title={t.about.philosophy} eyebrow="Tropical Trance">
+    <p class="lead">{t.about.philosophyLead}</p><p>{t.about.philosophy1}</p><p>{t.about.philosophy2}</p>
+  </EditorialSection>
+  <EditorialSection variant="band" title={t.about.exploreWorlds} eyebrow="Tropical Trance">
+    <div class="actions"><a class="button" href={href('/flavors/')}>{t.about.explore} <span aria-hidden="true">↗</span></a></div>
+  </EditorialSection>
+</SiteLayout>}
+
+{page === 'flavors' && <SiteLayout locale={locale} title={t.flavors.title} description={flavors.length === 1 ? flavors[0].shortDescription : t.flavors.description}>
+  <EditorialHero title={t.flavors.title} description={flavors.length === 1 ? flavors[0].shortDescription : t.flavors.heroDescription} eyebrow={t.flavors.eyebrow} />
+  <FlavorCollection flavors={flavors} locale={locale} messages={t} />
+</SiteLayout>}
+
+{page === 'detail' && <SiteLayout locale={locale} title={flavor.name} description={flavor.shortDescription}>
+  <FlavorDetail flavor={flavor} locale={locale} messages={t} />
+</SiteLayout>}
+
+{page === 'contact' && <SiteLayout locale={locale} title={t.contact.title} description={t.contact.description}>
+  <EditorialHero title={t.contact.title} description={t.contact.description} eyebrow="Tropical Trance">
+    <ContactPanel slot="visual" whatsappBusinessUrl={release.site.contact?.whatsappBusinessUrl ?? null} messages={t} locale={locale} />
+  </EditorialHero>
+</SiteLayout>}
+
+{page === 'notFound' && <SiteLayout locale={locale} title={t.notFound.title} description={t.notFound.description}>
+  <EditorialHero title={t.notFound.title} description={t.notFound.message} eyebrow="404">
+    <div class="actions"><a class="button button--solid" href={href('/')}>{t.notFound.return} <span aria-hidden="true">↗</span></a><a class="button" href={href('/flavors/')}>{t.notFound.flavors} <span aria-hidden="true">↗</span></a></div>
+  </EditorialHero>
+</SiteLayout>}

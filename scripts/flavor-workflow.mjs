@@ -45,7 +45,7 @@ function validateImagePath(input) {
   return path;
 }
 
-export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name,shortDescription,alt}) {
+export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name,shortDescription,alt,esShortDescription,esAlt}) {
   assert(['add','update'].includes(mode),'Flavor operation must be add or update');
   loadRelease({base:websiteRoot});
   const baseline=snapshot(websiteRoot);
@@ -69,9 +69,13 @@ export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name
   const projection={
     contractVersion:'1',slug:chosen,revision:nextRevision,
     name:name??existing?.name,shortDescription:shortDescription??existing?.shortDescription,alt:alt??existing?.alt,
+    translations:{'es-MX':{
+      shortDescription:esShortDescription??existing?.translations?.['es-MX']?.shortDescription,
+      alt:esAlt??existing?.translations?.['es-MX']?.alt,
+    }},
     media:{path:`assets/${chosen}-web-r${nextRevision}.webp`,contentId:''}
   };
-  for (const [key,value] of Object.entries({name:projection.name,shortDescription:projection.shortDescription,alt:projection.alt})) {
+  for (const [key,value] of Object.entries({name:projection.name,shortDescription:projection.shortDescription,alt:projection.alt,esShortDescription:projection.translations['es-MX'].shortDescription,esAlt:projection.translations['es-MX'].alt})) {
     assert(typeof value==='string' && value.trim(),`${key} is required`);
     assert(!/(?:\/|\\|https?:|file:|tropical-trance-studio|artwork-workspace:)/i.test(value),`${key} contains a path or private reference`);
   }
@@ -216,9 +220,9 @@ function parseArgs(args) {
   const options={}; let slug;
   for(let i=0;i<args.length;i++){
     const item=args[i];
-    if(item==='--image'||item==='--name'||item==='--description'||item==='--alt'){
+    if(item==='--image'||item==='--name'||item==='--description'||item==='--alt'||item==='--es-description'||item==='--es-alt'){
       const value=args[++i];if(!value)throw Error(`${item} requires a value`);
-      options[{ '--image':'imagePath','--name':'name','--description':'shortDescription','--alt':'alt' }[item]]=value;
+      options[{ '--image':'imagePath','--name':'name','--description':'shortDescription','--alt':'alt','--es-description':'esShortDescription','--es-alt':'esAlt' }[item]]=value;
     } else if(item.startsWith('-')) throw Error(`Unknown option: ${item}`);
     else if(!slug) slug=item; else throw Error(`Unexpected argument: ${item}`);
   }
@@ -236,9 +240,9 @@ export async function runAddUpdate(mode,args=process.argv.slice(2)) {
   try {
     const prior=records(root).find(value=>value.slug===options.slug.toLowerCase());
     assert(mode==='add'?!prior:Boolean(prior),mode==='add'?`Flavor already exists: ${options.slug}`:`Unknown flavor: ${options.slug}`);
-    for(const [key,label] of [['name','Flavor name'],['shortDescription','Short description'],['alt','Accessible alt text']]) {
+    for(const [key,label] of [['name','Flavor name'],['shortDescription','Short description'],['alt','Accessible alt text'],['esShortDescription','Spanish (Mexico) short description'],['esAlt','Spanish (Mexico) accessible alt text']]) {
       if(options[key]===undefined) {
-        const defaultValue=prior?.[key]??'';
+        const defaultValue=key.startsWith('es')?prior?.translations?.['es-MX']?.[key==='esAlt'?'alt':'shortDescription']??'':prior?.[key]??'';
         const answer=(await prompt.question(`${label}${defaultValue?` [${defaultValue}]`:''}: `)).trim();
         options[key]=answer||defaultValue;
       }

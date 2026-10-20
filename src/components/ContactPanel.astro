@@ -1,12 +1,13 @@
 ---
-interface Props { whatsappBusinessUrl?: string | null; }
-const { whatsappBusinessUrl = null } = Astro.props;
+import { localizePath } from '../i18n/messages.mjs';
+interface Props { whatsappBusinessUrl?: string | null; locale?: 'en' | 'es-MX'; messages: any; }
+const { whatsappBusinessUrl = null, locale = 'en', messages } = Astro.props;
 ---
 <section class="contact-panel" aria-labelledby="contact-heading">
-  <p class="eyebrow">Contact</p>
-  <h2 id="contact-heading">WhatsApp Business</h2>
+  <p class="eyebrow">{messages.contact.eyebrow}</p>
+  <h2 id="contact-heading">{messages.contact.heading}</h2>
   {whatsappBusinessUrl
-    ? <a class="button" href={whatsappBusinessUrl} target="_blank" rel="noopener noreferrer" aria-label="Message Tropical Trance on WhatsApp (opens in a new tab)">Message us on WhatsApp <span aria-hidden="true">↗</span></a>
-    : <p class="status-line">Coming Soon</p>}
-  <a class="button" href="/">Return Home <span aria-hidden="true">↗</span></a>
+    ? <a class="button" href={whatsappBusinessUrl} target="_blank" rel="noopener noreferrer" aria-label={messages.contact.whatsappLabel}>{locale === 'en' ? 'Message us on WhatsApp' : 'Escríbenos por WhatsApp'} <span aria-hidden="true">↗</span></a>
+    : <p class="status-line">{messages.contact.comingSoon}</p>}
+  <a class="button" href={localizePath('/', locale)}>{messages.contact.return} <span aria-hidden="true">↗</span></a>
 </section>

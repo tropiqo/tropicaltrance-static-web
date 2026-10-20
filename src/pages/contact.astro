@@ -1,11 +1,4 @@
 ---
-import SiteLayout from '../layouts/SiteLayout.astro';
-import EditorialHero from '../components/EditorialHero.astro';
-import ContactPanel from '../components/ContactPanel.astro';
-import release from '#public-release';
+import LocalizedPage from '../components/LocalizedPage.astro';
 ---
-<SiteLayout title="Let's Connect" description="Have a question or want to connect with Tropical Trance? We'd love to hear from you.">
-  <EditorialHero title="Let's Connect" description="Have a question or want to connect with Tropical Trance? We'd love to hear from you." eyebrow="Tropical Trance">
-    <ContactPanel slot="visual" whatsappBusinessUrl={release.site.contact?.whatsappBusinessUrl ?? null} />
-  </EditorialHero>
-</SiteLayout>
+<LocalizedPage page="contact" locale="en" />

@@ -3,9 +3,11 @@ interface Props {
   src: string;
   poster: string;
   description: string;
+  playLabel: string;
+  pauseLabel: string;
 }
 
-const { src, poster, description } = Astro.props;
+const { src, poster, description, playLabel, pauseLabel } = Astro.props;
 ---
 <figure class="cinematic-hero" data-cinematic-hero>
   <video
@@ -25,12 +27,14 @@ const { src, poster, description } = Astro.props;
     <button
       class="cinematic-hero__toggle"
       type="button"
-      aria-label="Play Emerald Gateway video"
+      aria-label={playLabel}
       aria-pressed="false"
       aria-controls="emerald-gateway-video"
       data-video-toggle
       hidden
-    >Play</button>
+      data-play-label={playLabel}
+      data-pause-label={pauseLabel}
+    >{playLabel}</button>
   </div>
 </figure>
 
