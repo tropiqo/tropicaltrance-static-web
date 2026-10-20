@@ -1,4 +1,4 @@
-"""Slice 2 local CI policy. Only approved locked installs and static checks; no deployment.
+"""Local CI policy. Only approved locked installs and validation; no deployment.
 
 Active workflows must use the JSON subset of YAML so Python's standard-library
 parser can validate them without installing a YAML package. This is a bounded
@@ -12,7 +12,16 @@ import json
 from pathlib import Path
 
 CHECKOUT = "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803"
+SETUP_NODE = "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38"
 COMMAND = "python3 -B .github/ci/check_policy.py --self-test"
+LOCKED_INSTALL = "npm ci --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org"
+PIN_NPM = 'npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test "$(npm --version)" = "11.19.0"'
+VALIDATION_STEPS = [
+    ("Validate application and isolated review builds", "npm run validate"),
+    ("Verify reproducible builds", "npm run verify:reproducible"),
+    ("Install Chromium and required Linux dependencies", "npx playwright install --with-deps chromium"),
+    ("Run isolated Chromium browser checks", "npm run test:e2e"),
+]
 
 
 class PolicyError(ValueError):
@@ -40,12 +49,12 @@ def check_workflow(workflow):
     require(isinstance(job, dict) and set(job) == {"runs-on", "timeout-minutes", "steps"},
             "unexpected job fields: environment, secrets, services and reusable jobs forbidden")
     require(job["runs-on"] == "ubuntu-24.04", "only hosted ubuntu-24.04 is allowed")
-    require(type(job["timeout-minutes"]) is int and job["timeout-minutes"] == 5,
-            "policy job timeout must be five minutes")
+    require(type(job["timeout-minutes"]) is int and job["timeout-minutes"] == 20,
+            "policy job timeout must be twenty minutes")
     steps = job["steps"]
-    require(isinstance(steps, list) and len(steps) == 5,
-            "exactly reviewed checkout, policy, runtime, locked install and static checks are allowed")
-    checkout, check, setup, install, build = steps
+    require(isinstance(steps, list) and len(steps) == 9,
+            "exactly reviewed checkout, policy, runtime, npm pin, locked install and validation steps are allowed")
+    checkout, check, setup, pin_npm, install, *validation = steps
     require(isinstance(checkout, dict) and set(checkout) == {"name", "uses", "with"},
             "unexpected checkout step fields")
     require(checkout["uses"] == CHECKOUT, "action must match the reviewed full checkout SHA")
@@ -60,10 +69,16 @@ def check_workflow(workflow):
             "unexpected validation step fields; no env or secrets")
     require(check["run"] == COMMAND, "only the existing dependency-free policy command is allowed")
     require(set(setup) == {"name", "uses", "with"}, "unexpected runtime setup fields")
-    require(setup["uses"] == "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38", "runtime action must match reviewed SHA")
+    require(setup["uses"] == SETUP_NODE, "runtime action must match reviewed SHA")
     require(setup["with"] == {"node-version": "24.21.0", "package-manager-cache": False}, "runtime version/cache differs")
-    require(set(install) == {"name", "run"} and install["run"] == "npm ci --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org", "only reviewed locked official-registry install allowed")
-    require(set(build) == {"name", "run"} and build["run"] == "npm run build && npm test", "only static build/tests allowed")
+    require(set(pin_npm) == {"name", "run"} and pin_npm["run"] == PIN_NPM,
+            "only repository-pinned npm may be installed from the official registry")
+    require(set(install) == {"name", "run"} and install["run"] == LOCKED_INSTALL,
+            "only reviewed locked official-registry install allowed")
+    require(len(validation) == len(VALIDATION_STEPS), "validation step count differs from reviewed pipeline")
+    for step, (name, command) in zip(validation, VALIDATION_STEPS):
+        require(set(step) == {"name", "run"} and step["name"] == name and step["run"] == command,
+                "validation commands must match the reviewed local-only pipeline")
     require(isinstance(checkout["name"], str) and isinstance(check["name"], str),
             "step names must be text")
 
@@ -100,8 +115,10 @@ def negative_checks(valid):
         "persisted credentials": lambda w: w["jobs"]["policy"]["steps"][0]["with"].update({"persist-credentials": True}),
         "production secret": lambda w: w["jobs"]["policy"].update({"env": {"TOKEN": "${{ secrets.PRODUCTION_TOKEN }}"}}),
         "reusable release workflow": lambda w: w["jobs"]["policy"].update({"uses": "./.github/workflows/release.yml"}),
-        "nonexistent Astro command": lambda w: w["jobs"]["policy"]["steps"][1].update({"run": "npm run build"}),
-        "dependency installation": lambda w: w["jobs"]["policy"]["steps"][1].update({"run": "npm ci"}),
+        "nonexistent Astro command": lambda w: w["jobs"]["policy"]["steps"][5].update({"run": "npm run build"}),
+        "dependency installation": lambda w: w["jobs"]["policy"]["steps"][5].update({"run": "npm ci"}),
+        "all-browser installation": lambda w: w["jobs"]["policy"]["steps"][7].update({"run": "npx playwright install --with-deps"}),
+        "external browser test target": lambda w: w["jobs"]["policy"]["steps"][8].update({"run": "npm run test:e2e -- --config=https://example.invalid"}),
         "extra command": lambda w: w["jobs"]["policy"]["steps"][1].update({"run": COMMAND + "\ncurl https://example.invalid"}),
     }
     for name, mutate in mutations.items():
@@ -136,7 +153,7 @@ def main():
     require((root / ".github/ci/check_policy.py").is_file(), "policy command file is missing")
     require((root / "docs/migration/astro-foundation-baseline.md").is_file(), "baseline document is missing")
     package = json.loads((root / "package.json").read_text())
-    require(all(k in package["scripts"] for k in ["build", "test"]), "referenced npm scripts must exist")
+    require(all(k in package["scripts"] for k in ["validate", "verify:reproducible", "test:e2e"]), "referenced npm scripts must exist")
     require((root / "package-lock.json").is_file(), "locked install requires lockfile")
     if args.self_test:
         negative_checks(workflow)

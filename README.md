@@ -75,6 +75,8 @@ git diff --check
 
 `validate` runs inputs, normal build, review build, tests and both output audits. Tests include independent deterministic builds/isolation and mascot integrity; an existing matching review WebP is reused without regeneration. Review tests require the original master and selected review delivery; normal builds remain independent of them.
 
+Pull requests to `master` run the same validation, reproducible-build checks, and the single Chromium Playwright project on GitHub-hosted Ubuntu. CI uses Node 24.21.0, npm 11.19.0, the lockfile, and the repository's lifecycle-script restrictions; it installs only Chromium and its Linux dependencies. The policy self-check keeps the workflow read-only and rejects deployment, publishing, secret, and workflow-chain additions. A green check validates a change; it does not authorize release or publication. Browser tests start the local development server at `127.0.0.1` and check same-origin pages and links only.
+
 | Command | Checks |
 | --- | --- |
 | `npm run validate:inputs` | Closed flavor content, image integrity and source boundaries |
