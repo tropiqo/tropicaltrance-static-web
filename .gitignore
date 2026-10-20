@@ -46,3 +46,8 @@ codex.md
 
 # Real mascot local review delivery; excluded from normal content/publicDir
 /review-assets/
+
+# Playwright browser artifacts
+/test-results/
+/playwright-report/
+/blob-report/

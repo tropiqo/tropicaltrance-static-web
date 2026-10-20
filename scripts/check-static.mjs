@@ -110,7 +110,7 @@ export async function checkSource(base = root) {
   assert(selected.every(f=>/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(f.slug) && f.flavor.id===f.slug), 'Invalid normal Flavor selection');
   await checkFlavorMedia(base,{flavors:selected});
   const packageJson = JSON.parse(await readFile(resolve(base, 'package.json'), 'utf8'));
-  assert.deepEqual(packageJson.devDependencies, { astro: '7.3.8' });
+  assert.deepEqual(packageJson.devDependencies, { '@playwright/test': '^1.64.0', astro: '7.3.8' });
   assert(!packageJson.dependencies);
   assert.equal(packageJson.engines.node, '24.21.0');
   assert.equal(packageJson.engines.npm, '11.19.0');

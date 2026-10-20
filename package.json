@@ -21,9 +21,13 @@
     "validate:output": "node scripts/validate.mjs output",
     "validate:review-output": "node scripts/validate.mjs review-output",
     "verify:reproducible": "node scripts/validate.mjs reproducible",
-    "validate": "node scripts/validate.mjs all"
+    "validate": "node scripts/validate.mjs all",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "astro": "7.3.8"
   }
 }
