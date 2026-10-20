@@ -152,6 +152,9 @@ local referral-link configuration only; it does not assert a partnership,
 availability, pricing or commercial authorization and adds no checkout or
 analytics behavior.
 
+For the repeatable draft workflow, previews, and development/production
+boundaries, see [Sales channel management](docs/sales-channel-management.md).
+
 ## Retained legacy material and URL decisions
 
 Obsolete root prototype pages `index.md`, `about.md` and `contact.md` are retired. Astro retains `/`, `/about/` and `/contact/`. The approved legacy Jekyll/theme/Ruby/demo-source/custom-JavaScript implementation has also been retired. Historical demo media, author/comment data, license/history material and copyright notices remain preserved; they are not build inputs. Active migration notes remain in `docs/migration/`; active tests use plural `tests/`.

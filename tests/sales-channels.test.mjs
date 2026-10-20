@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { loadRelease } from '../scripts/public-inputs.mjs';
 import { loadSalesChannels } from '../scripts/sales-channels.mjs';
 import { checkOutput } from '../scripts/check-static.mjs';
+import { applyChannelChange, planChannelChange } from '../scripts/sales-channel-workflow.mjs';
 
 const root=process.cwd();
 const configPath=join(root,'content/sales-channels.json');
@@ -81,5 +82,94 @@ test('invalid destinations, activation without a URL, duplicate IDs and unknown 
     assert.throws(()=>loadRelease({base}));
     writeFileSync(join(base,'content/sales-channels.json'),'{} trailing');
     assert.throws(()=>loadSalesChannels({base,flavors:['grape','lime']}));
+  } finally {rmSync(base,{recursive:true,force:true});}
+});
+
+test('channel workflow adds disabled drafts and preserves all unrelated records',()=>{
+  const base=copyWebsite();
+  try {
+    const before=JSON.parse(readFileSync(join(base,'content/sales-channels.json'),'utf8'));
+    const candidate=planChannelChange({operation:'add',id:'demo-market',options:{name:'Demo Market',kind:'website'},base});
+    assert.equal(candidate.nextChannels.at(-1).destinationUrl,null);
+    assert.equal(candidate.nextChannels.at(-1).enabled,false);
+    assert.deepEqual(candidate.nextChannels.slice(0,-1),before.channels);
+    assert.equal(applyChannelChange(candidate,{runValidation:()=>{}}),true);
+    const after=JSON.parse(readFileSync(join(base,'content/sales-channels.json'),'utf8'));
+    assert.equal(after.channels.at(-1).id,'demo-market');
+    assert.deepEqual(after.channels.slice(0,-1),before.channels);
+    assert.deepEqual(loadSalesChannels({base,flavors:['cherry','grape','lime']}).at(-1),after.channels.at(-1));
+  } finally {rmSync(base,{recursive:true,force:true});}
+});
+
+test('channel updates configure safe destinations and explicit flavor associations',()=>{
+  const base=copyWebsite();
+  try {
+    const before=JSON.parse(readFileSync(join(base,'content/sales-channels.json'),'utf8'));
+    const update=planChannelChange({operation:'update',id:'splift',options:{name:'Splift Market',destinationUrl:'https://shop.example/tropical',flavors:['grape','lime']},base});
+    assert.equal(update.nextChannels[1].enabled,false);
+    assert.deepEqual(update.nextChannels[1].flavors,['grape','lime']);
+    assert.deepEqual(update.nextChannels.filter(channel=>channel.id!=='splift'),before.channels.filter(channel=>channel.id!=='splift'));
+    applyChannelChange(update,{runValidation:()=>{}});
+    const cleared=planChannelChange({operation:'update',id:'splift',options:{clearDestination:true,flavors:[]},base});
+    assert.equal(cleared.nextChannels[1].destinationUrl,null);
+    assert.deepEqual(cleared.nextChannels[1].flavors,[]);
+    const all=planChannelChange({operation:'update',id:'splift',options:{allFlavors:true},base});
+    assert.equal(Object.hasOwn(all.nextChannels[1],'flavors'),false);
+  } finally {rmSync(base,{recursive:true,force:true});}
+});
+
+test('channel workflow rejects malformed, duplicate, invalid, unknown and unsafe operations',()=>{
+  const base=copyWebsite();
+  try {
+    assert.throws(()=>planChannelChange({operation:'add',id:'Bad_ID',options:{name:'Bad'},base}),/Invalid channel ID/);
+    assert.throws(()=>planChannelChange({operation:'add',id:'splift',options:{name:'Duplicate'},base}),/already exists/);
+    assert.throws(()=>planChannelChange({operation:'add',id:'new-market',options:{name:'New',destinationUrl:'javascript:alert(1)'},base}),/validation failed/i);
+    assert.throws(()=>planChannelChange({operation:'add',id:'new-market',options:{name:'New',destinationUrl:'https://localhost'},base}),/validation failed/i);
+    assert.throws(()=>planChannelChange({operation:'add',id:'new-market',options:{name:'New',flavors:['unknown']},base}),/unknown Flavor association/);
+    assert.throws(()=>planChannelChange({operation:'update',id:'missing',options:{name:'Missing'},base}),/Unknown channel/);
+    assert.throws(()=>planChannelChange({operation:'update',id:'splift',options:{},base}),/no changes/);
+  } finally {rmSync(base,{recursive:true,force:true});}
+});
+
+test('disable and remove require safe channel state and preserve unrelated records',()=>{
+  const base=copyWebsite();
+  try {
+    const original=JSON.parse(readFileSync(join(base,'content/sales-channels.json'),'utf8'));
+    const withEnabled={...original,channels:[...original.channels,{id:'demo-market',name:'Demo Market',kind:'website',destinationUrl:'https://shop.example',enabled:true}]};
+    writeConfig(base,withEnabled.channels);
+    assert.throws(()=>planChannelChange({operation:'remove',id:'demo-market',options:{},base}),/Disable the channel before removing it/);
+    const disabled=planChannelChange({operation:'disable',id:'demo-market',options:{},base});
+    assert.equal(disabled.nextChannels.at(-1).enabled,false);
+    applyChannelChange(disabled,{runValidation:()=>{}});
+    const removed=planChannelChange({operation:'remove',id:'demo-market',options:{},base});
+    assert.deepEqual(removed.nextChannels,original.channels);
+    assert.equal(applyChannelChange(removed,{confirm:false}),false);
+    assert.deepEqual(JSON.parse(readFileSync(join(base,'content/sales-channels.json'),'utf8')).channels,original.channels.concat([{id:'demo-market',name:'Demo Market',kind:'website',destinationUrl:'https://shop.example',enabled:false}]));
+    applyChannelChange(removed,{runValidation:()=>{}});
+    assert.deepEqual(JSON.parse(readFileSync(join(base,'content/sales-channels.json'),'utf8')).channels,original.channels);
+  } finally {rmSync(base,{recursive:true,force:true});}
+});
+
+test('cancel and validation failure leave channel configuration unchanged',()=>{
+  const base=copyWebsite();
+  try {
+    const path=join(base,'content/sales-channels.json'),original=readFileSync(path);
+    const candidate=planChannelChange({operation:'update',id:'splift',options:{name:'Splift Draft'},base});
+    assert.equal(applyChannelChange(candidate,{confirm:false}),false);
+    assert.deepEqual(readFileSync(path),original);
+    assert.throws(()=>applyChannelChange(candidate,{runValidation:()=>{throw Error('synthetic validation failure');}}),/synthetic validation failure/);
+    assert.deepEqual(readFileSync(path),original);
+    assert.throws(()=>planChannelChange({operation:'add',id:'new-market',options:{name:'New',flavors:['missing']},base}));
+    assert.deepEqual(readFileSync(path),original);
+  } finally {rmSync(base,{recursive:true,force:true});}
+});
+
+test('empty flavor association is valid and disabled channels never render public links',()=>{
+  const base=copyWebsite();
+  try {
+    const candidate=planChannelChange({operation:'update',id:'splift',options:{destinationUrl:'https://shop.example',flavors:[]},base});
+    applyChannelChange(candidate,{runValidation:()=>{}});
+    const release=loadRelease({base});
+    assert(release.flavors.every(flavor=>flavor.salesChannels.length===0));
   } finally {rmSync(base,{recursive:true,force:true});}
 });
