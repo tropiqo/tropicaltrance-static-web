@@ -117,6 +117,12 @@ function loadFlavorContent({base}) {
   const sitePath = safePath(base,'content/site.json');
   const readContent=path=>{const bytes=readFileSync(safePath(base,path));rejectFixture(bytes);return bytes;};
   const site = validateSchema(parseJson(readContent('content/site.json')),resolve(base,'schemas/site.schema.json'));
+  const whatsappBusinessUrl = site.contact?.whatsappBusinessUrl;
+  if (whatsappBusinessUrl !== undefined && whatsappBusinessUrl !== null) {
+    let parsed;
+    try { parsed = new URL(whatsappBusinessUrl); } catch { throw Error('Invalid WhatsApp Business destination'); }
+    requireThat(parsed.href === whatsappBusinessUrl && parsed.protocol === 'https:' && parsed.hostname === 'wa.me' && !parsed.username && !parsed.password && !parsed.port && !parsed.search && !parsed.hash && /^\/[1-9][0-9]{7,14}$/.test(parsed.pathname), 'Invalid WhatsApp Business destination');
+  }
   const flavorsPath = 'content/flavors';
   const flavorFiles = inventory(base,flavorsPath,true);
   const rootEntries = readdirSync(safePath(base,'content'));

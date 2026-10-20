@@ -98,8 +98,8 @@ test('optional Flavor story remains omitted when absent',()=>{
   assert(!/aria-label="Flavor story"|class="flavor-story"|Trancy|Flavor story/.test(coral.match(/<main\b[^>]*>([\s\S]*?)<\/main>/)[1]));
   for(const route of routes) { assert(!/Trancy’s Worlds|aria-label="Flavor story"|class="flavor-story"/.test(normal(route))); if (!['index.html','about/index.html'].includes(route)) assert(!normal(route).includes(trancyMedia.mediaUrl)); }
 });
-test('Contact and About contain restrained development copy without invented contact endpoints',()=>{
-  const contact=normal('contact/index.html');assert.match(contact,/class="contact-panel"/);assert.match(contact,/The approved contact channel is pending/);
+test('Contact and About contain restrained copy without invented contact endpoints',()=>{
+  const contact=normal('contact/index.html');assert.match(contact,/class="contact-panel"/);assert.match(contact,/WhatsApp Business/);assert.match(contact,/Coming Soon/);
   const about=normal('about/index.html');
   for(const phrase of ['Beyond the Ordinary','Tropical Trance is a creative universe inspired by tropical energy, vibrant flavors, and the freedom to explore the unexpected.','We believe every flavor deserves more than a name. It deserves its own world, atmosphere, and adventure.','Trancy is the unmistakable face of Tropical Trance.','Curious, adventurous, and always ready for something unexpected, Trancy travels through surreal tropical worlds where each flavor becomes a new experience.','Different places. Different adventures. One familiar explorer.','Our Creative Philosophy','Trancy is the constant. The adventure changes.','Our creative direction combines imaginative storytelling, expressive artwork, and a refined tropical aesthetic.','Explore the Worlds','Explore the Flavors']) assert(about.includes(phrase));
   for(const route of routes)assert(!/mailto:|tel:|https?:|\b[\w.-]+@[\w.-]+\.[a-z]+|<form\b|<input\b|<script\b|social profile|founder|manufacturing|certified/i.test(normal(route)));

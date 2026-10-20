@@ -35,7 +35,7 @@ function decodeAttribute(text) {
 function htmlAttributes(source) {
   return new Map([...source.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(match => [match[1].toLowerCase(),decodeAttribute(match[2]??match[3])]));
 }
-export function checkHtml(html, media = [], salesChannels = []) {
+export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null) {
   assert.match(html, /<html[^>]*lang="en"/);
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1);
   assert.equal((html.match(/<main(?:\s|>)/g) || []).length, 1);
@@ -69,12 +69,14 @@ export function checkHtml(html, media = [], salesChannels = []) {
   if (salesChannels.length) assert.match(html,/Where to Find Us/);
   else assert(!html.includes('Where to Find Us'),'Disabled channels must not render a placeholder section');
   const external = [...html.matchAll(/<a\b([^>]*)>/gi)].map(match=>htmlAttributes(match[1])).filter(attrs=>(attrs.get('href')||'').startsWith('https:'));
-  assert.deepEqual(external.map(attrs=>attrs.get('href')),salesChannels.map(channel=>channel.destinationUrl),'External links must exactly match selected sales channels');
+  const expectedExternal = [...salesChannels.map(channel=>channel.destinationUrl), ...(whatsappBusinessUrl ? [whatsappBusinessUrl] : [])];
+  assert.deepEqual(external.map(attrs=>attrs.get('href')),expectedExternal,'External links must exactly match selected sales channels and optional site contact');
   for (const [index,attrs] of external.entries()) {
     const channel=salesChannels[index];
     assert.equal(attrs.get('target'),'_blank','External links open in a new tab');
     assert.deepEqual(new Set((attrs.get('rel')||'').split(/\s+/)),new Set(['noopener','noreferrer']),'External links require safe rel attributes');
-    assert.equal(attrs.get('aria-label'),channel.accessibleLabel,'External link needs a descriptive accessible name');
+    const expectedLabel = channel?.accessibleLabel ?? 'Message Tropical Trance on WhatsApp (opens in a new tab)';
+    assert.equal(attrs.get('aria-label'),expectedLabel,'External link needs a descriptive accessible name');
   }
   assert(!/\b(?:srcset|imagesrcset|poster)\s*=/i.test(html),'Unapproved media variant');
   assert(!/THC|lab.test|handcrafted|all.natural|tropical mango|paradise pineapple|sunset strawberry|hello@/i.test(html), 'Legacy claim/content leak');
@@ -134,13 +136,14 @@ export async function checkOutput(base = root) {
     const detail = release.flavors.find(f=>page==='flavors/'+f.slug+'/index.html');
     const media = page==='index.html' ? [trancyMedia,...release.flavors] : role ? [trancyMedia] : page==='flavors/index.html' ? release.flavors : detail ? [detail] : [];
     const salesChannels=detail?.salesChannels||[];
-    checkHtml(html,media,salesChannels);
+    const whatsappBusinessUrl=page==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
+    checkHtml(html,media,salesChannels,whatsappBusinessUrl);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = decodeAttribute(match[1]).split('#');
       assert(href !== trancyMedia.mediaUrl && !release.deliveries.some(m => href==='/' + m.path.slice('public-astro/'.length)),'Unapproved media link');
       if (href.startsWith('https:')) {
-        assert(salesChannels.some(channel=>channel.destinationUrl===href),'Unapproved external destination');
+        assert(salesChannels.some(channel=>channel.destinationUrl===href) || (page==='contact/index.html' && href===release.site.contact?.whatsappBusinessUrl),'Unapproved external destination');
         continue;
       }
       assert(!/^(?:\/\/|[a-z][a-z0-9+.-]*:)/i.test(href), 'Unexpected external destination');

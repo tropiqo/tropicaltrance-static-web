@@ -13,6 +13,7 @@ const configPath=join(root,'content/sales-channels.json');
 function copyWebsite() {
   const base=mkdtempSync(join(tmpdir(),'tt-sales-channels-'));
   for(const path of ['src','scripts','schemas','content','public-astro','astro.config.mjs','package.json','package-lock.json']) cpSync(join(root,path),join(base,path),{recursive:true});
+  const configPath=join(base,'astro.config.mjs');writeFileSync(configPath,readFileSync(configPath,'utf8').replace('vite: { resolve:',`vite: { cacheDir: '${join(base,'.vite-cache')}', resolve:`));
   symlinkSync(join(root,'node_modules'),join(base,'node_modules'),'dir');
   return base;
 }

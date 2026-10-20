@@ -18,6 +18,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
  const base=mkdtempSync(join(tmpdir(),'tt-isolated-'));
  try {
   for(const path of ['src','scripts','schemas','content','public-astro','astro.config.mjs','package.json','package-lock.json','.npmrc'])cpSync(join(root,path),join(base,path),{recursive:true});
+  const configPath=join(base,'astro.config.mjs');writeFileSync(configPath,readFileSync(configPath,'utf8').replace('vite: { resolve:', `vite: { cacheDir: '${join(base,'.vite-cache')}', resolve:`));
   mkdirSync(join(base,'public-astro/assets'),{recursive:true});
   const initial=loadRelease({base});assert(initial.flavors.some(f=>f.slug==='grape'));
   symlinkSync(join(root,'node_modules'),join(base,'node_modules'));
@@ -33,7 +34,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
   for(const p of selectedPaths)rmSync(join(base,p));
   run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,7);
-  const baselineHashes={'index.html':'e817f9a25512847b11efc00196d8aa4b6f27208551e7e99fd0973c0ffebba297','about/index.html':'33ec418e00ea142d2e32648dcc87a452f6aa6bce924eaf0aa96bdae31cd0e343','flavors/index.html':'9540dbca3134adf6540e4486970a14186d8d86ab2095c7e69b0292e330890b9d'};
+  const baselineHashes={'index.html':'04fbd26738c83f5788a66661ace7ce893c8a1eccd75b4e0e703e773aa7aabb0a','about/index.html':'675568925e425e1db377e7c939b114d883f3f048baf980a2397561f683fbd13f','flavors/index.html':'05f1fbc9e8241de3d87d8439af6c7d4269d7d35aa618ae75193673dbc3c3fd93'};
   for(const [p,h]of empty)assert.equal(h,p in baselineHashes?'sha256:'+baselineHashes[p]:normal.find(([n])=>n===p)[1]);
   // Leftover bytes are not a valid withdrawal even without references.
   const firstMedia=initial.flavors[0].mediaUrl.slice(1),strayPath=`public-astro/${firstMedia}`;

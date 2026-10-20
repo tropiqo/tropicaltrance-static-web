@@ -24,6 +24,26 @@
     },
     "description": {
       "$ref": "publication/common.schema.json#/$defs/text"
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "whatsappBusinessUrl"
+      ],
+      "properties": {
+        "whatsappBusinessUrl": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^https://wa\\.me/[1-9][0-9]{7,14}$"
+            }
+          ]
+        }
+      }
     }
   }
 }

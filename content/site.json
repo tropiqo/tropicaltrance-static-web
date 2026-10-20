@@ -3,5 +3,8 @@
   "kind": "development-site",
   "lang": "en",
   "title": "Tropical Trance — development",
-  "description": "Development-only foundation. Public content and release approval are pending."
+  "description": "Development-only foundation. Public content and release approval are pending.",
+  "contact": {
+    "whatsappBusinessUrl": null
+  }
 }

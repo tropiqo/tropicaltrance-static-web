@@ -3,7 +3,11 @@ import { navigation } from './navigation.mjs';
 ---
 <footer class="site-footer">
   <div class="container footer-inner">
-    <a class="brand" href="/">Tropical Trance</a>
+    <div class="footer-brand">
+      <a class="brand" href="/">Tropical Trance</a>
+      <p class="footer-brand-statement">Stay Curious. Stay Tropical.</p>
+      <p class="footer-brand-statement">Follow your curiosity into a world where imagination takes the lead.</p>
+    </div>
     <nav class="footer-nav" aria-label="Footer">
       <ul>{navigation.map(([href, label]) => <li><a href={href}>{label}</a></li>)}</ul>
     </nav>
