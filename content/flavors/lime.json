@@ -1,0 +1,12 @@
+{
+  "contractVersion": "1",
+  "slug": "lime",
+  "revision": "1",
+  "name": "Lime",
+  "shortDescription": "Explore the Lime flavor from Tropical Trance.",
+  "alt": "Trancy surfing through a surreal cosmic lime landscape.",
+  "media": {
+    "path": "assets/lime-web-r1.webp",
+    "contentId": "sha256:b35616534a4353971d1de66d17247c0985cf6e29a4d8d67790d1ea3fad1da405"
+  }
+}

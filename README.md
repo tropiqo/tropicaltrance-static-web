@@ -2,7 +2,7 @@
 
 The current website is an independent Astro static project using the Tropical Editorial Hybrid design: Home, Flavors, About, Contact, a technical 404 and reusable Flavor Detail pages selected by validated local inputs.
 
-This is a development foundation. A passing build or local preview does not authorize publication. The normal Flavor release selects one reviewed Grape flavor. The owner-approved, exact Trancy WebP appears on normal Home/About as one pinned static asset; synthetic Flavor media remains confined to local review.
+This is a development foundation. A passing build or local preview does not authorize publication. The normal website derives its Flavor collection and detail routes from validated local flavor records. The owner-approved, exact Trancy WebP appears on normal Home/About as one pinned static asset; synthetic Flavor media remains confined to local review.
 
 See the [authoritative internal foundation handoff](docs/migration/astro-foundation-handoff.md) for current scope, exact inventories, recovery, responsibilities and deferred production work. This README remains the quick start; dated slice documents preserve earlier evidence.
 
@@ -35,7 +35,7 @@ npm run build
 npm run preview -- --port 4321
 ```
 
-Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/`, `/flavors/grape/` or `/contact/`. Output is `dist/`: currently six HTML pages (including `/flavors/grape/`), one stylesheet, the exact Trancy WebP and one approved Grape WebP, with no fixture detail routes.
+Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/`, each `/flavors/<slug>/` route or `/contact/`. Output is `dist/`: five base HTML pages plus one detail page per selected flavor, one stylesheet, the exact Trancy WebP and one selected WebP per flavor, with no fixture detail routes.
 
 Flavor content uses one closed JSON file per flavor under `content/flavors/`, with the local WebP path and SHA-256 in that same record. The normal website build does not read Studio eligibility snapshots, authorization records, or Grape-specific source/recipe pins. This is a local website content model; it does not establish legal rights, commercial eligibility, or permission to deploy. The approved mascot is independently pinned at `public-astro/assets/trancy-web-r1.webp`. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
 
@@ -91,25 +91,26 @@ The current Grape record retains its approved copy and exact WebP at
 `/assets/grape-web-r1.webp`, shared by collection/detail. Its source artwork and
 Studio history remain outside the website content model.
 
-### Add or replace flavor artwork locally
-
-Use one command for either an existing flavor slug or a new slug:
+### Add, update or remove a flavor locally
 
 ```sh
+npm run flavor:add -- mango --image /path/to/mango.png --name Mango --description "Explore Mango." --alt "Mango flavor artwork."
 npm run flavor:update -- grape --image /path/to/replacement.png
-npm run flavor:update -- mango --image /path/to/new-flavor.png --name Mango --description "Explore Mango." --alt "Mango flavor artwork."
+npm run flavor:remove -- mango
 ```
 
-If content options are omitted, existing values are retained; for a new flavor,
-the CLI prompts for them. It validates and decodes the image, prepares one
-full-frame lossless WebP, builds a temporary isolated Astro candidate, and
-starts a loopback preview at `/flavors/` and `/flavors/<slug>/`. Review those
-pages, then answer `y` to apply or press Enter/answer `n` to cancel. Cancellation
-leaves website inputs unchanged. Confirmation writes a new versioned image and
-single flavor JSON, removes the superseded image only after the update succeeds,
-checks that inputs did not change during preview, and runs `npm run validate`;
-validation failure restores the prior content and asset. Do not run concurrent
-content edits during a preview.
+`flavor:add` rejects a slug that already exists; `flavor:update` rejects an
+unknown slug and retains existing copy unless an option overrides it. Both
+commands accept `--name`, `--description` and `--alt`, optimize the selected
+image to one full-frame lossless WebP, build an isolated Astro candidate and
+serve the actual collection/detail preview. Confirm with `y`; Enter or `n`
+cancels without changing website inputs. Updates increment the flavor revision
+and keep the previous image until validation succeeds. `flavor:remove` builds a
+preview of the selected flavor, shows its name, slug, artwork URL and digest,
+then asks for confirmation with No as the default. It deletes the content record
+and only deletes artwork no other flavor references. All confirmed changes run
+`npm run validate`; a validation failure restores the original files. Do not
+run concurrent content edits during a preview or removal confirmation.
 
 This command edits local website content only. It does not create Studio asset
 or approval records, assert legal rights, or authorize deployment/publication.

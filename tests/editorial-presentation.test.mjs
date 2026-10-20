@@ -87,15 +87,17 @@ test('Contact and About contain restrained development copy without invented con
   for(const route of routes)assert(!/mailto:|tel:|https?:|\b[\w.-]+@[\w.-]+\.[a-z]+|<form\b|<input\b|<script\b|social profile|founder|manufacturing|certified/i.test(normal(route)));
 });
 test('decoration is hidden, static and separate from approved media; no remote CSS/font/image dependencies',()=>{
+  const release=loadRelease();
   for(const route of routes) {
     const html=normal(route);for(const block of html.matchAll(/<div class="decorative-background[^>]*>/g))assert.match(block[0],/aria-hidden="true"/);
     assert(!/<(?:svg|canvas|video|audio|script|iframe)\b/i.test(html));
-    assert.equal((html.match(/<img\b/g)||[]).length, ['index.html','about/index.html','flavors/index.html'].includes(route) ? 1 : 0);
+    const expectedFlavorImages=route==='flavors/index.html'?release.flavors.length:0;
+    const expectedTrancyImages=['index.html','about/index.html'].includes(route)?1:0;
+    assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages);
   }
   const css=text('src/styles/global.css');assert.match(css,/object-fit: contain/);assert(!/object-fit:\s*cover|@font-face|https?:|url\(|@keyframes/.test(css));
   assert.match(text('src/components/DecorativeBackground.astro'),/aria-hidden="true"/);assert.match(css,/pointer-events: none/);
   assert(!/transform:|filter:/.test(css.match(/\.media-frame img\s*\{([^}]+)\}/)[1]));
-  const release=loadRelease();
   for (const [route,flavors] of [['flavors/index.html',release.flavors],['flavors/grape/index.html',[release.flavors.find(f=>f.slug==='grape')]]]) {
     const html = normal(route);assert.match(html, /class="media-frame"/);
     for(const flavor of flavors)assert(html.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`));
@@ -145,7 +147,13 @@ test('local Trancy candidate anchors Home and About with one intact delivery and
   }
   assert.match(home, /hero-grid--mascot/); assert.match(home, /loading="eager"/);
   assert.match(about, /Meet Trancy/); assert.match(about, /Trancy is the Tropical Trance mascot/);
-  for (const route of routes) { assert(!normal(route).includes('/review-media/')); assert.equal((normal(route).match(/<img\b/g)||[]).length, ['index.html','about/index.html','flavors/index.html'].includes(route) ? 1 : 0); }
+  const release=loadRelease();
+  for (const route of routes) {
+    const html=normal(route),images=[...html.matchAll(/<img\b[^>]*>/g)].map(match=>match[0]);
+    assert(!html.includes('/review-media/'));
+    assert.equal(images.filter(image=>image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','about/index.html'].includes(route)?1:0);
+    assert.equal(images.filter(image=>!image.includes(`src="${trancyMedia.mediaUrl}"`)).length,route==='flavors/index.html'?release.flavors.length:0);
+  }
   for (const route of ['contact/index.html', '404.html', 'flavors/index.html', 'flavors/fixture-coral/index.html', 'flavors/fixture-orchid/index.html']) assert(!fixture(route).includes('/review-media/'));
 });
 
