@@ -1,3 +1,4 @@
 import { loadRelease } from '../../scripts/public-inputs.mjs';
-// No normal brand selection is admitted by the existing v1 publication contract.
-export default { ...loadRelease(), brandMedia: {} };
+import { trancyMedia } from '../../scripts/trancy-static.mjs';
+// Flavor release validation is unchanged; both existing placements share one static image.
+export default { ...loadRelease(), brandMedia: { 'home-hero': trancyMedia, 'about-mascot': trancyMedia } };

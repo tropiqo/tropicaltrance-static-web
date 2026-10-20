@@ -1,6 +1,8 @@
 # Internal Astro foundation handoff
 
-This is the authoritative current developer handoff for Change 007. Earlier slice documents are dated evidence, not current deployment instructions. The owner selected an internally validated foundation: this is **not a production-ready release and gives no authorization to publish**.
+This is the authoritative developer handoff for the accepted Change 007 foundation, with the current Change 009 update below. Earlier slice documents are dated evidence, not current deployment instructions. The owner selected an internally validated foundation: this is **not a production-ready release and gives no authorization to publish**.
+
+The dated image-free foundation inventories and acceptance below are historical. For the current normal mascot integration, use the Change 009 section at the end; no deployment is authorized.
 
 ## Purpose and routes
 
@@ -216,3 +218,45 @@ Documented follow-ups before first real Flavor publication: **M-4**, privacy-heu
 Both repositories remain uncommitted migration working trees; HEAD alone is not the current implementation. No stage/commit/push/PR, remote verification, hosting configuration, public release or archive has occurred. Future source organization and external actions require their applicable scope. Review assets/output and private Studio evidence must never be published accidentally.
 
 This document provides the internal handoff. Final owner review/acceptance of this batch and amended Change 007 remains open. Production deferrals are explicit, not completed work, and do not authorize deployment.
+
+## Change 009: owner-approved static Trancy integration
+
+The owner explicitly approved the unchanged existing WebP, full-frame recipe,
+Home/About uses, public website-repository delivery, existing alt and neutral
+About copy. This local integration replaces the uncommitted Batch B brand-media
+schemas, v2 branches, profile/eligibility joins and private-candidate prerequisites.
+No Studio governance/records or historical Change 007 task evidence is modified.
+There are no brand Asset, authorization JSON, eligibility snapshot or dossier
+requirements to render this approved static mascot.
+
+Current normal output is seven files: five existing HTML routes, the referenced
+stylesheet and assets/trancy-web-r1.webp. The fixed website input is
+public-astro/assets/trancy-web-r1.webp: SHA-256
+93fdea06b6b6c7bc496f56a8f0df331213b0ef1fdfeb6b8cfbfd865f657bb658,
+542380 bytes, 1440 x 1282 alpha WebP. Both existing placements share the same
+URL, dimensions and alt: “Trancy, the green Tropical Trance chameleon, with
+sunglasses and a tropical drink.” Missing/changed/symlinked bytes and any unlisted
+publicDir file fail validation. No build discovers or reads review/source files
+as a fallback, or resizes/optimizes artwork. Normal validation uses the approved
+static pin only; Flavor media/eligibility/release contracts remain closed v1.
+
+The original PNG retains SHA-256
+61088b9e5e4b1ec9f80c2b17e8ab79d3443b5af63347cb141684de5cc02dab5d
+and is never served. Preserve the TROPICAL TRANCE cup legend and all existing
+pixels/proportions/accessories. Existing review WebP is untouched; matching
+review bytes are reused without re-encoding during validation.
+
+Review output remains the exact eleven-file local-only baseline, with synthetic
+Flavor routes/media, separate review-media path, noindex and disclosure. Never
+deploy .review-build or synthetic fixtures. The normal static image pin grants
+no Flavor artwork permission; generic Flavor guards still reject its digest.
+A renamed copy, original source or extra public file is not permitted.
+
+Use npm run dev or npm run build followed by npm run preview -- --port 4321;
+view http://127.0.0.1:4321/ and /about/. Existing review commands remain unchanged.
+Run aggregate validation, standalone reproducibility and policy checks as above.
+Normal Home/About visual acceptance and remaining accessibility work must be
+reported separately from old owner-performed review evidence. Remote CI, public
+copy/Contact/SEO/domain/hosting/release remain unverified pre-launch work.
+This approval authorizes local website integration only: no stage/commit/push,
+PR, deployment, publication or archive. No automatic workflow follows this update.

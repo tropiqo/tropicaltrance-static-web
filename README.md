@@ -2,7 +2,7 @@
 
 The current website is an independent Astro static project using the Tropical Editorial Hybrid design: Home, Flavors, About, Contact, a technical 404 and reusable Flavor Detail pages selected by validated local inputs.
 
-This is a development foundation. A passing build or local preview does not authorize publication. The normal Flavor release is empty; real Trancy media appears only in the explicitly isolated local review build.
+This is a development foundation. A passing build or local preview does not authorize publication. The normal Flavor release is empty. The owner-approved, exact Trancy WebP appears on normal Home/About as one pinned static asset; synthetic Flavor media remains confined to local review.
 
 See the [authoritative internal foundation handoff](docs/migration/astro-foundation-handoff.md) for current scope, exact inventories, recovery, responsibilities and deferred production work. This README remains the quick start; dated slice documents preserve earlier evidence.
 
@@ -26,7 +26,7 @@ Astro **7.3.8** is locked. Use the Astro commands below; the obsolete Ruby/Rake/
 npm run dev
 ```
 
-Open <http://127.0.0.1:4321/>. Development uses normal validated inputs, without review media or synthetic Flavor fixtures. Navigation works without client JavaScript.
+Open <http://127.0.0.1:4321/>. Development uses normal validated inputs and the approved static Trancy image, without review paths or synthetic Flavor fixtures. Navigation works without client JavaScript.
 
 ## Normal build and preview
 
@@ -35,9 +35,9 @@ npm run build
 npm run preview -- --port 4321
 ```
 
-Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/` or `/contact/`. Output is `dist/`: currently five HTML pages plus CSS, no mascot media or fixture detail routes.
+Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/` or `/contact/`. Output is `dist/`: currently five HTML pages, one stylesheet and one exact Trancy WebP, with no fixture detail routes.
 
-Only explicitly validated local release inputs enter normal output. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
+Flavor content uses the unchanged closed v1 release contracts. The approved mascot is independently pinned at `public-astro/assets/trancy-web-r1.webp`; it requires no brand JSON, v2 eligibility or Studio lookup. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
 
 ## Isolated local review
 
@@ -59,7 +59,7 @@ Local review URLs:
 
 Stop the server with Ctrl-C. Keep it on loopback. Review HTML has a labeled disclosure and `noindex, nofollow`; neither grants public approval.
 
-The fixed harness uses synthetic `tests/fixtures/public-inputs/` plus one separately pinned real Trancy delivery in ignored `review-assets/`. It builds into `.review-build/`, without modifying `dist/` or admitting review assets to normal publicDir. Every output resource and delivery digest is checked.
+The fixed harness uses synthetic `tests/fixtures/public-inputs/` plus one separately pinned real Trancy delivery in ignored `review-assets/`. It builds into `.review-build/`, without modifying `dist/` or copying review paths or synthetic assets into normal publicDir. The approved normal WebP has identical bytes at its own fixed path. Every output resource and delivery digest is checked.
 
 The same exact Trancy WebP is reused on Home/About. If its ignored file is absent, the explicit review command prepares it from the tracked, digest-verified `assets/images/TRANCY-01.png` using the pinned transformation. Source/toolchain/output drift fails closed. Keep the original and existing derivative unchanged, including the intentional **TROPICAL TRANCE** cup lettering.
 
@@ -71,7 +71,7 @@ python3 -B .github/ci/check_policy.py --self-test
 git diff --check
 ```
 
-`validate` runs inputs, normal build, review build, tests and both output audits. Tests include independent deterministic builds/isolation and mascot integrity. Review tests require the original master and selected review delivery; normal builds remain independent of them.
+`validate` runs inputs, normal build, review build, tests and both output audits. Tests include independent deterministic builds/isolation and mascot integrity; an existing matching review WebP is reused without regeneration. Review tests require the original master and selected review delivery; normal builds remain independent of them.
 
 | Command | Checks |
 | --- | --- |

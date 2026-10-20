@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -9,7 +9,7 @@ import { parseJson, validateSchema } from '../scripts/closed-json.mjs';
 const root=process.cwd(), prefix='tests/fixtures/public-inputs';
 function sandbox(fn) {
   const base=mkdtempSync(join(tmpdir(),'tt-public-'));
-  try { for (const path of ['schemas','content','tests/fixtures']) cpSync(resolve(root,path),resolve(base,path),{recursive:true}); mkdirSync(join(base,'public-astro/assets'),{recursive:true}); return fn(base); }
+  try { for (const path of ['schemas','content','tests/fixtures','public-astro']) cpSync(resolve(root,path),resolve(base,path),{recursive:true}); mkdirSync(join(base,'public-astro/assets'),{recursive:true}); return fn(base); }
   finally { rmSync(base,{recursive:true,force:true}); }
 }
 const read=(base,path)=>JSON.parse(readFileSync(join(base,path),'utf8'));
@@ -100,7 +100,7 @@ test('empty normal supplied snapshot may be unpinned; media pin remains mandator
  const e={contractVersion:'1',kind:'public-eligibility-snapshot',id:'empty',revision:'1',reviewedAt:'2026-10-09T00:00:00Z',mediaContentId:digest(readFileSync(join(b,'content/media.json'))),entries:[]};write(b,'content/eligibility.json',e);assert.equal(loadRelease({base:b}).flavors.length,0);
  e.mediaContentId='sha256:'+'0'.repeat(64);write(b,'content/eligibility.json',e);assert.throws(()=>loadRelease({base:b}));
 }));
-test('absent empty directories are valid in fresh checkout',()=>sandbox(b=>{for(const p of ['content/flavors','content/editorial','public-astro'])rmSync(join(b,p),{recursive:true,force:true});assert.equal(loadRelease({base:b}).flavors.length,0);}));
+test('absent empty content directories are valid with the static image present',()=>sandbox(b=>{for(const p of ['content/flavors','content/editorial'])rmSync(join(b,p),{recursive:true,force:true});assert.equal(loadRelease({base:b}).flavors.length,0);}));
 negative('missing included media mapping',b=>mutate(b,mp,m=>m.entries.shift()),{pin:true});
 negative('media derivative revision drift',b=>mutate(b,mp,m=>m.entries[0].asset.revision='other'),{pin:true});
 negative('wrong editorial revision',b=>mutate(b,prefix+'/editorial/fixture-orchid.json',e=>e.flavor.revision='other'),{pin:true});
@@ -117,5 +117,5 @@ test('unlisted normal media map never authorizes public copying',()=>sandbox(b=>
 }));
 test('symlink normal public root and input root rejected',()=>sandbox(b=>{
  const path=join(b,'public-astro');const target=join(b,'alternate');mkdirSync(target);rmSync(path,{recursive:true});symlinkSync(target,path);assert.throws(()=>loadRelease({base:b}),/Symlink/);
- rmSync(path);mkdirSync(path);const c=join(b,'content');cpSync(c,join(b,'other-content'),{recursive:true});rmSync(c,{recursive:true});symlinkSync(join(b,'other-content'),c);assert.throws(()=>loadRelease({base:b}),/Symlink/);
+ unlinkSync(path);mkdirSync(path);const c=join(b,'content');cpSync(c,join(b,'other-content'),{recursive:true});rmSync(c,{recursive:true});symlinkSync(join(b,'other-content'),c);assert.throws(()=>loadRelease({base:b}),/Symlink/);
 }));

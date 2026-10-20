@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { trancyMedia } from '../scripts/trancy-static.mjs';
 import { loadRelease, inventory, digest } from '../scripts/public-inputs.mjs';
 import { checkOutput, routes, checkSource } from '../scripts/check-static.mjs';
 import { checkReviewOutput } from '../scripts/check-review.mjs';
@@ -41,7 +42,9 @@ test('three reusable editorial variants compose Home without fabricated claims o
   assert.match(html,/Tropical.*<em>Trance<\/em>/);
   assert.match(html,/href="\/flavors\/"/);
   assert.match(html,/Escape the ordinary\. Explore a world of tropical flavor\./);
-  assert(!/class="flavor-card"|<img\b|Trancy is the constant|The adventure changes|testimonial|award|ingredients|manufactur|sustainab|founder|coming soon|launch date/i.test(html));
+  const hero = trancyMedia;
+  assert.equal((html.match(/<img\b/g)||[]).length, hero ? 1 : 0);
+  assert(!/class="flavor-card"|Trancy is the constant|The adventure changes|testimonial|award|ingredients|manufactur|sustainab|founder|coming soon|launch date/i.test(html));
 });
 test('normal collection remains intentionally empty with no invented products or availability',()=>{
   assert.deepEqual(loadRelease().flavors,[]);
@@ -68,7 +71,7 @@ test('story omission is explicit; Worlds stays within optional Flavor storytelli
   const orchid=fixture('flavors/fixture-orchid/index.html'),coral=fixture('flavors/fixture-coral/index.html');
   assert.match(orchid,/aria-label="Flavor story"/);assert.match(orchid,/Trancy’s Worlds/);assert.match(orchid,/A fictional story exercises optional editorial rendering/);
   assert(!/aria-label="Flavor story"|class="flavor-story"|Trancy|Flavor story/.test(coral.match(/<main\b[^>]*>([\s\S]*?)<\/main>/)[1]));
-  for(const route of routes)assert(!/Trancy|Worlds/.test(normal(route)));
+  for(const route of routes) { assert(!/Worlds/.test(normal(route))); if (!['index.html','about/index.html'].includes(route)) assert(!/Trancy/.test(normal(route))); }
 });
 test('Contact and About contain restrained development copy without invented contact endpoints',()=>{
   const contact=normal('contact/index.html');assert.match(contact,/class="contact-panel"/);assert.match(contact,/The approved contact channel is pending/);
@@ -78,7 +81,8 @@ test('Contact and About contain restrained development copy without invented con
 test('decoration is hidden, static and separate from approved media; no remote CSS/font/image dependencies',()=>{
   for(const route of routes) {
     const html=normal(route);for(const block of html.matchAll(/<div class="decorative-background[^>]*>/g))assert.match(block[0],/aria-hidden="true"/);
-    assert(!/<(?:img|svg|canvas|video|audio|script|iframe)\b/i.test(html));
+    assert(!/<(?:svg|canvas|video|audio|script|iframe)\b/i.test(html));
+    assert.equal((html.match(/<img\b/g)||[]).length, ['index.html','about/index.html'].includes(route) ? 1 : 0);
   }
   const css=text('src/styles/global.css');assert.match(css,/object-fit: contain/);assert(!/object-fit:\s*cover|@font-face|https?:|url\(|@keyframes/.test(css));
   assert.match(text('src/components/DecorativeBackground.astro'),/aria-hidden="true"/);assert.match(css,/pointer-events: none/);
@@ -106,7 +110,7 @@ test('presentation reads validated props only; contracts, fixture roots and publ
   for(const name of ['FlavorCard','FlavorCollection','FlavorDetail','FlavorStory','MediaFrame']) {
     const source=text(`src/components/${name}.astro`);assert(!/readFile|loadRelease|fetch\s*\(|fixture-|grape|cherry|lime|JSON\.parse|content\//.test(source));
   }
-  assert.equal(inventory(root,'public-astro',true).length,0);
+  assert.deepEqual(inventory(root,'public-astro',true), ['public-astro/assets/trancy-web-r1.webp']);
   assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)),[...routes].sort());
 });
 
@@ -121,7 +125,7 @@ test('local Trancy candidate anchors Home and About with one intact delivery and
   }
   assert.match(home, /hero-grid--mascot/); assert.match(home, /loading="eager"/);
   assert.match(about, /Meet Trancy/); assert.match(about, /Trancy is the Tropical Trance mascot/);
-  for (const route of routes) assert(!normal(route).includes('/review-media/') && !/<img\b/.test(normal(route)));
+  for (const route of routes) { assert(!normal(route).includes('/review-media/')); assert.equal((normal(route).match(/<img\b/g)||[]).length, ['index.html','about/index.html'].includes(route) ? 1 : 0); }
   for (const route of ['contact/index.html', '404.html', 'flavors/index.html', 'flavors/fixture-coral/index.html', 'flavors/fixture-orchid/index.html']) assert(!fixture(route).includes('/review-media/'));
 });
 
@@ -142,4 +146,9 @@ test('tropical refinement keeps decorative depth behind content and a single com
   assert.match(css, /\.editorial-hero--tropical > \.container[^}]*z-index: 1/);
   assert(!/@keyframes|animation: (?!none)/.test(css));
   assert.match(css, /\.review-indicator summary \{[^}]*min-block-size: 2\.75rem/);
+});
+
+test('approved static placements never activate the existing review URLs', () => {
+  assert.equal(trancyMedia.mediaUrl, '/assets/trancy-web-r1.webp');
+  for (const route of ['index.html','about/index.html']) assert(!normal(route).includes('/review-media/'));
 });

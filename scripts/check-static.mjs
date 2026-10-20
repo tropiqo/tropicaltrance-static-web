@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { loadRelease, rejectFixture } from './public-inputs.mjs';
+import { loadRelease, rejectFixture, digest } from './public-inputs.mjs';
+import { trancy, trancyMedia, validateTrancy } from './trancy-static.mjs';
 import { readdir, readFile, lstat } from 'node:fs/promises';
 import { resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,11 +18,19 @@ async function files(dir) {
   }
   return result;
 }
-export function checkInventory(paths) {
+export function checkInventory(paths, deliveries = []) {
+  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length))];
   assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), [...routes].sort(), 'Unexpected static routes');
-  assert(paths.every(p => routes.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)), 'Unexpected copied/generated file');
+  assert.equal(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)).length, 1, 'Exactly one referenced stylesheet');
+  assert(paths.every(p => routes.includes(p) || assets.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)), 'Unexpected copied/generated file');
+  assert.deepEqual(paths.filter(p => assets.includes(p)).sort(), assets.sort(), 'Selected output media inventory mismatch');
 }
-export function checkHtml(html) {
+function decodeAttribute(text) {
+  const named = {amp:'&',quot:'"',apos:"'",lt:'<',gt:'>'};
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|amp|quot|apos|lt|gt);/gi, (_,entity) => entity[0] === '#' ?
+    String.fromCodePoint(parseInt(entity.slice(entity[1].toLowerCase()==='x'?2:1), entity[1].toLowerCase()==='x'?16:10)) : named[entity.toLowerCase()]);
+}
+export function checkHtml(html, media = []) {
   assert.match(html, /<html[^>]*lang="en"/);
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1);
   assert.equal((html.match(/<main(?:\s|>)/g) || []).length, 1);
@@ -32,7 +41,22 @@ export function checkHtml(html) {
   assert.match(html, /name="description" content="[^"]+"/);
   assert.match(html, /noindex, nofollow/);
   assert.match(html, /Development-only foundation/);
-  assert(!/<(?:img|script|iframe|form|astro-island)\b/i.test(html), 'Unapproved media or client runtime');
+  assert(!/<(?:script|iframe|form|astro-island)\b/i.test(html), 'Unapproved media or client runtime');
+  const images = [...html.matchAll(/<img\b([^>]*)>/gi)];
+  assert.equal(images.length, media.length, 'Unapproved or missing role image');
+  for (const [index,image] of images.entries()) {
+    const attrs = new Map();
+    for (const match of image[1].matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+      const name=match[1].toLowerCase(); assert(!attrs.has(name),'Duplicate image attribute');
+      assert(['src','alt','width','height','loading','decoding'].includes(name),'Unapproved image attribute');
+      attrs.set(name,decodeAttribute(match[2]??match[3]));
+    }
+    assert(!image[1].replace(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g,'').trim().replace(/^\/$/,''),'Unapproved image syntax');
+    const expected = media[index];
+    for (const [name,value] of Object.entries({src:expected.mediaUrl,alt:expected.alt,width:String(expected.width),height:String(expected.height)})) assert.equal(attrs.get(name),value,'Role image '+name+' mismatch');
+    assert(['eager','lazy'].includes(attrs.get('loading')) && attrs.get('decoding')==='async','Unexpected image loading behavior');
+  }
+  assert(!/\b(?:srcset|imagesrcset|poster)\s*=/i.test(html),'Unapproved media variant');
   assert(!/THC|lab.test|handcrafted|all.natural|tropical mango|paradise pineapple|sunset strawberry|hello@/i.test(html), 'Legacy claim/content leak');
 }
 export function checkConfig(config) {
@@ -61,19 +85,28 @@ export async function checkSource(base = root) {
 }
 export async function checkOutput(base = root) {
   const dist = resolve(base, 'dist');
+  const release = loadRelease({base});
   const output = await files(dist);
-  checkInventory(output.map(p => relative(dist, p)));
+  checkInventory(output.map(p => relative(dist, p)), release.deliveries);
   for (const path of output) {
     const bytes = await readFile(path);
-    rejectFixture(bytes);
+    const servedPath = 'public-astro/'+relative(dist,path);
+    const delivery = release.deliveries.find(m => m.path===servedPath);
+    if (servedPath === trancy.path) validateTrancy(bytes);
+    else rejectFixture(bytes);
+    if (delivery) assert.equal(digest(bytes),delivery.asset.contentId,'Output delivery digest mismatch');
     assert(!/tropical-trance-studio|artwork-workspace:|(?:\/Users\/|\/private\/)|authorityEvidence|reviewEvidenceContentId|candidateContentId|publication-decision|projection\.schema\.json/.test(bytes.toString('utf8')), 'Private schema/evidence/output leak');
   }
   for (const page of routes) {
     const path = resolve(dist, page);
     const html = await readFile(path, 'utf8');
-    checkHtml(html);
+    const role = page==='index.html'?'home-hero':page==='about/index.html'?'about-mascot':undefined;
+    const media = role ? [trancyMedia] : [];
+    checkHtml(html,media);
+    if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = match[1].split('#');
+      assert(href !== trancyMedia.mediaUrl && !release.deliveries.some(m => href==='/' + m.path.slice('public-astro/'.length)),'Unapproved media link');
       assert(!/^(?:https?:|mailto:|javascript:)/.test(href), 'Unexpected external destination');
       let target = href ? resolve(dist, href.startsWith('/') ? '.' + href : relative(dist, dirname(path)) + '/' + href) : path;
       if (href.endsWith('/')) target = resolve(target, 'index.html');

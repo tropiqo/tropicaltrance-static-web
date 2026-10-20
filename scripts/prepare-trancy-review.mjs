@@ -24,6 +24,13 @@ export async function transformTrancyReview(master) {
 export async function prepareTrancyReview(base = process.cwd()) {
   const source = safePath(base, selected.masterPath);
   const master = readFileSync(source);
+  assert.equal(digest(master), selected.masterContentId, 'Canonical Trancy master SHA-256 mismatch');
+  if (existsSync(resolve(base, selected.path))) {
+    const bytes = readFileSync(safePath(base, selected.path));
+    assert.equal(digest(bytes), selected.contentId, 'Existing review asset drift; refusing overwrite');
+    assert.equal(bytes.length, selected.size);
+    return selected;
+  }
   const output = await transformTrancyReview(master);
   mkdirSync(resolve(base, 'review-assets'), { recursive: true });
   safePath(base, 'review-assets');

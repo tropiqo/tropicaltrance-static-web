@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { parseJson, validateSchema } from './closed-json.mjs';
 import { fixtureDigests, fixtureMarker } from './fixture-guards.mjs';
+import { trancy, validateTrancy } from './trancy-static.mjs';
 
 export const digest = bytes => 'sha256:' + createHash('sha256').update(bytes).digest('hex');
 const requireThat = (ok, message) => { if (!ok) throw Error(message); };
@@ -105,6 +106,13 @@ export function loadRelease({ base = process.cwd(), review = false } = {}) {
     }
     return {slug:member.slug,...p.value,mediaUrl:'/'+m.path.slice(review?assets.length+1:'public-astro/'.length),editorial};
   });
+  // One explicitly owner-approved static image, independent of Flavor publication authority.
+  if (!review) {
+    const path = safePath(base, trancy.path);
+    requireThat(lstatSync(path).isFile(), 'Expected regular static Trancy image');
+    validateTrancy(readFileSync(path));
+    selected.add(trancy.path);
+  }
   const served = inventory(base,review?assets:'public-astro',!review);
   same(served.sort(),[...selected].sort(),'Unlisted file would be copied by publicDir');
   return {site,flavors,review,deliveries:media.entries.filter(x=>selected.has(x.path)).sort((a,b)=>a.deliveryRef<b.deliveryRef?-1:a.deliveryRef>b.deliveryRef?1:0)};

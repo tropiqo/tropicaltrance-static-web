@@ -50,7 +50,7 @@ test('normal full output check rejects previously missed broken quoted link', as
   // Keep the temporary tree alive while the asynchronous full check runs.
   const base = mkdtempSync(join(tmpdir(), 'tt-full-audit-'));
   try {
-    cpSync('dist', join(base, 'dist'), { recursive: true });
+    for (const path of ['dist','schemas','content','public-astro']) cpSync(path, join(base,path), {recursive:true});
     insert("<a href='/missing/'>Missing</a>")(join(base, 'dist/index.html'));
     await assert.rejects(() => checkOutput(base), /Broken resource/);
   } finally { rmSync(base, { recursive: true, force: true }); }

@@ -4,7 +4,7 @@ import { mkdtempSync, cpSync, mkdirSync, writeFileSync, readFileSync, symlinkSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { digest, inventory } from '../scripts/public-inputs.mjs';
+import { digest, inventory, loadRelease } from '../scripts/public-inputs.mjs';
 import { checkOutput } from '../scripts/check-static.mjs';
 import { checkReviewOutput } from '../scripts/check-review.mjs';
 const root=process.cwd();
@@ -17,8 +17,9 @@ function snapshot(base,path) { return inventory(base,path).map(p=>[p.slice(path.
 test('isolated website-only builds: deterministic normal and fixture outputs, no Studio/network',async()=>{
  const base=mkdtempSync(join(tmpdir(),'tt-isolated-'));
  try {
-  for(const path of ['src','scripts','schemas','content','astro.config.mjs','package.json','package-lock.json','.npmrc'])cpSync(join(root,path),join(base,path),{recursive:true});
+  for(const path of ['src','scripts','schemas','content','public-astro','astro.config.mjs','package.json','package-lock.json','.npmrc'])cpSync(join(root,path),join(base,path),{recursive:true});
   mkdirSync(join(base,'public-astro/assets'),{recursive:true});
+  assert.deepEqual(loadRelease({base}).flavors, []);
   symlinkSync(join(root,'node_modules'),join(base,'node_modules'));
   // Dependencies are reused locally; content/source are isolated with no Studio/artwork/credentials.
   const blocker=join(base,'no-network.cjs');
@@ -53,7 +54,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
 test('normal output rejects fixture bytes/markers and unexpected Flavor routes',async()=>{
  const base=mkdtempSync(join(tmpdir(),'tt-output-'));
  try {
-  cpSync(join(root,'dist'),join(base,'dist'),{recursive:true});
+  for (const path of ['dist','schemas','content','public-astro']) cpSync(join(root,path),join(base,path),{recursive:true});
   for(const marker of ['fixture-coral','INTERNAL SYNTHETIC TEST ONLY','authorityEvidence','/Users/private/record','publication-decision']) {
    const p=join(base,'dist/index.html');const original=readFileSync(p);writeFileSync(p,Buffer.concat([original,Buffer.from(marker)]));await assert.rejects(()=>checkOutput(base));writeFileSync(p,original);
   }

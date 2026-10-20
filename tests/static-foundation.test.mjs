@@ -14,3 +14,8 @@ test('server adapters and private/remote config fail', () => {
   for (const extra of [", adapter: node()", ", integrations: [react()]", ", fetch('https://example.invalid')", ", import 'tropical-trance-studio'", ", import 'artwork-workspace:source'"]) assert.throws(() => checkConfig(valid + extra));
   assert.throws(() => checkConfig("output: 'server', publicDir: './public-astro'"));
 });
+
+test('normal HTML cannot gain an image merely through a recognized public destination', () => {
+  const html = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
+  assert.throws(() => checkHtml(html.replace('</main>', '<img src="/assets/trancy-web-r1.webp" alt="Trancy" width="1440" height="1282" loading="eager" decoding="async"></main>')), /role image/);
+});
