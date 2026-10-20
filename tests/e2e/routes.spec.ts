@@ -82,3 +82,123 @@ test('disabled sales channels and unset WhatsApp Business stay placeholders', as
   await expect(page.getByText('Coming Soon')).toBeVisible();
   await expect(page.getByRole('link', { name: /Message us on WhatsApp/ })).toHaveCount(0);
 });
+
+const discoveryRoutes = ['/', '/flavors/'];
+for (const route of discoveryRoutes) {
+  for (const width of [320, 375]) {
+    test(`${route} flavor discovery peeks and scrolls horizontally at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(route);
+
+      const track = page.getByRole('list', { name: 'Tropical Trance flavors' });
+      const cards = track.getByRole('listitem');
+      const hrefs = await track.locator('.flavor-card h2 a').evaluateAll(links => links.map(link => (link as HTMLAnchorElement).getAttribute('href')));
+      expect(hrefs).toContain('/flavors/grape/');
+      expect(hrefs).toContain('/flavors/lime/');
+      expect(new Set(hrefs).size, 'Flavor cards should not be duplicated').toBe(hrefs.length);
+      await expect(page.getByText('Swipe to explore')).toBeVisible();
+
+      const geometry = await track.evaluate(element => {
+        const items = [...element.querySelectorAll<HTMLElement>('.flavor-card')];
+        const trackBounds = element.getBoundingClientRect();
+        const first = items[0].getBoundingClientRect();
+        const next = items[1].getBoundingClientRect();
+        return {
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          trackLeft: trackBounds.left,
+          trackRight: trackBounds.right,
+          firstLeft: first.left,
+          firstTop: first.top,
+          firstWidth: first.width,
+          nextLeft: next.left,
+          nextTop: next.top,
+          nextRight: next.right,
+          documentWidth: document.documentElement.scrollWidth,
+          viewportWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(geometry.firstTop).toBeCloseTo(geometry.nextTop, 0);
+      expect(geometry.nextLeft).toBeGreaterThan(geometry.firstLeft);
+      expect(geometry.nextLeft).toBeLessThan(geometry.trackRight);
+      expect(geometry.nextRight).toBeGreaterThan(geometry.trackRight);
+      expect(geometry.firstWidth / geometry.clientWidth).toBeGreaterThan(0.78);
+      expect(geometry.firstWidth / geometry.clientWidth).toBeLessThan(0.86);
+      expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+      expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+
+      await track.evaluate((element: HTMLElement) => { element.scrollLeft = element.clientWidth; });
+      await expect.poll(() => track.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+      await expect(cards).toHaveCount(hrefs.length);
+      await track.getByRole('link', { name: 'Grape', exact: true }).click();
+      await expect(page).toHaveURL(/\/flavors\/grape\/$/);
+    });
+  }
+}
+
+for (const route of discoveryRoutes) {
+  for (const width of [768, 1440]) {
+    test(`${route} flavor discovery remains a desktop grid at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(route);
+      const track = page.getByRole('list', { name: 'Tropical Trance flavors' });
+      const layout = await track.evaluate(element => {
+        const style = getComputedStyle(element);
+        const cards = [...element.querySelectorAll<HTMLElement>('.flavor-card')];
+        const first = cards[0].getBoundingClientRect();
+        const second = cards[1].getBoundingClientRect();
+        return {
+          columns: style.gridTemplateColumns.trim().split(/\s+/).length,
+          overflowX: style.overflowX,
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          firstTop: first.top,
+          secondTop: second.top,
+          documentWidth: document.documentElement.scrollWidth,
+          viewportWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(layout.columns).toBe(2);
+      expect(layout.overflowX).toBe('visible');
+      expect(layout.scrollWidth).toBe(layout.clientWidth);
+      expect(layout.secondTop).toBeCloseTo(layout.firstTop, 0);
+      expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+      await expect(page.getByText('Swipe to explore')).toBeHidden();
+    });
+  }
+}
+
+test('flavor links stay keyboard reachable with visible focus', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/flavors/');
+  const track = page.getByRole('list', { name: 'Tropical Trance flavors' });
+  const grape = track.getByRole('link', { name: 'Grape', exact: true });
+  const lime = track.getByRole('link', { name: 'Lime', exact: true });
+  const limeVisibleFraction = () => track.evaluate(element => {
+    const link = element.querySelector<HTMLAnchorElement>('a[href="/flavors/lime/"]');
+    if (!link || link.getBoundingClientRect().width === 0) return 0;
+    const linkBounds = link.getBoundingClientRect();
+    const trackBounds = element.getBoundingClientRect();
+    const viewportLeft = trackBounds.left + element.clientLeft;
+    const viewportRight = viewportLeft + element.clientWidth;
+    const visibleWidth = Math.max(0, Math.min(linkBounds.right, viewportRight) - Math.max(linkBounds.left, viewportLeft));
+    return visibleWidth / linkBounds.width;
+  });
+  const initiallyVisibleFraction = await limeVisibleFraction();
+  await grape.focus();
+  await page.keyboard.press('Tab');
+  await expect(lime).toBeFocused();
+  await expect(lime).toHaveCSS('outline-width', '3px');
+  await expect.poll(limeVisibleFraction).toBeGreaterThanOrEqual(0.4);
+  if (initiallyVisibleFraction < 0.01) {
+    await expect.poll(limeVisibleFraction).toBeGreaterThan(initiallyVisibleFraction);
+  }
+});
+
+test('reduced-motion preference disables carousel snapping and smooth scrolling', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/flavors/');
+  const track = page.getByRole('list', { name: 'Tropical Trance flavors' });
+  await expect(track).toHaveCSS('scroll-snap-type', 'none');
+  await expect(track).toHaveCSS('scroll-behavior', 'auto');
+});

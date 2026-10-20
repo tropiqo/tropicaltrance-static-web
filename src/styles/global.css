@@ -75,7 +75,12 @@ a:hover { text-decoration-thickness: 0.14em; }
 .empty-collection .lead { font-family: var(--font-display); font-size: var(--text-heading); line-height: 1.15; letter-spacing: -0.035em; max-inline-size: 20ch; }
 .empty-collection .button { justify-self: start; }
 .empty-collection .button:hover { background: var(--color-ink); color: var(--color-paper); }
-.flavor-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+.flavor-discovery { min-inline-size: 0; }
+.flavor-swipe-hint { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-block-end: var(--space-2); color: var(--color-muted); font-size: var(--text-small); }
+.flavor-swipe-hint span { color: var(--accent-citrus); font-size: 1.25em; line-height: 1; }
+.flavor-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); min-inline-size: 0; }
+.flavor-grid--carousel { grid-auto-flow: column; grid-auto-columns: 82%; grid-template-columns: none; gap: var(--space-3); overflow-x: auto; overflow-y: hidden; padding-block: var(--space-2); overscroll-behavior-inline: contain; scroll-snap-type: inline mandatory; scroll-behavior: smooth; scrollbar-width: thin; }
+.flavor-grid--carousel .flavor-card { scroll-snap-align: start; scroll-snap-stop: always; }
 .flavor-card { min-inline-size: 0; border-block-start: 3px solid var(--flavor-accent); padding-block-start: var(--space-4); }
 .flavor-card h2 { margin-block: var(--space-4) var(--space-3); }
 .flavor-card p { color: var(--color-muted); }
@@ -112,7 +117,8 @@ a:hover { text-decoration-thickness: 0.14em; }
   .hero-grid--text { grid-template-columns: minmax(0, 1fr); }
   .editorial-inner, .flavor-story { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: var(--space-6); }
   .editorial--split .editorial-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
-  .flavor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flavor-swipe-hint { display: none; }
+  .flavor-grid { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; padding-block: 0; scroll-snap-type: none; scroll-behavior: auto; scrollbar-width: auto; }
   .detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .footer-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   .footer-note { grid-column: 1 / -1; }
@@ -128,6 +134,7 @@ a:hover { text-decoration-thickness: 0.14em; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .flavor-grid--carousel { scroll-snap-type: none; }
 }
 
 /* Intact shared mascot delivery: one image, natural proportions, no clipping or overlays. */

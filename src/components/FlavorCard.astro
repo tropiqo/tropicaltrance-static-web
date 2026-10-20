@@ -4,7 +4,7 @@ interface Props { flavor: PublicFlavor; }
 import MediaFrame from './MediaFrame.astro';
 const { flavor } = Astro.props;
 ---
-<article class="flavor-card">
+<article class="flavor-card" role="listitem">
   <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} />
   <h2><a href={`/flavors/${flavor.slug}/`}>{flavor.name}</a></h2>
   <p>{flavor.shortDescription}</p>
