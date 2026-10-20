@@ -4,8 +4,9 @@ import EditorialHero from '../../components/EditorialHero.astro';
 import FlavorCollection from '../../components/FlavorCollection.astro';
 import release from '#public-release';
 const collectionDescription = !release.review && release.flavors.length === 1 ? release.flavors[0].shortDescription : undefined;
+const metadataDescription = collectionDescription ?? (release.flavors.length > 0 ? 'Explore the Tropical Trance flavor collection.' : 'Empty development-only collection.');
 ---
-<SiteLayout title="Flavors" description={collectionDescription ?? "Empty development-only collection."}>
+<SiteLayout title="Flavors" description={metadataDescription}>
   <EditorialHero title="Flavors" description={collectionDescription ?? "Local development preview — not a public release."} eyebrow="Tropical Trance" />
   <FlavorCollection flavors={release.flavors} />
 </SiteLayout>

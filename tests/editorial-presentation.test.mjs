@@ -36,15 +36,32 @@ test('shared shell, semantic heading and working static primary/footer navigatio
     assert(!/<(?:script|iframe|form|input|astro-island)\b/i.test(html));
   }
 });
-test('three reusable editorial variants compose Home without fabricated claims or product cards',()=>{
+test('Home uses approved copy and renders release-derived flavor previews',()=>{
   const html = normal('index.html');
   for(const variant of ['text','split','band'])assert.match(html,new RegExp('editorial--'+variant));
-  assert.match(html,/Tropical.*<em>Trance<\/em>/);
-  assert.match(html,/href="\/flavors\/"/);
-  assert.match(html,/Escape the ordinary\. Explore a world of tropical flavor\./);
+  const release=loadRelease();
+  assert.match(html,/Escape the <em>Ordinary\.<\/em>/);
+  assert.match(html,/Step into a world where tropical inspiration meets imagination\. Discover vibrant flavors, surreal landscapes, and unexpected adventures with Trancy\./);
+  assert.match(html,/Explore the Flavors/);
+  assert.match(html,/Every Flavor\. A New Adventure\./);
+  assert.match(html,/No two adventures are alike\. From cosmic landscapes to tropical escapes, each flavor opens the door to a different world\./);
+  assert.match(html,/Meet Trancy/);
+  assert.match(html,/The face of Tropical Trance\. The explorer of extraordinary worlds\. Wherever the adventure leads, Trancy brings the Tropical Trance universe to life\./);
+  assert.match(html,/Get to Know Trancy/);
+  assert.match(html,/Stay Connected/);
+  assert.match(html,/Follow the Tropical Trance journey and discover what's coming next\./);
+  assert.match(html,/Contact Us/);
+  assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);
+  for (const flavor of release.flavors) assert(html.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`) && html.includes(`/flavors/${flavor.slug}/`));
   const hero = trancyMedia;
-  assert.equal((html.match(/<img\b/g)||[]).length, hero ? 1 : 0);
-  assert(!/class="flavor-card"|Trancy is the constant|The adventure changes|testimonial|award|ingredients|manufactur|sustainab|founder|coming soon|launch date/i.test(html));
+  assert.equal((html.match(/<img\b/g)||[]).length, release.flavors.length + (hero ? 1 : 0));
+  assert(!/testimonial|award|ingredients|manufactur|sustainab|founder|launch date/i.test(html));
+});
+test('non-empty multi-flavor collection metadata does not describe the collection as empty',()=>{
+ const release=loadRelease();assert(release.flavors.length>1);
+ const html=normal('flavors/index.html');
+ assert.match(html,/<meta name="description" content="Explore the Tropical Trance flavor collection\."/);
+ assert(!/<meta name="description" content="Empty development-only collection\."/.test(html));
 });
 test('normal collection/detail derive from all selected flavors and preserve approved Grape copy',()=>{
  const release=loadRelease();assert(release.flavors.some(f=>f.slug==='grape'));
@@ -75,15 +92,16 @@ test('review fixtures render reusable cards and detail media from the validated 
     assert.match(navs(html)[0], /href="\/flavors\/" aria-current="location"/);
   }
 });
-test('story omission is explicit; Worlds stays within optional Flavor storytelling',()=>{
+test('optional Flavor story remains omitted when absent',()=>{
   const orchid=fixture('flavors/fixture-orchid/index.html'),coral=fixture('flavors/fixture-coral/index.html');
   assert.match(orchid,/aria-label="Flavor story"/);assert.match(orchid,/Trancy’s Worlds/);assert.match(orchid,/A fictional story exercises optional editorial rendering/);
   assert(!/aria-label="Flavor story"|class="flavor-story"|Trancy|Flavor story/.test(coral.match(/<main\b[^>]*>([\s\S]*?)<\/main>/)[1]));
-  for(const route of routes) { assert(!/Worlds/.test(normal(route))); if (!['index.html','about/index.html'].includes(route)) assert(!normal(route).includes(trancyMedia.mediaUrl)); }
+  for(const route of routes) { assert(!/Trancy’s Worlds|aria-label="Flavor story"|class="flavor-story"/.test(normal(route))); if (!['index.html','about/index.html'].includes(route)) assert(!normal(route).includes(trancyMedia.mediaUrl)); }
 });
 test('Contact and About contain restrained development copy without invented contact endpoints',()=>{
   const contact=normal('contact/index.html');assert.match(contact,/class="contact-panel"/);assert.match(contact,/The approved contact channel is pending/);
-  assert.match(normal('about/index.html'),/A tropical state of mind\. A character all its own\./);
+  const about=normal('about/index.html');
+  for(const phrase of ['Beyond the Ordinary','Tropical Trance is a creative universe inspired by tropical energy, vibrant flavors, and the freedom to explore the unexpected.','We believe every flavor deserves more than a name. It deserves its own world, atmosphere, and adventure.','Trancy is the unmistakable face of Tropical Trance.','Curious, adventurous, and always ready for something unexpected, Trancy travels through surreal tropical worlds where each flavor becomes a new experience.','Different places. Different adventures. One familiar explorer.','Our Creative Philosophy','Trancy is the constant. The adventure changes.','Our creative direction combines imaginative storytelling, expressive artwork, and a refined tropical aesthetic.','Explore the Worlds','Explore the Flavors']) assert(about.includes(phrase));
   for(const route of routes)assert(!/mailto:|tel:|https?:|\b[\w.-]+@[\w.-]+\.[a-z]+|<form\b|<input\b|<script\b|social profile|founder|manufacturing|certified/i.test(normal(route)));
 });
 test('decoration is hidden, static and separate from approved media; no remote CSS/font/image dependencies',()=>{
@@ -91,7 +109,7 @@ test('decoration is hidden, static and separate from approved media; no remote C
   for(const route of routes) {
     const html=normal(route);for(const block of html.matchAll(/<div class="decorative-background[^>]*>/g))assert.match(block[0],/aria-hidden="true"/);
     assert(!/<(?:svg|canvas|video|audio|script|iframe)\b/i.test(html));
-    const expectedFlavorImages=route==='flavors/index.html'?release.flavors.length:0;
+    const expectedFlavorImages=['index.html','flavors/index.html'].includes(route)?release.flavors.length:0;
     const expectedTrancyImages=['index.html','about/index.html'].includes(route)?1:0;
     assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages);
   }
@@ -136,7 +154,7 @@ test('presentation reads validated props only; contracts, fixture roots and publ
   assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`)].sort());
 });
 
-test('local Trancy candidate anchors Home and About with one intact delivery and no other-page image', async () => {
+test('local Trancy candidate anchors Home and About with one intact delivery', async () => {
   await checkReviewOutput();
   const home = fixture('index.html'), about = fixture('about/index.html');
   for (const html of [home, about]) {
@@ -146,13 +164,13 @@ test('local Trancy candidate anchors Home and About with one intact delivery and
     assert.match(html, /LOCAL MASCOT REVIEW ONLY/);
   }
   assert.match(home, /hero-grid--mascot/); assert.match(home, /loading="eager"/);
-  assert.match(about, /Meet Trancy/); assert.match(about, /Trancy is the Tropical Trance mascot/);
+  assert.match(about, /Meet Trancy/); assert.match(about, /Trancy is the unmistakable face of Tropical Trance/);
   const release=loadRelease();
   for (const route of routes) {
     const html=normal(route),images=[...html.matchAll(/<img\b[^>]*>/g)].map(match=>match[0]);
     assert(!html.includes('/review-media/'));
     assert.equal(images.filter(image=>image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','about/index.html'].includes(route)?1:0);
-    assert.equal(images.filter(image=>!image.includes(`src="${trancyMedia.mediaUrl}"`)).length,route==='flavors/index.html'?release.flavors.length:0);
+    assert.equal(images.filter(image=>!image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','flavors/index.html'].includes(route)?release.flavors.length:0);
   }
   for (const route of ['contact/index.html', '404.html', 'flavors/index.html', 'flavors/fixture-coral/index.html', 'flavors/fixture-orchid/index.html']) assert(!fixture(route).includes('/review-media/'));
 });

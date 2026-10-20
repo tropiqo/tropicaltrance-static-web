@@ -5,15 +5,23 @@ import EditorialHero from '../components/EditorialHero.astro';
 import EditorialSection from '../components/EditorialSection.astro';
 import TrancyMedia from '../components/TrancyMedia.astro';
 ---
-<SiteLayout title="About" description="A tropical state of mind. A character all its own.">
-  <EditorialHero title="About" description="A tropical state of mind. A character all its own." eyebrow="Tropical Trance" decoration="tide" atmosphere />
+<SiteLayout title="Beyond the Ordinary" description="Tropical Trance is a creative universe inspired by tropical energy, vibrant flavors, and the freedom to explore the unexpected.">
+  <EditorialHero title="Beyond the Ordinary" description={[
+    'Tropical Trance is a creative universe inspired by tropical energy, vibrant flavors, and the freedom to explore the unexpected.',
+    'We believe every flavor deserves more than a name. It deserves its own world, atmosphere, and adventure.',
+  ]} eyebrow="Tropical Trance" decoration="tide" atmosphere />
   {release.brandMedia['about-mascot'] && <EditorialSection variant="split" title="Meet Trancy" eyebrow="Tropical Trance" atmosphere>
-    <p class="lead">Trancy is the Tropical Trance mascot.</p>
-    <p>The character at the heart of Tropical Trance.</p>
+    <p class="lead">Trancy is the unmistakable face of Tropical Trance.</p>
+    <p>Curious, adventurous, and always ready for something unexpected, Trancy travels through surreal tropical worlds where each flavor becomes a new experience.</p>
+    <p>Different places. Different adventures. One familiar explorer.</p>
     <TrancyMedia slot="visual" media={release.brandMedia['about-mascot']} />
   </EditorialSection>}
-  <EditorialSection variant="text" title="Flavors" eyebrow="Tropical Trance">
-    {release.flavors.length === 0 && <p class="lead">No flavors are included in this development build.</p>}
-    <div class="actions"><a class="button" href="/flavors/">View Flavors <span aria-hidden="true">↗</span></a><a class="button" href="/contact/">Contact <span aria-hidden="true">↗</span></a></div>
+  <EditorialSection variant="text" title="Our Creative Philosophy" eyebrow="Tropical Trance">
+    <p class="lead">Trancy is the constant. The adventure changes.</p>
+    <p>Every flavor introduces a new setting, visual story, and personality while remaining part of the same Tropical Trance universe.</p>
+    <p>Our creative direction combines imaginative storytelling, expressive artwork, and a refined tropical aesthetic.</p>
+  </EditorialSection>
+  <EditorialSection variant="band" title="Explore the Worlds" eyebrow="Tropical Trance">
+    <div class="actions"><a class="button" href="/flavors/">Explore the Flavors <span aria-hidden="true">↗</span></a></div>
   </EditorialSection>
 </SiteLayout>

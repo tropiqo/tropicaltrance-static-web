@@ -29,7 +29,7 @@ test('canonical PNG remains byte-identical and excluded from public delivery',()
   assert.equal(digest(readFileSync('assets/images/TRANCY-01.png')),'sha256:61088b9e5e4b1ec9f80c2b17e8ab79d3443b5af63347cb141684de5cc02dab5d');
   for(const file of ['index.html','about/index.html']) {
     const html=readFileSync('dist/'+file,'utf8');
-    assert.equal((html.match(/<img\b/g)||[]).length,1);assert(html.includes(trancyMedia.mediaUrl));
+    assert.equal((html.match(new RegExp(`src="${trancyMedia.mediaUrl}"`,'g'))||[]).length,1);assert(html.includes(trancyMedia.mediaUrl));
     assert(html.includes(trancy.alt));assert(!/TRANCY-01|review-media|review-assets|fixture-/i.test(html));
   }
 });

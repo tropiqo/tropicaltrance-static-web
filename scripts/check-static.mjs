@@ -132,7 +132,7 @@ export async function checkOutput(base = root) {
     const html = await readFile(path, 'utf8');
     const role = page==='index.html'?'home-hero':page==='about/index.html'?'about-mascot':undefined;
     const detail = release.flavors.find(f=>page==='flavors/'+f.slug+'/index.html');
-    const media = role ? [trancyMedia] : page==='flavors/index.html' ? release.flavors : detail ? [detail] : [];
+    const media = page==='index.html' ? [trancyMedia,...release.flavors] : role ? [trancyMedia] : page==='flavors/index.html' ? release.flavors : detail ? [detail] : [];
     const salesChannels=detail?.salesChannels||[];
     checkHtml(html,media,salesChannels);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');

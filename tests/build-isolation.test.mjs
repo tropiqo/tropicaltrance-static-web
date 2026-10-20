@@ -33,7 +33,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
   for(const p of selectedPaths)rmSync(join(base,p));
   run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,7);
-  const baselineHashes={'index.html':'314a428aeaf9a1b0316541a44d22471a1c7a3472a2f91d09a86ec4e804e23581','about/index.html':'27885b500a984146ea92c6b403e69b0114b0da4588d5d65b7331f58da576810c','flavors/index.html':'9540dbca3134adf6540e4486970a14186d8d86ab2095c7e69b0292e330890b9d'};
+  const baselineHashes={'index.html':'e817f9a25512847b11efc00196d8aa4b6f27208551e7e99fd0973c0ffebba297','about/index.html':'33ec418e00ea142d2e32648dcc87a452f6aa6bce924eaf0aa96bdae31cd0e343','flavors/index.html':'9540dbca3134adf6540e4486970a14186d8d86ab2095c7e69b0292e330890b9d'};
   for(const [p,h]of empty)assert.equal(h,p in baselineHashes?'sha256:'+baselineHashes[p]:normal.find(([n])=>n===p)[1]);
   // Leftover bytes are not a valid withdrawal even without references.
   const firstMedia=initial.flavors[0].mediaUrl.slice(1),strayPath=`public-astro/${firstMedia}`;
