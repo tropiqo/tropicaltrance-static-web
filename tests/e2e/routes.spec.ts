@@ -5,6 +5,7 @@ const pages = [
   { path: '/', heading: 'Escape the Ordinary.' },
   { path: '/about/', heading: 'Beyond the Ordinary' },
   { path: '/flavors/', heading: 'Flavors' },
+  { path: '/flavors/cherry/', heading: 'Cherry' },
   { path: '/flavors/grape/', heading: 'Grape' },
   { path: '/flavors/lime/', heading: 'Lime' },
   { path: '/contact/', heading: "Let's Connect" },
@@ -91,11 +92,89 @@ const spanishPages = [
   { path: '/es/', heading: 'Escapa de lo Ordinario.', en: '/' },
   { path: '/es/about/', heading: 'Más allá de lo ordinario', en: '/about/' },
   { path: '/es/flavors/', heading: 'Sabores', en: '/flavors/' },
+  { path: '/es/flavors/cherry/', heading: 'Cherry', en: '/flavors/cherry/' },
   { path: '/es/flavors/grape/', heading: 'Grape', en: '/flavors/grape/' },
   { path: '/es/flavors/lime/', heading: 'Lime', en: '/flavors/lime/' },
   { path: '/es/contact/', heading: 'Conectemos', en: '/contact/' },
   { path: '/es/404/', heading: 'Página no encontrada', en: '/404.html' },
 ];
+
+test('bilingual routes have no browser errors or broken same-origin links', async ({ page, request }) => {
+  const consoleErrors: Array<{ sourceRoute: string; text: string; location: string }> = [];
+  const pageErrors: string[] = [];
+  const failedRequests: string[] = [];
+  const httpErrors: Array<{ sourceRoute: string; url: string; resourceType: string; status: number }> = [];
+  let sourceRoute = '';
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      const location = message.location();
+      consoleErrors.push({ sourceRoute, text: message.text(), location: location.url });
+    }
+  });
+  page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('requestfailed', failed => failedRequests.push(`${failed.url()} — ${failed.failure()?.errorText ?? 'failed'}`));
+  page.on('response', response => {
+    if (response.status() >= 400) {
+      httpErrors.push({ sourceRoute, url: response.url(), resourceType: response.request().resourceType(), status: response.status() });
+    }
+  });
+
+  for (const route of [...pages.map(item => item.path), ...spanishPages.map(item => item.path)]) {
+    sourceRoute = route;
+    await page.goto(route);
+    const currentDocument = new URL(page.url());
+    currentDocument.hash = '';
+    const origin = currentDocument.origin;
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    if (route === '/404.html') {
+      await expect(page.getByRole('group', { name: 'Choose language' }).getByRole('link', { name: 'View this page in English' })).toHaveAttribute('href', '/404.html');
+    }
+    if (route === '/es/404/') {
+      await expect(page.getByRole('group', { name: 'Elegir idioma' }).getByRole('link', { name: 'Ver esta página en inglés' })).toHaveAttribute('href', '/404.html');
+    }
+    const anchors = await page.locator('a[href]').evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), languageChoice: link.getAttribute('data-language-choice') })).filter((link): link is { href: string; languageChoice: string | null } => typeof link.href === 'string' && !link.href.startsWith('#')));
+    const destinations = new Map<string, { href: string; expectedStatus: number }>();
+    for (const anchor of anchors) {
+      const target = new URL(anchor.href, page.url());
+      if (target.origin !== origin) continue;
+      target.hash = '';
+      // The current document was already loaded above. In particular, the English language link on
+      // /404.html points back to that intentional 404 document, so it is not a broken destination.
+      if (target.href === currentDocument.href) continue;
+      const intentionalEnglishNotFound = route === '/es/404/' && anchor.languageChoice === 'en' && target.pathname === '/404.html';
+      const expectedStatus = intentionalEnglishNotFound ? 404 : 200;
+      destinations.set(`${target.href}|${expectedStatus}`, { href: target.href, expectedStatus });
+    }
+    for (const { href, expectedStatus } of destinations.values()) {
+      const response = await request.get(href);
+      expect(response.status(), `unexpected status for same-origin link from ${route}: ${href}`).toBe(expectedStatus);
+    }
+  }
+  const expectedNotFoundDocument = httpErrors.filter(error =>
+    error.sourceRoute === '/404.html' &&
+    new URL(error.url).pathname === '/404.html' &&
+    new URL(error.url).search === '' &&
+    error.resourceType === 'document' &&
+    error.status === 404,
+  );
+  expect(expectedNotFoundDocument, 'the tested English not-found route should produce its intentional document response').toHaveLength(1);
+  const expectedConsoleErrorIndexes = consoleErrors.flatMap((error, index) =>
+    error.sourceRoute === '/404.html' &&
+    error.text === 'Failed to load resource: the server responded with a status of 404 (Not Found)' &&
+    expectedNotFoundDocument.some(response => response.url === error.location)
+      ? [index]
+      : [],
+  );
+  const unexpectedHttpErrors = httpErrors.filter(error => !expectedNotFoundDocument.includes(error));
+  const unexpectedConsoleErrors = consoleErrors.filter((_, index) => !expectedConsoleErrorIndexes.includes(index));
+  expect({ unexpectedHttpErrors, unexpectedConsoleErrors, pageErrors, failedRequests }, JSON.stringify({ expectedNotFoundDocument, consoleErrors }, null, 2)).toEqual({
+    unexpectedHttpErrors: [],
+    unexpectedConsoleErrors: [],
+    pageErrors: [],
+    failedRequests: [],
+  });
+  expect(expectedConsoleErrorIndexes.length, 'the intentional 404 document may emit at most one matching console error').toBeLessThanOrEqual(1);
+});
 
 for (const localized of spanishPages) {
   for (const width of viewports) {
