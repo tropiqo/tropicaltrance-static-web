@@ -37,10 +37,17 @@ export function rejectFixture(bytes) {
 function unique(items, key, message) {
   const keys = items.map(key); requireThat(new Set(keys).size === keys.length,message);
 }
-function recipe(artwork, review, base) {
-  // No real recipe has been supplied/reviewed. Do not invent a production profile.
-  requireThat(review && artwork.recipe === 'fixture-placeholder' && artwork.recipeVersion === '1','No reviewed recipe/version profile');
-  validateSchema(artwork.parameters,resolve(base,'schemas/fixture-placeholder-parameters.schema.json'));
+function recipe(artwork, review, base, context) {
+  if (review) {
+    requireThat(artwork.recipe === 'fixture-placeholder' && artwork.recipeVersion === '1','No reviewed recipe/version profile');
+    validateSchema(artwork.parameters,resolve(base,'schemas/fixture-placeholder-parameters.schema.json'));
+    return;
+  }
+  // One genuinely reviewed Grape source/output. No general recipe or authority registry.
+  same(context.flavor,{id:'grape',revision:'r2'},'Unknown normal Flavor recipe context');
+  same(context.canonicalArtwork,{assetId:'grape-package-artwork',revision:'r1',contentId:'sha256:6ac10d7bc79b331ee310e3c54c1f78688c884cc8fa1ef0b9be0e281e67e5a04b'},'Grape source profile mismatch');
+  same({...artwork,parameters:undefined},{assetId:'grape-web-artwork',revision:'r1',contentId:'sha256:66c5313e7bb9dd8bc733f51aa56b1c7d5679a463a67a1c11deffd9326aade839',deliveryRef:'grape-web-r1',recipe:'grape-full-frame-webp',recipeVersion:'1',parameters:undefined},'No reviewed recipe/version profile');
+  same(artwork.parameters,{resize:{width:1024,fit:'inside',withoutEnlargement:true,kernel:'lanczos3',fastShrinkOnLoad:false},webp:{lossless:true,effort:6}},'Grape recipe parameter mismatch');
 }
 export function loadRelease({ base = process.cwd(), review = false } = {}) {
   requireThat(typeof review === 'boolean','Explicit boolean review context required');
@@ -60,7 +67,7 @@ export function loadRelease({ base = process.cwd(), review = false } = {}) {
   for (const name of readdirSync(safePath(base,input))) requireThat(expectedRoot.has(name),'Unexpected input root entry');
   const records = (dir,name) => inventory(base,input+'/'+dir,true).map(path => {
     requireThat(new RegExp('^'+input+'/'+dir+'/[A-Za-z0-9_.-]+\\.json$').test(path),'Unexpected content path');
-    const value = read(path,name); if (name === 'publication/projection') recipe(value.artwork,review,base);
+    const value = read(path,name); if (name === 'publication/projection') recipe(value.artwork,review,base,value);
     return {path,contentId:digest(bytes(path)),value};
   });
   const projections = records('flavors','publication/projection');
@@ -75,7 +82,12 @@ export function loadRelease({ base = process.cwd(), review = false } = {}) {
   unique(media.entries,x=>x.asset.assetId,'Duplicate derivative identity');
   for (const item of media.entries) {
     requireThat(item.path.startsWith(assets+'/'),'Delivery outside approved asset root');
-    same(digest(bytes(item.path)),item.asset.contentId,'Delivery digest mismatch');
+    const deliveryBytes = bytes(item.path);
+    same(digest(deliveryBytes),item.asset.contentId,'Delivery digest mismatch');
+    if (!review && item.asset.assetId==='grape-web-artwork') {
+      same(item.path,'public-astro/assets/grape-web-r1.webp','Grape delivery path mismatch');
+      same(deliveryBytes.length,2866364,'Grape delivery size mismatch');
+    }
   }
   const hasSnapshot = readdirSync(safePath(base,input)).includes('eligibility.json');
   requireThat(!release.members.length || (hasSnapshot && release.eligibilitySnapshot),'Included member requires pinned eligibility snapshot');
@@ -87,8 +99,12 @@ export function loadRelease({ base = process.cwd(), review = false } = {}) {
     entries = review ? snapshot.assumptions : snapshot.entries;
     unique(entries,x=>x.flavor.id,'Duplicate eligibility Flavor');
     unique(entries,x=>x.artwork.deliveryRef,'Duplicate eligibility delivery');
-    for (const e of entries) recipe(e.artwork,review,base);
+    for (const e of entries) recipe(e.artwork,review,base,e);
   } else requireThat(!release.eligibilitySnapshot,'Snapshot pin without snapshot');
+  for (const member of release.members) if (!review) {
+    same(member.flavor,{id:'grape',revision:'r2'},'Unsupported normal Flavor selection');
+    same(member.slug,'grape','Grape slug mismatch');
+  }
   const selected = new Set();
   const flavors = [...release.members].sort((a,b)=>a.flavor.id < b.flavor.id ? -1 : a.flavor.id > b.flavor.id ? 1 : 0).map(member=>{
     const p = projections.find(x=>x.path===member.projection.path);

@@ -260,3 +260,48 @@ reported separately from old owner-performed review evidence. Remote CI, public
 copy/Contact/SEO/domain/hosting/release remain unverified pre-launch work.
 This approval authorizes local website integration only: no stage/commit/push,
 PR, deployment, publication or archive. No automatic workflow follows this update.
+
+
+## Change 008: local Grape candidate
+
+Current normal output is nine files: the five base HTML routes plus
+flavors/grape/index.html, one referenced stylesheet, existing static Trancy and
+assets/grape-web-r1.webp. The historical seven-file Trancy-only inventory above
+remains the withdrawal/empty baseline. Review stays its exact eleven-file
+synthetic baseline with no real Grape input or media.
+
+Grape uses existing v1 projection/media/eligibility/release joins and current
+collection/card/detail/MediaFrame. Name Grape; slug grape; description “Explore
+the Grape flavor from Tropical Trance.”; alt “Grape artwork featuring Trancy in
+a purple cosmic landscape.” No optional story or claims/availability/commerce.
+The shared full-frame 1024 x 1536 lossless WebP is 2866364 bytes, SHA-256
+66c5313e7bb9dd8bc733f51aa56b1c7d5679a463a67a1c11deffd9326aade839.
+Normal builds neither generate it nor read Studio/source/backup/private approval.
+Upstream source/use/derivative/copy examination and actual decision evidence
+are retained in Studio; public snapshot is as-of consistency, not final release.
+
+Home/About source and design remain unchanged; their prior conditional empty
+Flavor notices disappear with Grape selected. Contact/404/styles/navigation and
+all Trancy pixel/digest/cup-lettering constraints remain unchanged. The Flavors
+hero/metadata reuse the approved description only for normal selected Grape;
+review and empty wording remain unchanged to preserve those inventories.
+
+Use npm run build, then npm run preview -- --port 4321. Review
+http://127.0.0.1:4321/flavors/ and /flavors/grape/ for the actual candidate.
+Final rendered collection/detail visual/accessibility acceptance is still
+pending, distinct from the already approved derivative/copy. Record unavailable
+browser/screen-reader checks honestly; no remote CI/hosting verification follows.
+
+A future single prepare/preview/confirm editing entry point will coordinate
+existing projection, media, truthful eligibility and release pins plus delivery
+and native source/review context. Preserve immutable history, fail on drift or
+missing authority, review actual replacement and remove obsolete served bytes
+coherently. Helper/CMS/generalized other-Flavors implementation remains deferred.
+Current withdrawal was rehearsed only in an isolated temporary candidate: remove
+Grape selection/projection/snapshot/map/delivery, preserve Trancy, validate the
+exact seven-file baseline, then restore exact candidate. No hosted/cache action.
+
+Do not deploy .review-build or synthetic fixtures. Current upstream recheck,
+applicable remaining accessibility, remote isolation, launch copy/Contact/SEO,
+domain/hosting and separately authorized release remain pre-publication work.
+No stage/commit/push/PR/deploy/publication/archive is authorized by local PASS.

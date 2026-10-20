@@ -2,7 +2,7 @@
 
 The current website is an independent Astro static project using the Tropical Editorial Hybrid design: Home, Flavors, About, Contact, a technical 404 and reusable Flavor Detail pages selected by validated local inputs.
 
-This is a development foundation. A passing build or local preview does not authorize publication. The normal Flavor release is empty. The owner-approved, exact Trancy WebP appears on normal Home/About as one pinned static asset; synthetic Flavor media remains confined to local review.
+This is a development foundation. A passing build or local preview does not authorize publication. The normal Flavor release selects one reviewed Grape flavor. The owner-approved, exact Trancy WebP appears on normal Home/About as one pinned static asset; synthetic Flavor media remains confined to local review.
 
 See the [authoritative internal foundation handoff](docs/migration/astro-foundation-handoff.md) for current scope, exact inventories, recovery, responsibilities and deferred production work. This README remains the quick start; dated slice documents preserve earlier evidence.
 
@@ -35,7 +35,7 @@ npm run build
 npm run preview -- --port 4321
 ```
 
-Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/` or `/contact/`. Output is `dist/`: currently five HTML pages, one stylesheet and one exact Trancy WebP, with no fixture detail routes.
+Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/`, `/flavors/grape/` or `/contact/`. Output is `dist/`: currently six HTML pages (including `/flavors/grape/`), one stylesheet, the exact Trancy WebP and one approved Grape WebP, with no fixture detail routes.
 
 Flavor content uses the unchanged closed v1 release contracts. The approved mascot is independently pinned at `public-astro/assets/trancy-web-r1.webp`; it requires no brand JSON, v2 eligibility or Studio lookup. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
 
@@ -84,6 +84,21 @@ git diff --check
 | `npm run verify:reproducible` | Repeated isolated builds and deliberate drift/extra-output failures |
 
 Build first before standalone output audits or `verify:reproducible`. Structural PASS is distinct from user browser acceptance, remote CI and publication/release authorization. None of these commands deploys.
+
+## Grape candidate and future artwork replacement
+
+The existing Flavor v1 inputs select Grape with approved copy and one full-frame
+lossless WebP at `/assets/grape-web-r1.webp`, shared by collection/detail.
+Input/output validation checks its exact source/derivative/recipe and file pins;
+original artwork and private authorization evidence remain outside the build.
+Final rendered Grape acceptance is pending owner local review. Nothing deploys.
+
+Future artwork editing is planned as **prepare → preview → confirm** through
+one small CLI that coordinates existing projection/media/eligibility/release
+pins and delivery, preserving revisions/history and genuine review. It is not
+implemented; no CMS, new schema or publication authority is needed. Initial
+Grape does not depend on this helper. Source/base/byte drift and missing
+permission must fail; confirmation never automatically publishes.
 
 ## Retained legacy material and URL decisions
 

@@ -18,11 +18,12 @@ async function files(dir) {
   }
   return result;
 }
-export function checkInventory(paths, deliveries = []) {
+export function checkInventory(paths, deliveries = [], flavors = []) {
+  const expectedRoutes = [...routes,...flavors.map(f=>'flavors/'+f.slug+'/index.html')];
   const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length))];
-  assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), [...routes].sort(), 'Unexpected static routes');
+  assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), expectedRoutes.sort(), 'Unexpected static routes');
   assert.equal(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)).length, 1, 'Exactly one referenced stylesheet');
-  assert(paths.every(p => routes.includes(p) || assets.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)), 'Unexpected copied/generated file');
+  assert(paths.every(p => expectedRoutes.includes(p) || assets.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)), 'Unexpected copied/generated file');
   assert.deepEqual(paths.filter(p => assets.includes(p)).sort(), assets.sort(), 'Selected output media inventory mismatch');
 }
 function decodeAttribute(text) {
@@ -53,7 +54,10 @@ export function checkHtml(html, media = []) {
     }
     assert(!image[1].replace(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g,'').trim().replace(/^\/$/,''),'Unapproved image syntax');
     const expected = media[index];
-    for (const [name,value] of Object.entries({src:expected.mediaUrl,alt:expected.alt,width:String(expected.width),height:String(expected.height)})) assert.equal(attrs.get(name),value,'Role image '+name+' mismatch');
+    const wanted = {src:expected.mediaUrl,alt:expected.alt};
+    if (expected.width!==undefined) { wanted.width=String(expected.width); wanted.height=String(expected.height); }
+    else assert(!attrs.has('width') && !attrs.has('height'),'Unexpected Flavor image dimensions');
+    for (const [name,value] of Object.entries(wanted)) assert.equal(attrs.get(name),value,'Role image '+name+' mismatch');
     assert(['eager','lazy'].includes(attrs.get('loading')) && attrs.get('decoding')==='async','Unexpected image loading behavior');
   }
   assert(!/\b(?:srcset|imagesrcset|poster)\s*=/i.test(html),'Unapproved media variant');
@@ -76,7 +80,8 @@ export async function checkSource(base = root) {
     assert(!/fetch\s*\(|https?:|tropical-trance-studio|artwork-workspace|prerender\s*=\s*false|astro:actions|astro:content|<script/.test(text), `Forbidden source dependency: ${path}`);
   }
   assert.match(await readFile(resolve(base, 'src/pages/flavors/[slug].astro'), 'utf8'), /release\.flavors\.map/);
-  assert.equal(loadRelease({ base }).flavors.length, 0, 'Change 007 normal release must be empty');
+  const selected = loadRelease({base}).flavors;
+  assert(selected.length<=1 && selected.every(f=>f.flavor.id==='grape' && f.slug==='grape'), 'Unreviewed normal Flavor selection');
   const packageJson = JSON.parse(await readFile(resolve(base, 'package.json'), 'utf8'));
   assert.deepEqual(packageJson.devDependencies, { astro: '7.3.8' });
   assert(!packageJson.dependencies);
@@ -87,7 +92,7 @@ export async function checkOutput(base = root) {
   const dist = resolve(base, 'dist');
   const release = loadRelease({base});
   const output = await files(dist);
-  checkInventory(output.map(p => relative(dist, p)), release.deliveries);
+  checkInventory(output.map(p => relative(dist, p)), release.deliveries, release.flavors);
   for (const path of output) {
     const bytes = await readFile(path);
     const servedPath = 'public-astro/'+relative(dist,path);
@@ -97,11 +102,12 @@ export async function checkOutput(base = root) {
     if (delivery) assert.equal(digest(bytes),delivery.asset.contentId,'Output delivery digest mismatch');
     assert(!/tropical-trance-studio|artwork-workspace:|(?:\/Users\/|\/private\/)|authorityEvidence|reviewEvidenceContentId|candidateContentId|publication-decision|projection\.schema\.json/.test(bytes.toString('utf8')), 'Private schema/evidence/output leak');
   }
-  for (const page of routes) {
+  for (const page of [...routes,...release.flavors.map(f=>'flavors/'+f.slug+'/index.html')]) {
     const path = resolve(dist, page);
     const html = await readFile(path, 'utf8');
     const role = page==='index.html'?'home-hero':page==='about/index.html'?'about-mascot':undefined;
-    const media = role ? [trancyMedia] : [];
+    const detail = release.flavors.find(f=>page==='flavors/'+f.slug+'/index.html');
+    const media = role ? [trancyMedia] : page==='flavors/index.html' ? release.flavors : detail ? [detail] : [];
     checkHtml(html,media);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {

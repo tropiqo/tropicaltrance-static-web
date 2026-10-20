@@ -79,8 +79,8 @@ a:hover { text-decoration-thickness: 0.14em; }
 .flavor-card { min-inline-size: 0; border-block-start: 3px solid var(--flavor-accent); padding-block-start: var(--space-4); }
 .flavor-card h2 { margin-block: var(--space-4) var(--space-3); }
 .flavor-card p { color: var(--color-muted); }
-.media-frame { display: grid; align-items: center; min-inline-size: 0; min-block-size: var(--media-frame-min); color: var(--color-ink); padding: var(--space-4); background: var(--color-paper); border-radius: var(--radius-small); }
-.media-frame img { display: block; max-inline-size: 100%; max-block-size: 38rem; inline-size: auto; block-size: auto; object-fit: contain; margin-inline: auto; }
+.media-frame { display: block; min-inline-size: 0; color: var(--color-text); }
+.media-frame img { display: block; max-inline-size: none; max-block-size: none; inline-size: 100%; block-size: auto; object-fit: contain; }
 .flavor-detail { padding-block: var(--space-6) var(--space-7); }
 .detail-grid { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
 .detail-copy { display: grid; align-content: start; gap: var(--space-5); }

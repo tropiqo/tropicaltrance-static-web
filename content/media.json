@@ -1,5 +1,15 @@
 {
   "contractVersion": "1",
   "kind": "website-public-media",
-  "entries": []
+  "entries": [
+    {
+      "deliveryRef": "grape-web-r1",
+      "asset": {
+        "assetId": "grape-web-artwork",
+        "revision": "r1",
+        "contentId": "sha256:66c5313e7bb9dd8bc733f51aa56b1c7d5679a463a67a1c11deffd9326aade839"
+      },
+      "path": "public-astro/assets/grape-web-r1.webp"
+    }
+  ]
 }

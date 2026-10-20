@@ -19,7 +19,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
  try {
   for(const path of ['src','scripts','schemas','content','public-astro','astro.config.mjs','package.json','package-lock.json','.npmrc'])cpSync(join(root,path),join(base,path),{recursive:true});
   mkdirSync(join(base,'public-astro/assets'),{recursive:true});
-  assert.deepEqual(loadRelease({base}).flavors, []);
+  assert.deepEqual(loadRelease({base}).flavors.map(f=>f.slug), ['grape']);
   symlinkSync(join(root,'node_modules'),join(base,'node_modules'));
   // Dependencies are reused locally; content/source are isolated with no Studio/artwork/credentials.
   const blocker=join(base,'no-network.cjs');
@@ -28,6 +28,19 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   writeFileSync(join(base,'normal-build.mjs'),"import {build} from 'astro';await build({root:process.cwd()});\n");
   run(base,'normal-build.mjs');await checkOutput(base);const normal=snapshot(base,'dist');
   run(base,'normal-build.mjs');assert.deepEqual(snapshot(base,'dist'),normal);await checkOutput(base);
+  // Withdraw only in this isolated candidate; preserve all original repository inputs/history.
+  const grapePaths=['content/flavors/grape.json','content/eligibility.json','content/media.json','content/release-set.json','public-astro/assets/grape-web-r1.webp'];
+  const grapeBytes=Object.fromEntries(grapePaths.map(p=>[p,readFileSync(join(base,p))]));
+  for(const p of ['content/flavors/grape.json','content/eligibility.json','public-astro/assets/grape-web-r1.webp'])rmSync(join(base,p));
+  writeFileSync(join(base,'content/media.json'),JSON.stringify({contractVersion:'1',kind:'website-public-media',entries:[]},null,2)+'\n');
+  writeFileSync(join(base,'content/release-set.json'),JSON.stringify({contractVersion:'1',kind:'website-release-set',members:[]},null,2)+'\n');
+  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,7);
+  const baselineHashes={'index.html':'3fa7b05e80bae3218abd1249f1736ae7ec9a84c126719c805fde218521ab6ac6','about/index.html':'a0af09c9a850795f6544fcecde1bbb68886f60d7cc05d57eb27d5f7385547c79','flavors/index.html':'5d0b6cf43b17e31f29c955d876cfd2c8e940bdb1615d54ee3c0403607b6ee329'};
+  for(const [p,h]of empty)assert.equal(h,p in baselineHashes?'sha256:'+baselineHashes[p]:normal.find(([n])=>n===p)[1]);
+  // Leftover bytes are not a valid withdrawal even without references.
+  writeFileSync(join(base,'public-astro/assets/grape-web-r1.webp'),grapeBytes['public-astro/assets/grape-web-r1.webp']);assert.throws(()=>loadRelease({base}),/Unlisted/);rmSync(join(base,'public-astro/assets/grape-web-r1.webp'));
+  for(const [p,b]of Object.entries(grapeBytes))writeFileSync(join(base,p),b);
+  run(base,'normal-build.mjs');await checkOutput(base);assert.deepEqual(snapshot(base,'dist'),normal);
   // Demonstrate that the same filename/digest comparator detects nondeterminism and extra output.
   const homePath=join(base,'dist/index.html'),homeBytes=readFileSync(homePath);
   writeFileSync(homePath,Buffer.concat([homeBytes,Buffer.from('\n<!-- nondeterministic output -->')]));

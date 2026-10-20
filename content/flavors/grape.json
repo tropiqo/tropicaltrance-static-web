@@ -1,0 +1,36 @@
+{
+  "contractVersion": "1",
+  "flavor": {
+    "id": "grape",
+    "revision": "r2"
+  },
+  "name": "Grape",
+  "shortDescription": "Explore the Grape flavor from Tropical Trance.",
+  "alt": "Grape artwork featuring Trancy in a purple cosmic landscape.",
+  "canonicalArtwork": {
+    "assetId": "grape-package-artwork",
+    "revision": "r1",
+    "contentId": "sha256:6ac10d7bc79b331ee310e3c54c1f78688c884cc8fa1ef0b9be0e281e67e5a04b"
+  },
+  "artwork": {
+    "assetId": "grape-web-artwork",
+    "revision": "r1",
+    "contentId": "sha256:66c5313e7bb9dd8bc733f51aa56b1c7d5679a463a67a1c11deffd9326aade839",
+    "deliveryRef": "grape-web-r1",
+    "recipe": "grape-full-frame-webp",
+    "recipeVersion": "1",
+    "parameters": {
+      "resize": {
+        "width": 1024,
+        "fit": "inside",
+        "withoutEnlargement": true,
+        "kernel": "lanczos3",
+        "fastShrinkOnLoad": false
+      },
+      "webp": {
+        "lossless": true,
+        "effort": 6
+      }
+    }
+  }
+}

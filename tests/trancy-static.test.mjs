@@ -22,7 +22,7 @@ test('one exact approved static image is shared by Home and About', async () => 
   assert.equal(metadata.width,1440); assert.equal(metadata.height,1282); assert.equal(metadata.hasAlpha,true);
   assert.equal(normal.brandMedia['home-hero'],normal.brandMedia['about-mascot']);
   assert.equal(normal.brandMedia['home-hero'],trancyMedia);
-  assert.deepEqual(normal.flavors,[]); assert.deepEqual(normal.deliveries,[]);
+  assert.deepEqual(normal.flavors.map(f=>f.slug),['grape']); assert.equal(normal.deliveries.length,1);
   await checkOutput();
 });
 test('canonical PNG remains byte-identical and excluded from public delivery',()=>{

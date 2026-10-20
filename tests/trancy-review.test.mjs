@@ -38,7 +38,7 @@ test('one explicitly selected immutable delivery is shared across exactly Home a
   assert.match(preview.brandMedia['home-hero'].alt, /Trancy.*green.*chameleon.*sunglasses/);
   const flavors = loadRelease({ review: true });
   assert.deepEqual(preview.flavors, flavors.flavors); assert.deepEqual(preview.deliveries, flavors.deliveries);
-  assert.deepEqual(loadRelease().flavors, []); assert.deepEqual(loadRelease().deliveries, []);
+  assert.deepEqual(loadRelease().flavors.map(f=>f.slug), ['grape']); assert.equal(loadRelease().deliveries.length, 1);
 });
 test('missing, changed, stray or symlinked local review media fails closed', () => {
   sandbox(base => { rmSync(resolve(base, selected.path)); assert.throws(() => loadTrancyReview(base)); });
