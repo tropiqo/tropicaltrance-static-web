@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync, symlinkSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { PassThrough } from 'node:stream';
 import sharp from 'sharp';
 import { applyCandidate, applyRemoval, cancelCandidate, createCandidate, createRemovalCandidate, runAddUpdate } from '../scripts/flavor-workflow.mjs';
 import { digest, loadRelease } from '../scripts/public-inputs.mjs';
@@ -116,6 +117,143 @@ test('add rejects an existing slug and update rejects an unknown slug without ch
  assert.deepEqual(readFileSync(join(base,'public-astro/assets/grape-web-r1.webp')),media);
  assert.deepEqual(loadRelease({base}).flavors.map(f=>f.slug),['grape']);
  rmSync(base,{recursive:true,force:true});
+});
+
+test('metadata-only field updates preserve omitted fields, revision, media path, and WebP bytes',async()=>{
+ const cases=[
+  ['English description',{shortDescription:'Updated English description.'}],
+  ['Spanish description',{esShortDescription:'Descripción española actualizada.'}],
+  ['English alt',{alt:'Updated English alt text.'}],
+  ['Spanish alt',{esAlt:'Texto alternativo en español actualizado.'}],
+  ['name',{name:'Updated Grape'}],
+ ];
+ for(const [label,fields] of cases){
+  const base=sandbox(),contentPath=join(base,'content/flavors/grape.json');
+  const beforeBytes=readFileSync(contentPath),before=JSON.parse(beforeBytes);
+  const assetPath=join(base,'public-astro',before.media.path),assetBefore=readFileSync(assetPath);
+  const webpsBefore=readdirSync(join(base,'public-astro/assets')).filter(name=>name.endsWith('.webp')).sort();
+  const candidate=await createCandidate({mode:'update',websiteRoot:base,slug:'grape',...fields,buildCandidate:()=>{}});
+  try {
+   assert.equal(candidate.kind,'metadata-only',label);
+   assert.equal(candidate.projection.revision,before.revision,label);
+   assert.deepEqual(candidate.projection.media,before.media,label);
+   assert.equal(candidate.projection.slug,before.slug,label);
+   for(const [key,value] of Object.entries(fields)){
+    if(key==='esShortDescription')assert.equal(candidate.projection.translations['es-MX'].shortDescription,value,label);
+    else if(key==='esAlt')assert.equal(candidate.projection.translations['es-MX'].alt,value,label);
+    else assert.equal(candidate.projection[key],value,label);
+   }
+   for(const key of ['name','shortDescription','alt'])if(!(key in fields))assert.equal(candidate.projection[key],before[key],label);
+   for(const key of ['shortDescription','alt']){
+    const field=key==='shortDescription'?'esShortDescription':'esAlt';
+    if(!(field in fields))assert.equal(candidate.projection.translations['es-MX'][key],before.translations['es-MX'][key],label);
+   }
+   assert.deepEqual(readdirSync(join(candidate.candidateRoot,'public-astro/assets')).filter(name=>name.endsWith('.webp')).sort(),webpsBefore,label);
+   assert.deepEqual(readFileSync(join(candidate.candidateRoot,'public-astro',before.media.path)),assetBefore,label);
+   assert.deepEqual(readFileSync(contentPath),beforeBytes,label);
+   cancelCandidate(candidate);
+   assert.deepEqual(readFileSync(contentPath),beforeBytes,`${label}: cancel preserves content`);
+   assert.deepEqual(readFileSync(assetPath),assetBefore,`${label}: cancel preserves image`);
+  } finally {cancelCandidate(candidate);rmSync(base,{recursive:true,force:true});}
+ }
+});
+
+test('metadata-only update previews bilingual routes and collections then applies content without image changes',async()=>{
+ const base=sandbox(),contentPath=join(base,'content/flavors/grape.json');
+ const before=JSON.parse(readFileSync(contentPath));
+ const assetPath=join(base,'public-astro',before.media.path),assetBefore=readFileSync(assetPath);
+ const webpsBefore=readdirSync(join(base,'public-astro/assets')).filter(name=>name.endsWith('.webp')).sort();
+ const fields={shortDescription:'Explore the updated Grape flavor.',esShortDescription:'Explora el sabor Grape actualizado.',alt:'Updated cosmic Grape artwork.',esAlt:'Ilustración cósmica de Grape actualizada.'};
+ const candidate=await createCandidate({mode:'update',websiteRoot:base,slug:'grape',...fields});
+ try {
+  const enDetail=readFileSync(join(candidate.candidateRoot,'dist/flavors/grape/index.html'),'utf8');
+  const esDetail=readFileSync(join(candidate.candidateRoot,'dist/es/flavors/grape/index.html'),'utf8');
+  const enCollection=readFileSync(join(candidate.candidateRoot,'dist/flavors/index.html'),'utf8');
+  const esCollection=readFileSync(join(candidate.candidateRoot,'dist/es/flavors/index.html'),'utf8');
+  assert(enDetail.includes(fields.shortDescription)&&enDetail.includes(fields.alt));
+  assert(esDetail.includes(fields.esShortDescription)&&esDetail.includes(fields.esAlt));
+  assert(enCollection.includes(fields.shortDescription));
+  assert(esCollection.includes(fields.esShortDescription));
+  const changed=applyCandidate(candidate,{validate:false});
+  assert.equal(changed.assetPath,undefined);
+  const after=JSON.parse(readFileSync(contentPath));
+  assert.equal(after.revision,before.revision);
+  assert.deepEqual(after.media,before.media);
+  assert.equal(after.slug,before.slug);
+  assert.deepEqual(readFileSync(assetPath),assetBefore);
+  assert.deepEqual(readdirSync(join(base,'public-astro/assets')).filter(name=>name.endsWith('.webp')).sort(),webpsBefore);
+  assert.deepEqual(loadRelease({base}).flavors.map(f=>f.slug),['grape']);
+ } finally {cancelCandidate(candidate);rmSync(base,{recursive:true,force:true});}
+});
+
+test('metadata-only update rejects missing fields, unknown slugs, and invalid metadata',async()=>{
+ const base=sandbox();
+ await assert.rejects(()=>createCandidate({mode:'update',websiteRoot:base,slug:'grape',buildCandidate:()=>{}}),/at least one metadata flag/);
+ await assert.rejects(()=>createCandidate({mode:'update',websiteRoot:base,slug:'kiwi',name:'Kiwi',buildCandidate:()=>{}}),/Unknown flavor/);
+ await assert.rejects(()=>createCandidate({mode:'update',websiteRoot:base,slug:'grape',shortDescription:'',buildCandidate:()=>{}}),/shortDescription is required/);
+ await assert.rejects(()=>createCandidate({mode:'update',websiteRoot:base,slug:'grape',alt:'https://private.invalid',buildCandidate:()=>{}}),/alt contains a path or private reference/);
+ await assert.rejects(()=>runAddUpdate('update',['grape','--development-only']),/at least one metadata flag/);
+ assert.deepEqual(loadRelease({base}).flavors.map(f=>f.slug),['grape']);
+ rmSync(base,{recursive:true,force:true});
+});
+
+test('metadata-only validation failure restores exact JSON and leaves artwork untouched',async()=>{
+ const base=sandbox(),contentPath=join(base,'content/flavors/grape.json');
+ const before=readFileSync(contentPath),record=JSON.parse(before);
+ const assetPath=join(base,'public-astro',record.media.path),assetBefore=readFileSync(assetPath);
+ const candidate=await createCandidate({mode:'update',websiteRoot:base,slug:'grape',name:'Validation rollback',buildCandidate:()=>{}});
+ try {
+  assert.throws(()=>applyCandidate(candidate,{runValidation:()=>{throw Error('fixture metadata validation failure');}}),/fixture metadata validation failure/);
+  assert.deepEqual(readFileSync(contentPath),before);
+  assert.deepEqual(readFileSync(assetPath),assetBefore);
+  assert.deepEqual(loadRelease({base}).flavors.map(f=>f.slug),['grape']);
+ } finally {cancelCandidate(candidate);rmSync(base,{recursive:true,force:true});}
+});
+
+test('interactive metadata-only preview reports unchanged image and applies only after explicit confirmation',async()=>{
+ const base=sandbox(),contentPath=join(base,'content/flavors/grape.json');
+ const before=JSON.parse(readFileSync(contentPath));
+ const assetPath=join(base,'public-astro',before.media.path),assetBefore=readFileSync(assetPath);
+ async function invoke(answer){
+  const input=new PassThrough();input.isTTY=true;input.end(`${answer}\n`);
+  const output=new PassThrough();let transcript='';output.on('data',chunk=>transcript+=chunk.toString());
+  await runAddUpdate('update',['grape','--development-only','--description','Previewed metadata update.'],{
+   input,output,websiteRoot:base,buildCandidate:()=>{},
+   startPreview:async()=>({port:4321,child:{exitCode:0}}),
+   apply:candidate=>applyCandidate(candidate,{validate:false}),
+  });
+  return transcript;
+ }
+ try {
+  const cancelled=await invoke('n');
+  assert.match(cancelled,/Metadata-only changes/);
+  assert.match(cancelled,/Unchanged image: assets\/grape-web-r1\.webp .* revision 1/);
+  assert.match(cancelled,/http:\/\/127\.0\.0\.1:4321\/es\/flavors\/grape\//);
+  assert.match(cancelled,/Cancelled; website files are unchanged/);
+  assert.deepEqual(JSON.parse(readFileSync(contentPath)),before);
+  assert.deepEqual(readFileSync(assetPath),assetBefore);
+  const confirmed=await invoke('y');
+  assert.match(confirmed,/Applied and validated grape:/);
+  const after=JSON.parse(readFileSync(contentPath));
+  assert.equal(after.shortDescription,'Previewed metadata update.');
+  assert.equal(after.revision,before.revision);
+  assert.deepEqual(after.media,before.media);
+  assert.deepEqual(readFileSync(assetPath),assetBefore);
+ } finally {rmSync(base,{recursive:true,force:true});}
+});
+
+test('image replacement can combine image and metadata changes',async()=>{
+ const base=sandbox(),image=join(base,'combined-update.png');await sample(image);
+ const before=JSON.parse(readFileSync(join(base,'content/flavors/grape.json')));
+ const candidate=await createCandidate({mode:'update',websiteRoot:base,slug:'grape',imagePath:image,shortDescription:'Combined update description.',esAlt:'Texto alternativo combinado.'});
+ try {
+  assert.equal(candidate.kind,'image');
+  assert.equal(candidate.projection.revision,String(Number(before.revision)+1));
+  assert.equal(candidate.projection.shortDescription,'Combined update description.');
+  assert.equal(candidate.projection.translations['es-MX'].alt,'Texto alternativo combinado.');
+  assert.equal(candidate.projection.name,before.name);
+  assert.equal(candidate.projection.media.path,'assets/grape-web-r2.webp');
+ } finally {cancelCandidate(candidate);rmSync(base,{recursive:true,force:true});}
 });
 
 test('flavor removal preview can be cancelled without changing record or artwork',async()=>{

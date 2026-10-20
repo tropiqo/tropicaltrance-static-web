@@ -118,13 +118,14 @@ test('About uses the pinned Emerald Gateway delivery and preserves its copy; oth
 });
 test('Spanish pages localize interface, metadata, accessibility text, flavor content, and video controls',()=>{
   const home=normal('es/index.html'),about=normal('es/about/index.html'),collection=normal('es/flavors/index.html'),grape=normal('es/flavors/grape/index.html'),contact=normal('es/contact/index.html');
+  const grapeRecord=loadRelease().flavors.find(flavor=>flavor.slug==='grape');
   for(const html of [home,about,collection,grape,contact])assert.match(html,/<html lang="es-MX"/);
   for(const phrase of ['Saltar al contenido','Inicio','Sabores','Acerca de','Contacto','Sitio exclusivo de desarrollo.','Sigue con curiosidad. Vive lo tropical.'])assert(home.includes(phrase));
   assert(home.includes('Cada sabor. Una nueva aventura.'));
   assert(home.includes('Trancy, el camaleón verde de Tropical Trance'));
   assert(collection.includes('Desliza para explorar'));
-  assert(collection.includes('Explora el sabor Grape de Tropical Trance.'));
-  assert(collection.includes('Ilustración de Grape con Trancy'));
+  assert(collection.includes(grapeRecord.translations['es-MX'].shortDescription));
+  assert(collection.includes(grapeRecord.translations['es-MX'].alt));
   assert(grape.includes('Volver a sabores'));
   assert(contact.includes('WhatsApp Business')&&contact.includes('Próximamente'));
   assert(about.includes('Más allá de lo ordinario'));

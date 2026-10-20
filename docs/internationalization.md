@@ -10,7 +10,7 @@ Run `npm run flavor:add -- <slug> --development-only --image <path>`. The explic
 
 ## Update a flavor
 
-Run `npm run flavor:update -- <slug> --development-only --image <path>`. Existing English and Spanish values are offered as defaults. Review and update the Spanish description and alt text whenever their meaning changes. The product name and route slug are preserved unless the separately reviewed content identity calls for a change.
+For copy-only changes, run `npm run flavor:update -- <slug> --development-only` with one or more of `--name`, `--description`, `--es-description`, `--alt`, and `--es-alt`. Omitted fields, the image path/digest, and the image revision are preserved; no WebP is generated. The command previews the English and Spanish detail pages and collections and requires interactive confirmation. For an image replacement, also supply `--image <path>`; this creates the next image revision. Existing values are defaults when image-update prompts are used. Review Spanish description and alt text whenever their meaning changes; do not use machine-translated placeholder content.
 
 ## Update shared interface copy
 

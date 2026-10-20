@@ -23,18 +23,16 @@ test('locale URL mapping keeps page and flavor slug and falls back home for unsu
   assert.equal(localizePath('/unsupported/', 'es-MX'), '/es/');
 });
 
-test('all local flavors have Spanish description and alt while Grape and Lime retain their existing identifiers', () => {
+test('all local flavors have complete bilingual metadata and expected identities', () => {
   const release = loadRelease();
-  assert.deepEqual(release.flavors.map(flavor => flavor.name), ['Cherry', 'Grape', 'Lime']);
+  assert.deepEqual(release.flavors.map(flavor => flavor.slug).sort(), ['cherry', 'grape', 'lime']);
   assert.deepEqual(release.flavors.filter(flavor => ['grape', 'lime'].includes(flavor.slug)).map(flavor => flavor.slug), ['grape', 'lime']);
-  const cherry = release.flavors.find(flavor => flavor.slug === 'cherry');
-  assert.equal(cherry.shortDescription, 'Explore the Cherry flavor from Tropical Trance.');
-  assert.equal(cherry.translations['es-MX'].shortDescription, 'Explora el sabor Cherry de Tropical Trance.');
-  assert.equal(cherry.alt, 'Trancy relaxes in a cherry-shaped boat amid a cosmic cherry landscape with waterfalls and a swirling sky.');
-  assert.equal(cherry.translations['es-MX'].alt, 'Trancy descansa en una lancha con forma de cereza, rodeado de un paisaje cósmico de cerezas, cascadas y un cielo en espiral.');
   for (const flavor of release.flavors) {
-    assert(flavor.translations['es-MX'].shortDescription);
-    assert(flavor.translations['es-MX'].alt);
+    assert.match(flavor.slug, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+    for (const value of [flavor.name, flavor.shortDescription, flavor.alt, flavor.translations['es-MX'].shortDescription, flavor.translations['es-MX'].alt]) {
+      assert.equal(typeof value, 'string');
+      assert(value.trim().length > 0);
+    }
     const localized = localizeFlavor(flavor, 'es-MX');
     assert.equal(localized.name, flavor.name);
     assert.equal(localized.mediaUrl, flavor.mediaUrl);

@@ -98,25 +98,44 @@ The CLI is explicitly development-only. Development artwork authorization suppor
 
 ## Workflow C — Update flavor content
 
-The CLI supports these content flags:
+Content updates can omit `--image`. Supply one or more metadata flags with the required `--development-only` scope. Any field without a flag is preserved. A metadata-only update keeps the existing slug, routes, image path, image digest, and revision; it does not open an image source, create an image revision, or generate a WebP. The CLI builds an isolated preview, prints the proposed field changes and unchanged image identity/revision, then asks for explicit confirmation. Review both localized detail pages and the collections before entering `y`; Enter or `n` cancels without changing Website files. A confirmed update runs `npm run validate`, and a validation failure restores the exact previous JSON.
 
-- English description: `--description "..."`
-- Spanish description: `--es-description "..."`
-- English alt text: `--alt "..."`
-- Spanish alt text: `--es-alt "..."`
+Use these copy-paste-ready examples from the Website root, replacing the sample wording with reviewed content:
 
-There is currently **no content-only update mode**. `flavor:update` always requires `--development-only` and `--image`; it creates the next image revision and WebP even when the only intended change is copy. For example, this exact command updates all four text fields while resupplying the existing Grape source PNG:
+Update only both descriptions:
 
 ```sh
 npm run flavor:update -- grape --development-only \
-  --image /Users/josue.ruiz/Documents/Projects/tropical-trance/tropical-trance-studio/assets/flavors/grape/cosmic-grape-getaway.png \
   --description "Explore the Grape flavor from Tropical Trance." \
-  --es-description "Explora el sabor Grape de Tropical Trance." \
+  --es-description "Explora el sabor Grape de Tropical Trance."
+```
+
+Update only both alt descriptions:
+
+```sh
+npm run flavor:update -- grape --development-only \
   --alt "Trancy explores a cosmic grape landscape." \
   --es-alt "Trancy explora un paisaje cósmico de uvas."
 ```
 
-Replace the example text with reviewed, accurate copy. Supplying a source image again still increments the revision and regenerates the derivative. If image regeneration is not intended, do not run this command; the current CLI has no supported way to update only metadata. The prompt-based update also preserves existing values when you press Enter at a populated default.
+Update only the flavor name:
+
+```sh
+npm run flavor:update -- grape --development-only --name "Grape"
+```
+
+Update several fields together:
+
+```sh
+npm run flavor:update -- grape --development-only \
+  --name "Cosmic Grape" \
+  --description "Explore the Cosmic Grape flavor from Tropical Trance." \
+  --es-description "Explora el sabor Cosmic Grape de Tropical Trance." \
+  --alt "Trancy explores a cosmic grape landscape." \
+  --es-alt "Trancy explora un paisaje cósmico de uvas."
+```
+
+To replace artwork, use Workflow B and provide `--image`. Image replacement still generates the next WebP revision; combining `--image` with metadata flags updates both in the same candidate. A metadata-only update must include at least one actual metadata flag. Unknown flavor slugs and no-op update commands are rejected. Values must be non-empty and must not contain private paths or references. The interactive TTY, preview, and confirmation requirements still apply.
 
 ## Validation checklist
 
@@ -169,10 +188,11 @@ Manually review:
 | Task | Command |
 | --- | --- |
 | Add a flavor | `npm run flavor:add -- <slug> --development-only --image <path> --name <name> --description <text> --alt <text> --es-description <text> --es-alt <text>` |
-| Update image and/or content | `npm run flavor:update -- <slug> --development-only --image <path> [--name <name>] [--description <text>] [--alt <text>] [--es-description <text>] [--es-alt <text>]` |
+| Update content only | `npm run flavor:update -- <slug> --development-only [--name <name>] [--description <text>] [--alt <text>] [--es-description <text>] [--es-alt <text>]` (at least one metadata flag required; no new image revision) |
+| Replace image, optionally with content | `npm run flavor:update -- <slug> --development-only --image <path> [--name <name>] [--description <text>] [--alt <text>] [--es-description <text>] [--es-alt <text>]` |
 | Validate | `npm run validate` |
 | Check reproducibility | `npm run verify:reproducible` |
 | Browser suite (host terminal if restricted) | `npm run test:e2e` |
 | Local website | `npm run dev` |
 
-Add/update examples require an interactive terminal and a human review of the isolated preview before confirmation. The current CLI does not offer a content-only update.
+Add/update examples require an interactive terminal and a human review of the isolated preview before confirmation. Metadata-only updates preserve the existing image revision; image replacement creates the next revision.

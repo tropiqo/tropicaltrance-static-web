@@ -95,19 +95,24 @@ Studio history remain outside the website content model.
 
 ```sh
 npm run flavor:add -- mango --development-only --image /path/to/mango.png --name Mango --description "Explore Mango." --alt "Mango flavor artwork."
+npm run flavor:update -- grape --development-only --description "Explore the Grape flavor." --es-description "Explora el sabor Grape."
 npm run flavor:update -- grape --development-only --image /path/to/replacement.png
 npm run flavor:remove -- mango
 ```
 
 `flavor:add` rejects a slug that already exists; `flavor:update` rejects an
-unknown slug and retains existing copy unless an option overrides it. Both
-commands require `--development-only` to make their scope explicit, accept
-`--name`, `--description` and `--alt`, optimize the selected image to one
-full-frame lossless WebP, build an isolated Astro candidate and serve the actual
-collection/detail preview. The preview prints source and derivative SHA-256
-identities and states that this action creates no production approval. Confirm
-with `y`; Enter or `n` cancels without changing website inputs. Updates increment the flavor revision
-and keep the previous image until validation succeeds. `flavor:remove` builds a
+unknown slug. Add requires `--image`; update can change metadata without an
+image or replace the image with `--image`. Both commands require
+`--development-only` to make their scope explicit and accept `--name`,
+`--description`, `--alt`, `--es-description` and `--es-alt`. Metadata-only
+updates preserve the image path, digest and revision, and do not generate a
+WebP. Image updates generate the next full-frame lossless WebP revision. The CLI
+builds an isolated Astro candidate and serves the affected pages for review.
+The preview reports proposed metadata and unchanged image identity for a
+metadata-only update, or source and derivative SHA-256 identities for an image
+update; it states that the operation creates no production approval. Confirm
+with `y`; Enter or `n` cancels without changing website inputs. Confirmed
+changes run validation and roll back on failure. `flavor:remove` builds a
 preview of the selected flavor, shows its name, slug, artwork URL and digest,
 then asks for confirmation with No as the default. It deletes the content record
 and only deletes artwork no other flavor references. All confirmed changes run

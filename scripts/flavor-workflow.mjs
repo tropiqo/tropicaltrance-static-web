@@ -45,7 +45,7 @@ function validateImagePath(input) {
   return path;
 }
 
-export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name,shortDescription,alt,esShortDescription,esAlt}) {
+export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name,shortDescription,alt,esShortDescription,esAlt,buildCandidate=candidateRoot=>run('npm',['run','build'],candidateRoot)}) {
   assert(['add','update'].includes(mode),'Flavor operation must be add or update');
   loadRelease({base:websiteRoot});
   const baseline=snapshot(websiteRoot);
@@ -56,6 +56,33 @@ export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name
   assert(safeSlug(chosen),`Invalid or reserved flavor slug: ${chosen}`);
   const existing=current.find(value=>value.slug===chosen);
   assert(mode==='add'?!existing:Boolean(existing),mode==='add'?`Flavor already exists: ${chosen}`:`Unknown flavor: ${chosen}`);
+  const metadataFields={name,shortDescription,alt,esShortDescription,esAlt};
+  const suppliedMetadata=Object.entries(metadataFields).filter(([,value])=>value!==undefined);
+  if(mode==='update'&&!imagePath) {
+    assert(suppliedMetadata.length>0,'Provide at least one metadata flag for a content-only update');
+    const projection=structuredClone(existing);
+    for(const [key,value] of suppliedMetadata) {
+      if(key==='esShortDescription')projection.translations['es-MX'].shortDescription=value;
+      else if(key==='esAlt')projection.translations['es-MX'].alt=value;
+      else projection[key]=value;
+    }
+    for (const [key,value] of Object.entries({name:projection.name,shortDescription:projection.shortDescription,alt:projection.alt,esShortDescription:projection.translations['es-MX'].shortDescription,esAlt:projection.translations['es-MX'].alt})) {
+      assert(typeof value==='string' && value.trim(),`${key} is required`);
+      assert(!/(?:\/|\\|https?:|file:|tropical-trance-studio|artwork-workspace:)/i.test(value),`${key} contains a path or private reference`);
+    }
+    const candidateRoot=mkdtempSync(join(tmpdir(),'tropical-flavor-candidate-'));
+    try {
+      copyCandidateTree(websiteRoot,candidateRoot);
+      writeFileSync(join(candidateRoot,`content/flavors/${chosen}.json`),json(projection));
+      buildCandidate(candidateRoot);
+      assert.equal(snapshot(websiteRoot),baseline,'Website inputs changed while preparing the candidate');
+      const changes=Object.fromEntries(suppliedMetadata.map(([key,value])=>[key,{from:key==='esShortDescription'?existing.translations['es-MX'].shortDescription:key==='esAlt'?existing.translations['es-MX'].alt:existing[key],to:value}]));
+      return {kind:'metadata-only',websiteRoot,candidateRoot,slug:chosen,existing,projection,changes,snapshot:baseline};
+    } catch(error) {
+      rmSync(candidateRoot,{recursive:true,force:true});
+      throw error;
+    }
+  }
   assert(imagePath,'Choose artwork with --image /path/to/image.png');
   const sourcePath=validateImagePath(imagePath);
   const sourceBytes=readFileSync(sourcePath), sourceHash=hash(sourceBytes);
@@ -100,9 +127,10 @@ export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name
       const stillUsed=current.some(item=>item.slug!==chosen && item.media.path===existing.media.path);
       if (!stillUsed) rmSync(join(candidateRoot,'public-astro',existing.media.path),{force:true});
     }
-    run('npm',['run','build'],candidateRoot);
+    buildCandidate(candidateRoot);
     assert.equal(snapshot(websiteRoot),baseline,'Website inputs changed while preparing the candidate');
-    const candidate={websiteRoot,candidateRoot,slug:chosen,existing,projection,webp,sourcePath,sourceHash,snapshot:baseline,width:outMetadata.width,height:outMetadata.height,size:webp.length};
+    const changes=Object.fromEntries(suppliedMetadata.map(([key,value])=>[key,{from:key==='esShortDescription'?existing?.translations['es-MX'].shortDescription:key==='esAlt'?existing?.translations['es-MX'].alt:existing?.[key],to:value}]));
+    const candidate={kind:'image',websiteRoot,candidateRoot,slug:chosen,existing,projection,webp,sourcePath,sourceHash,changes,snapshot:baseline,width:outMetadata.width,height:outMetadata.height,size:webp.length};
     return candidate;
   } catch(error) {
     rmSync(candidateRoot,{recursive:true,force:true});
@@ -117,6 +145,23 @@ export function cancelCandidate(candidate) {
 export function applyCandidate(candidate,{validate=true,runValidation=()=>run('npm',['run','validate'],candidate.websiteRoot,{inherit:true})}={}) {
   const {websiteRoot,candidateRoot,slug,existing,projection,webp,snapshot:baseline}=candidate;
   assert.equal(snapshot(websiteRoot),baseline,'Website inputs changed during preview; candidate is stale, prepare it again');
+  if(candidate.kind==='metadata-only') {
+    safePath(websiteRoot,'content/flavors');
+    const contentPath=safePath(websiteRoot,`content/flavors/${slug}.json`);
+    const contentBefore=readFileSync(contentPath);
+    const tempJson=`${contentPath}.flavor-update-${process.pid}.tmp`;
+    let updated=false;
+    try {
+      writeFileSync(tempJson,json(projection),{flag:'wx'});
+      renameSync(tempJson,contentPath);updated=true;
+      if(validate)runValidation();
+    } catch(error) {
+      rmSync(tempJson,{force:true});
+      if(updated)writeFileSync(contentPath,contentBefore);
+      throw error;
+    }
+    return {contentPath,assetPath:undefined,removedOld:undefined};
+  }
   assert.equal(hash(readFileSync(candidate.sourcePath)),candidate.sourceHash,'Selected source changed during preview');
   safePath(websiteRoot,'content/flavors');
   const contentRelative=`content/flavors/${slug}.json`;
@@ -232,35 +277,46 @@ function parseArgs(args) {
   return {slug,...options};
 }
 
-export async function runAddUpdate(mode,args=process.argv.slice(2)) {
+export async function runAddUpdate(mode,args=process.argv.slice(2),runtime={}) {
   assert(['add','update'].includes(mode),'Flavor operation must be add or update');
   const options=parseArgs(args);
   assert(options.developmentOnly,'Flavor artwork changes require the explicit --development-only scope');
-  if(!options.imagePath) throw Error('Choose artwork with --image /path/to/image.png');
   if(!options.slug) throw Error('Choose an existing flavor slug or a new flavor slug');
-  if(!stdin.isTTY) throw Error('Interactive preview and confirmation require a terminal');
-  const prompt=createInterface({input:stdin,output:stdout});
+  const metadataKeys=['name','shortDescription','alt','esShortDescription','esAlt'];
+  const suppliedMetadata=metadataKeys.some(key=>options[key]!==undefined);
+  if(mode==='add'&&!options.imagePath) throw Error('Choose artwork with --image /path/to/image.png');
+  if(mode==='update'&&!options.imagePath&&!suppliedMetadata) throw Error('Provide at least one metadata flag for a content-only update');
+  const input=runtime.input??stdin,output=runtime.output??stdout;
+  if(!input.isTTY) throw Error('Interactive preview and confirmation require a terminal');
+  const prompt=createInterface({input,output});
   let candidate,preview;
   try {
     const prior=records(root).find(value=>value.slug===options.slug.toLowerCase());
     assert(mode==='add'?!prior:Boolean(prior),mode==='add'?`Flavor already exists: ${options.slug}`:`Unknown flavor: ${options.slug}`);
     for(const [key,label] of [['name','Flavor name'],['shortDescription','Short description'],['alt','Accessible alt text'],['esShortDescription','Spanish (Mexico) short description'],['esAlt','Spanish (Mexico) accessible alt text']]) {
+      if(mode==='update'&&!options.imagePath)continue;
       if(options[key]===undefined) {
         const defaultValue=key.startsWith('es')?prior?.translations?.['es-MX']?.[key==='esAlt'?'alt':'shortDescription']??'':prior?.[key]??'';
         const answer=(await prompt.question(`${label}${defaultValue?` [${defaultValue}]`:''}: `)).trim();
         options[key]=answer||defaultValue;
       }
     }
-    candidate=await createCandidate({...options,mode});
-    const server=await startCandidatePreview(candidate);preview=server.child;const {port}=server;
-    stdout.write('\nDevelopment-only candidate; this operation does not create production artwork approval, publication approval, or deployment authorization.\n');
-    stdout.write(`Source SHA-256: ${candidate.sourceHash}\n`);
-    stdout.write(`Candidate preview: http://127.0.0.1:${port}/flavors/ and http://127.0.0.1:${port}/flavors/${candidate.slug}/\n`);
-    stdout.write(`Prepared WebP: ${candidate.width}x${candidate.height}, ${candidate.size} bytes, ${candidate.projection.media.contentId}\n`);
+    candidate=await createCandidate({...options,mode,websiteRoot:runtime.websiteRoot??root,buildCandidate:runtime.buildCandidate??(candidateRoot=>run('npm',['run','build'],candidateRoot))});
+    const server=await (runtime.startPreview??startCandidatePreview)(candidate);preview=server.child;const {port}=server;
+    output.write('\nDevelopment-only candidate; this operation does not create production artwork approval, publication approval, or deployment authorization.\n');
+    if(candidate.kind==='metadata-only') {
+      output.write(`Metadata-only changes: ${JSON.stringify(candidate.changes)}\n`);
+      output.write(`Unchanged image: ${candidate.projection.media.path} (${candidate.projection.media.contentId}), revision ${candidate.projection.revision}\n`);
+    } else {
+      output.write(`Source SHA-256: ${candidate.sourceHash}\n`);
+      output.write(`Prepared WebP: ${candidate.width}x${candidate.height}, ${candidate.size} bytes, ${candidate.projection.media.contentId}\n`);
+    }
+    output.write(`Candidate preview (English and Spanish): http://127.0.0.1:${port}/flavors/${candidate.slug}/ and http://127.0.0.1:${port}/es/flavors/${candidate.slug}/\n`);
+    output.write(`Collections: http://127.0.0.1:${port}/flavors/ and http://127.0.0.1:${port}/es/flavors/\n`);
     const answer=(await prompt.question(`${mode==='add'?'Add':'Update'} this development-only flavor after review? [y/N] `)).trim().toLowerCase();
-    if(answer!=='y' && answer!=='yes') { stdout.write('Cancelled; website files are unchanged.\n'); return; }
-    const changed=applyCandidate(candidate);
-    stdout.write(`Applied and validated ${candidate.slug}: ${changed.contentPath}, ${changed.assetPath}\n`);
+    if(answer!=='y' && answer!=='yes') { output.write('Cancelled; website files are unchanged.\n'); return; }
+    const changed=(runtime.apply??applyCandidate)(candidate);
+    output.write(`Applied and validated ${candidate.slug}: ${changed.contentPath}${changed.assetPath?`, ${changed.assetPath}`:''}\n`);
   } finally {
     prompt.close();if(preview)await stopPreview(preview);
     if(candidate)cancelCandidate(candidate);
