@@ -8,6 +8,8 @@ import { loadRelease } from '../scripts/public-inputs.mjs';
 import { loadSalesChannels } from '../scripts/sales-channels.mjs';
 import { checkOutput } from '../scripts/check-static.mjs';
 import { applyChannelChange, planChannelChange } from '../scripts/sales-channel-workflow.mjs';
+import { developmentSalesChannelPreviews } from '../src/lib/sales-channel-preview.mjs';
+import { getMessages } from '../src/i18n/messages.mjs';
 
 const root=process.cwd();
 const configPath=join(root,'content/sales-channels.json');
@@ -48,7 +50,7 @@ test('enabled synthetic channels render only on associated Flavor details with s
       sample('whatsapp','WhatsApp','whatsapp','https://wa.me/5215555555555',{flavors:['grape']}),
       sample('demo-market','Demo Market','website','https://seller.example/grape'),
     ]);
-    const build=spawnSync('npm',['run','build'],{cwd:base,encoding:'utf8',timeout:120000,maxBuffer:4*1024*1024});
+    const build=spawnSync('npm',['run','build'],{cwd:base,encoding:'utf8',timeout:120000,maxBuffer:4*1024*1024,env:{...process.env,TROPICAL_CHANNEL_PREVIEW:'1'}});
     assert.equal(build.status,0,build.stdout+'\n'+build.stderr);
     const grape=readFileSync(join(base,'dist/flavors/grape/index.html'),'utf8');
     const spanishGrape=readFileSync(join(base,'dist/es/flavors/grape/index.html'),'utf8');
@@ -66,6 +68,8 @@ test('enabled synthetic channels render only on associated Flavor details with s
     assert.match(lime,/href="https:\/\/seller\.example\/grape"/);
     assert(!spanishLime.includes('https://wa.me/'));
     assert(!home.includes('seller.example'));
+    assert(!grape.includes('Cannaland') && !grape.includes('Splift'));
+    assert(!grape.includes('Preview only') && !spanishGrape.includes('Solo vista previa'));
     assert(!existsSync(join(base,'dist/sales-channels.json')));
     await checkOutput(base);
   } finally {rmSync(base,{recursive:true,force:true});}
@@ -183,4 +187,18 @@ test('empty flavor association is valid and disabled channels never render publi
     const release=loadRelease({base});
     assert(release.flavors.every(flavor=>flavor.salesChannels.length===0));
   } finally {rmSync(base,{recursive:true,force:true});}
+});
+
+test('development preview requires dev mode and opt-in and uses localized non-interactive URL-free entries',()=>{
+  assert.deepEqual(developmentSalesChannelPreviews({isDevelopment:false,optIn:'1'}),[]);
+  assert.deepEqual(developmentSalesChannelPreviews({isDevelopment:true,optIn:'0'}),[]);
+  const entries=developmentSalesChannelPreviews({isDevelopment:true,optIn:'1'});
+  assert.deepEqual(entries,[{name:'Cannaland'},{name:'Splift'}]);
+  assert(entries.every(entry=>!Object.hasOwn(entry,'destinationUrl')&&!Object.hasOwn(entry,'url')));
+  assert.equal(getMessages('en').flavors.previewOnly,'Preview only');
+  assert.equal(getMessages('es-MX').flavors.previewOnly,'Solo vista previa');
+  const component=readFileSync(join(root,'src/components/SalesChannels.astro'),'utf8');
+  const previewMarkup=component.slice(component.indexOf('{previewChannels.map'),component.indexOf('</ul>'));
+  assert.match(previewMarkup,/role="note" aria-disabled="true"/);
+  assert.doesNotMatch(previewMarkup,/<a\b|<button\b|\bhref=/i);
 });

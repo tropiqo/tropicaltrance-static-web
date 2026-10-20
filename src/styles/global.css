@@ -99,6 +99,8 @@ a:hover { text-decoration-thickness: 0.14em; }
 .sales-channels { border-block-start: var(--border-thin) solid var(--color-border); margin-block-start: var(--space-7); padding-block-start: var(--space-6); display: grid; gap: var(--space-5); }
 .sales-channel-list { display: flex; flex-wrap: wrap; gap: var(--space-3); list-style: none; padding: 0; margin: 0; }
 .sales-channel-list .button { min-block-size: 2.75rem; }
+.sales-channel-preview { cursor: default; flex-wrap: wrap; border-style: dashed; }
+.sales-channel-preview__label { color: var(--color-muted); font-size: var(--text-small); letter-spacing: 0.04em; }
 .story-copy { display: grid; align-content: start; gap: var(--space-4); }
 .contact-panel { background: var(--color-paper); color: var(--color-ink); --focus-ring: var(--color-ink); border-radius: var(--radius-panel); padding: clamp(1.5rem, 4vw, 4rem); display: grid; gap: var(--space-4); }
 .contact-panel .status-line { border-block-start: var(--border-thin) solid var(--color-border-paper); padding-block-start: var(--space-4); color: var(--color-ink-muted); }

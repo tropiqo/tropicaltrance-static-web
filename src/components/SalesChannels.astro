@@ -6,15 +6,17 @@ interface Props {
   flavor: PublicFlavor;
   locale: 'en' | 'es-MX';
   messages: ReturnType<typeof getMessages>;
+  previewChannels?: { name: string }[];
 }
 
-const { flavor, locale, messages } = Astro.props;
+const { flavor, locale, messages, previewChannels = [] } = Astro.props;
 const channels = flavor.salesChannels ?? [];
 const localizedLinkLabel = (channelName: string) => messages.flavors.channelLinkLabel
   .replace('{flavor}', flavor.name)
   .replace('{channel}', channelName);
+const hasChannels = channels.length > 0 || previewChannels.length > 0;
 ---
-{channels.length > 0 && <section class="sales-channels" lang={locale} aria-labelledby={`sales-channels-${flavor.slug}`}>
+{hasChannels && <section class="sales-channels" lang={locale} aria-labelledby={`sales-channels-${flavor.slug}`}>
   <div class="section-heading">
     <p class="eyebrow">{messages.flavors.find}</p>
     <h2 id={`sales-channels-${flavor.slug}`}>{messages.flavors.where}</h2>
@@ -22,6 +24,12 @@ const localizedLinkLabel = (channelName: string) => messages.flavors.channelLink
   <ul class="sales-channel-list">
     {channels.map(channel => <li>
       <a class="button" href={channel.destinationUrl} target="_blank" rel="noopener noreferrer" aria-label={localizedLinkLabel(channel.name)}>{channel.name}</a>
+    </li>)}
+    {previewChannels.map(channel => <li>
+      <span class="button sales-channel-preview" role="note" aria-disabled="true" aria-label={`${channel.name}: ${messages.flavors.previewOnly}`}>
+        <span>{channel.name}</span>
+        <span class="sales-channel-preview__label">{messages.flavors.previewOnly}</span>
+      </span>
     </li>)}
   </ul>
 </section>}

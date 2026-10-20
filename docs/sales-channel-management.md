@@ -85,6 +85,14 @@ npm run verify:reproducible
 
 The existing Website renderer omits disabled channels from public flavor pages. Keep both Cannaland and Splift disabled until separately approved and explicitly authorized for a production change.
 
+For a local visual check of the section without configuring destinations or enabling records, start Astro with the opt-in development preview:
+
+```sh
+TROPICAL_CHANNEL_PREVIEW=1 npm run dev
+```
+
+Open `http://127.0.0.1:4321/flavors/grape/` and `http://127.0.0.1:4321/es/flavors/grape/`. This displays text-only Cannaland and Splift examples labeled “Preview only” / “Solo vista previa”. They are notes, not links or purchase controls. The preview requires both Astro development mode and the opt-in flag; `npm run build` and production preview do not include it, even if the flag is set.
+
 ## Production boundary
 
 Development authorization permits local configuration work only. A valid HTTPS destination does not establish a partnership, commission, product listing, commercial eligibility, or publication approval. Production activation requires the existing Studio provenance/publication and owner authorization controls, followed by a separately reviewed change. The development-only flag does not bypass these controls, and this workflow has no command to activate a channel.
