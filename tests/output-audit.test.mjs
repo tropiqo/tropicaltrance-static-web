@@ -40,7 +40,7 @@ for (const [name, mutation, reason] of [
   ['exposed decoration', edit(html => html.replace('class="tropical-atmosphere" aria-hidden="true"', 'class="tropical-atmosphere"')), /Decoration exposed/],
   ['broken labelledby', insert('<section aria-labelledby="absent"></section>'), /Broken aria-labelledby/],
   ['zoom-disabled viewport', edit(html => html.replace('width=device-width, initial-scale=1', 'width=device-width, user-scalable=no')), /restricts zoom/],
-  ['external URL', insert('<a href="https://example.invalid/">External</a>'), /External/],
+  ['external URL', insert('<a href="https://example.invalid/">External</a>'), /External link must open/],
   ['positive tabindex', insert('<a href="/" tabindex="2">Home</a>'), /Positive tabindex/],
   ['inline handler', insert('<a href="/" onclick="void(0)">Home</a>'), /Inline event/],
   ['private evidence leakage', insert('<p>authorityEvidence</p>'), /Private evidence/],

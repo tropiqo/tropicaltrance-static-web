@@ -118,6 +118,26 @@ The normal build includes selected local flavor content; treat deployment as a
 separate release decision. Review fixtures and review-only Trancy media remain
 confined to `npm run review:build` and must never be deployed.
 
+### Sales-channel links
+
+`content/sales-channels.json` is a separate, closed website configuration for
+referral destinations. WhatsApp, Splift and Cannaland start disabled with no
+destination URL. Do not add seller-specific URLs or set `enabled` to `true`
+until the owner has approved the exact destination for use. Enabled links appear
+only on Flavor detail pages; an omitted `flavors` list associates that channel
+with every flavor, while a list limits it to those slugs. A channel with no
+enabled, valid destination produces no section or placeholder.
+
+External website destinations must use HTTPS. WhatsApp destinations must use
+`https://wa.me/<international-digits>` or
+`https://api.whatsapp.com/send?phone=<international-digits>`. The validator
+rejects unsafe schemes, malformed destinations, bad WhatsApp phone paths,
+unknown flavor associations, duplicate IDs and unknown fields. Rendered links
+open in a new tab with `noopener noreferrer` and an accessible label. This is a
+local referral-link configuration only; it does not assert a partnership,
+availability, pricing or commercial authorization and adds no checkout or
+analytics behavior.
+
 ## Retained legacy material and URL decisions
 
 Obsolete root prototype pages `index.md`, `about.md` and `contact.md` are retired. Astro retains `/`, `/about/` and `/contact/`. The approved legacy Jekyll/theme/Ruby/demo-source/custom-JavaScript implementation has also been retired. Historical demo media, author/comment data, license/history material and copyright notices remain preserved; they are not build inputs. Active migration notes remain in `docs/migration/`; active tests use plural `tests/`.

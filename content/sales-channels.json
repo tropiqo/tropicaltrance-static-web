@@ -1,0 +1,26 @@
+{
+  "contractVersion": "1",
+  "channels": [
+    {
+      "id": "whatsapp",
+      "name": "WhatsApp",
+      "kind": "whatsapp",
+      "destinationUrl": null,
+      "enabled": false
+    },
+    {
+      "id": "splift",
+      "name": "Splift",
+      "kind": "website",
+      "destinationUrl": null,
+      "enabled": false
+    },
+    {
+      "id": "cannaland",
+      "name": "Cannaland",
+      "kind": "website",
+      "destinationUrl": null,
+      "enabled": false
+    }
+  ]
+}

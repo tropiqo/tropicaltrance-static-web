@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseJson, validateSchema } from './closed-json.mjs';
 import { fixtureDigests, fixtureMarker } from './fixture-guards.mjs';
 import { trancy, validateTrancy } from './trancy-static.mjs';
+import { channelsForFlavor, loadSalesChannels } from './sales-channels.mjs';
 
 export const digest = bytes => 'sha256:' + createHash('sha256').update(bytes).digest('hex');
 const requireThat = (ok, message) => { if (!ok) throw Error(message); };
@@ -119,7 +120,7 @@ function loadFlavorContent({base}) {
   const flavorsPath = 'content/flavors';
   const flavorFiles = inventory(base,flavorsPath,true);
   const rootEntries = readdirSync(safePath(base,'content'));
-  requireThat(rootEntries.every(name=>['site.json','flavors','editorial'].includes(name)),'Unexpected normal content entry');
+  requireThat(rootEntries.every(name=>['site.json','flavors','editorial','sales-channels.json'].includes(name)),'Unexpected normal content entry');
   requireThat(inventory(base,'content/editorial',true).length===0,'Unsupported normal editorial content');
   unique(flavorFiles,x=>x,'Duplicate flavor content path');
   const flavors = flavorFiles.map(path=>{
@@ -136,6 +137,8 @@ function loadFlavorContent({base}) {
     return {flavor:{id:slug,revision:value.revision},slug,name:value.name,shortDescription:value.shortDescription,alt:value.alt,mediaUrl:'/'+value.media.path,media:{contentId:value.media.contentId}};
   }).sort((a,b)=>a.slug.localeCompare(b.slug));
   unique(flavors,x=>x.slug,'Duplicate Flavor slug');
+  const channelConfig = loadSalesChannels({base,flavors:flavors.map(flavor=>flavor.slug)});
+  for (const flavor of flavors) flavor.salesChannels = channelsForFlavor(channelConfig,flavor);
   const deliveries=flavors.map(f=>({path:'public-astro/'+f.mediaUrl.slice(1),asset:{contentId:f.media.contentId}}));
   const selected=new Set([trancy.path,...deliveries.map(d=>d.path)]);
   const trancyPath=safePath(base,trancy.path);

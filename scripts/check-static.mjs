@@ -32,7 +32,10 @@ function decodeAttribute(text) {
   return text.replace(/&(#x[0-9a-f]+|#[0-9]+|amp|quot|apos|lt|gt);/gi, (_,entity) => entity[0] === '#' ?
     String.fromCodePoint(parseInt(entity.slice(entity[1].toLowerCase()==='x'?2:1), entity[1].toLowerCase()==='x'?16:10)) : named[entity.toLowerCase()]);
 }
-export function checkHtml(html, media = []) {
+function htmlAttributes(source) {
+  return new Map([...source.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(match => [match[1].toLowerCase(),decodeAttribute(match[2]??match[3])]));
+}
+export function checkHtml(html, media = [], salesChannels = []) {
   assert.match(html, /<html[^>]*lang="en"/);
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1);
   assert.equal((html.match(/<main(?:\s|>)/g) || []).length, 1);
@@ -60,6 +63,18 @@ export function checkHtml(html, media = []) {
     else assert(!attrs.has('width') && !attrs.has('height'),'Unexpected Flavor image dimensions');
     for (const [name,value] of Object.entries(wanted)) assert.equal(attrs.get(name),value,'Role image '+name+' mismatch');
     assert(['eager','lazy'].includes(attrs.get('loading')) && attrs.get('decoding')==='async','Unexpected image loading behavior');
+  }
+  const salesSection = (html.match(/class="sales-channels"/g) || []).length;
+  assert.equal(salesSection,salesChannels.length?1:0,'Sales-channel section presence must match validated enabled links');
+  if (salesChannels.length) assert.match(html,/Where to Find Us/);
+  else assert(!html.includes('Where to Find Us'),'Disabled channels must not render a placeholder section');
+  const external = [...html.matchAll(/<a\b([^>]*)>/gi)].map(match=>htmlAttributes(match[1])).filter(attrs=>(attrs.get('href')||'').startsWith('https:'));
+  assert.deepEqual(external.map(attrs=>attrs.get('href')),salesChannels.map(channel=>channel.destinationUrl),'External links must exactly match selected sales channels');
+  for (const [index,attrs] of external.entries()) {
+    const channel=salesChannels[index];
+    assert.equal(attrs.get('target'),'_blank','External links open in a new tab');
+    assert.deepEqual(new Set((attrs.get('rel')||'').split(/\s+/)),new Set(['noopener','noreferrer']),'External links require safe rel attributes');
+    assert.equal(attrs.get('aria-label'),channel.accessibleLabel,'External link needs a descriptive accessible name');
   }
   assert(!/\b(?:srcset|imagesrcset|poster)\s*=/i.test(html),'Unapproved media variant');
   assert(!/THC|lab.test|handcrafted|all.natural|tropical mango|paradise pineapple|sunset strawberry|hello@/i.test(html), 'Legacy claim/content leak');
@@ -118,12 +133,17 @@ export async function checkOutput(base = root) {
     const role = page==='index.html'?'home-hero':page==='about/index.html'?'about-mascot':undefined;
     const detail = release.flavors.find(f=>page==='flavors/'+f.slug+'/index.html');
     const media = role ? [trancyMedia] : page==='flavors/index.html' ? release.flavors : detail ? [detail] : [];
-    checkHtml(html,media);
+    const salesChannels=detail?.salesChannels||[];
+    checkHtml(html,media,salesChannels);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
-      const [href, fragment] = match[1].split('#');
+      const [href, fragment] = decodeAttribute(match[1]).split('#');
       assert(href !== trancyMedia.mediaUrl && !release.deliveries.some(m => href==='/' + m.path.slice('public-astro/'.length)),'Unapproved media link');
-      assert(!/^(?:https?:|mailto:|javascript:)/.test(href), 'Unexpected external destination');
+      if (href.startsWith('https:')) {
+        assert(salesChannels.some(channel=>channel.destinationUrl===href),'Unapproved external destination');
+        continue;
+      }
+      assert(!/^(?:\/\/|[a-z][a-z0-9+.-]*:)/i.test(href), 'Unexpected external destination');
       let target = href ? resolve(dist, href.startsWith('/') ? '.' + href : relative(dist, dirname(path)) + '/' + href) : path;
       if (href.endsWith('/')) target = resolve(target, 'index.html');
       assert(target.startsWith(dist + '/') || target === dist, 'Link escapes output');

@@ -16,4 +16,15 @@ const { flavor } = Astro.props;
     <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} loading="eager" />
   </div>
   <FlavorStory editorial={flavor.editorial} />
+  {flavor.salesChannels?.length > 0 && <section class="sales-channels" aria-labelledby={`sales-channels-${flavor.slug}`}>
+    <div class="section-heading">
+      <p class="eyebrow">Find this flavor</p>
+      <h2 id={`sales-channels-${flavor.slug}`}>Where to Find Us</h2>
+    </div>
+    <ul class="sales-channel-list">
+      {flavor.salesChannels.map(channel => <li>
+        <a class="button" href={channel.destinationUrl} target="_blank" rel="noopener noreferrer" aria-label={channel.accessibleLabel}>{channel.name}</a>
+      </li>)}
+    </ul>
+  </section>}
 </div>

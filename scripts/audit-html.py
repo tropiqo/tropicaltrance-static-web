@@ -176,7 +176,14 @@ def audit(root):
             for n in doc.nodes:
                 for attr in ["href", "src", "poster"]:
                     if attr in n.attrs:
-                        reference(n.attrs[attr], page)
+                        value = n.attrs[attr]
+                        parsed = urlsplit(value)
+                        if n.tag == "a" and attr == "href" and (parsed.scheme or parsed.netloc):
+                            require(parsed.scheme == "https" and parsed.netloc and parsed.username is None and parsed.password is None and parsed.fragment == "", f"Unsafe external link: {value}")
+                            require(n.attrs.get("target") == "_blank", "External link must open in a new tab")
+                            require({"noopener", "noreferrer"}.issubset(set(n.attrs.get("rel", "").split())), "External link missing safe rel attributes")
+                        else:
+                            reference(value, page)
                 for attr in ["srcset", "imagesrcset"]:
                     if attr in n.attrs:
                         candidates = n.attrs[attr].split(",")
