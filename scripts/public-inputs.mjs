@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseJson, validateSchema } from './closed-json.mjs';
 import { fixtureDigests, fixtureMarker } from './fixture-guards.mjs';
 import { trancy, validateTrancy } from './trancy-static.mjs';
+import { emeraldGatewayAssets, emeraldGatewayMedia } from './emerald-gateway-static.mjs';
 import { channelsForFlavor, loadSalesChannels } from './sales-channels.mjs';
 
 export const digest = bytes => 'sha256:' + createHash('sha256').update(bytes).digest('hex');
@@ -146,12 +147,20 @@ function loadFlavorContent({base}) {
   const channelConfig = loadSalesChannels({base,flavors:flavors.map(flavor=>flavor.slug)});
   for (const flavor of flavors) flavor.salesChannels = channelsForFlavor(channelConfig,flavor);
   const deliveries=flavors.map(f=>({path:'public-astro/'+f.mediaUrl.slice(1),asset:{contentId:f.media.contentId}}));
-  const selected=new Set([trancy.path,...deliveries.map(d=>d.path)]);
+  const selected=new Set([trancy.path,...deliveries.map(d=>d.path),...emeraldGatewayAssets.map(asset=>asset.path)]);
   const trancyPath=safePath(base,trancy.path);
   requireThat(lstatSync(trancyPath).isFile(),'Expected regular static Trancy image');
   validateTrancy(readFileSync(trancyPath));
+  for (const asset of emeraldGatewayAssets) {
+    const bytes=readFileSync(safePath(base,asset.path));
+    requireThat(bytes.length===asset.size,`Emerald Gateway ${asset.format} byte size mismatch`);
+    same(digest(bytes),asset.contentId,`Emerald Gateway ${asset.format} digest mismatch`);
+    if (asset.format==='mp4') requireThat(bytes.toString('ascii',4,8)==='ftyp','Emerald Gateway delivery is not an MP4');
+    if (asset.format==='webp') requireThat(bytes.toString('ascii',0,4)==='RIFF' && bytes.toString('ascii',8,12)==='WEBP','Emerald Gateway poster is not WebP');
+    if (asset.format==='js') requireThat(bytes.toString('utf8').includes("prefers-reduced-motion: reduce") && bytes.toString('utf8').includes("video.play()"),'Cinematic controls script is incomplete');
+  }
   same(inventory(base,'public-astro').sort(),[...selected].sort(),'Unlisted file would be copied by publicDir');
-  return {site,flavors,review:false,deliveries};
+  return {site,flavors,review:false,deliveries,aboutHeroMedia:emeraldGatewayMedia};
 }
 
 export function loadRelease({base=process.cwd(),review=false}={}) {

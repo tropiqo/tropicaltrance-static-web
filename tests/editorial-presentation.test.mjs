@@ -33,7 +33,8 @@ test('shared shell, semantic heading and working static primary/footer navigatio
     assert.match(nav[0],/aria-label="Primary"/); assert.match(nav[1],/aria-label="Footer"/);
     for (const part of nav) { assert.deepEqual([...part.matchAll(/href="([^"]+)"/g)].map(m=>m[1]),['/','/flavors/','/about/','/contact/']); assert(!/world|Trancy/i.test(part)); }
     assert.match(html,/<a[^>]*class="skip-link"[^>]*href="#main"/);assert.match(html,/<main id="main" tabindex="-1"/);
-    assert(!/<(?:script|iframe|form|input|astro-island)\b/i.test(html));
+    assert(!/<(?:iframe|form|input|astro-island)\b/i.test(html));
+    assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?1:0);
   }
 });
 test('Home uses approved copy and renders release-derived flavor previews',()=>{
@@ -102,13 +103,26 @@ test('Contact and About contain restrained copy without invented contact endpoin
   const contact=normal('contact/index.html');assert.match(contact,/class="contact-panel"/);assert.match(contact,/WhatsApp Business/);assert.match(contact,/Coming Soon/);
   const about=normal('about/index.html');
   for(const phrase of ['Beyond the Ordinary','Tropical Trance is a creative universe inspired by tropical energy, vibrant flavors, and the freedom to explore the unexpected.','We believe every flavor deserves more than a name. It deserves its own world, atmosphere, and adventure.','Trancy is the unmistakable face of Tropical Trance.','Curious, adventurous, and always ready for something unexpected, Trancy travels through surreal tropical worlds where each flavor becomes a new experience.','Different places. Different adventures. One familiar explorer.','Our Creative Philosophy','Trancy is the constant. The adventure changes.','Our creative direction combines imaginative storytelling, expressive artwork, and a refined tropical aesthetic.','Explore the Worlds','Explore the Flavors']) assert(about.includes(phrase));
-  for(const route of routes)assert(!/mailto:|tel:|https?:|\b[\w.-]+@[\w.-]+\.[a-z]+|<form\b|<input\b|<script\b|social profile|founder|manufacturing|certified/i.test(normal(route)));
+  for(const route of routes)assert(!/mailto:|tel:|https?:|\b[\w.-]+@[\w.-]+\.[a-z]+|<form\b|<input\b|social profile|founder|manufacturing|certified/i.test(normal(route)));
+});
+test('About uses the pinned Emerald Gateway delivery and preserves its copy; other routes have no video',()=>{
+  const about=normal('about/index.html');
+  assert.match(about,/<video\b[^>]*src="\/assets\/emerald-gateway-web\.mp4"/);
+  assert.match(about,/poster="\/assets\/emerald-gateway-poster\.webp"/);
+  assert.match(about,/<video\b[^>]*\bmuted\b[^>]*\bloop\b[^>]*\bplaysinline\b[^>]*preload="none"/);
+  assert.match(about,/A camera approaches a luminous emerald gateway in a tropical forest before revealing a surreal waterfall landscape\./);
+  assert.match(about,/Play Emerald Gateway video/);
+  assert(!/autoplay(?:="[^"]*")?/.test(about));
+  for(const route of routes.filter(route=>route!=='about/index.html')) assert(!/<video\b|emerald-gateway/.test(normal(route)));
+  for(const asset of ['public-astro/assets/emerald-gateway-web.mp4','public-astro/assets/emerald-gateway-poster.webp']) assert(readFileSync(resolve(root,asset)).length>0);
 });
 test('decoration is hidden, static and separate from approved media; no remote CSS/font/image dependencies',()=>{
   const release=loadRelease();
   for(const route of routes) {
     const html=normal(route);for(const block of html.matchAll(/<div class="decorative-background[^>]*>/g))assert.match(block[0],/aria-hidden="true"/);
-    assert(!/<(?:svg|canvas|video|audio|script|iframe)\b/i.test(html));
+    assert(!/<(?:svg|canvas|audio|iframe)\b/i.test(html));
+    assert.equal((html.match(/<video\b/g)||[]).length,route==='about/index.html'?1:0);
+    assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?1:0);
     const expectedFlavorImages=['index.html','flavors/index.html'].includes(route)?release.flavors.length:0;
     const expectedTrancyImages=['index.html','about/index.html'].includes(route)?1:0;
     assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages);
@@ -150,7 +164,7 @@ test('presentation reads validated props only; contracts, fixture roots and publ
     const source=text(`src/components/${name}.astro`);assert(!/readFile|loadRelease|fetch\s*\(|fixture-|grape|cherry|lime|JSON\.parse|content\//.test(source));
   }
   const release=loadRelease();
-  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/trancy-web-r1.webp'].sort());
+  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/trancy-web-r1.webp','public-astro/assets/cinematic-hero-video.js','public-astro/assets/emerald-gateway-poster.webp','public-astro/assets/emerald-gateway-web.mp4'].sort());
   assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`)].sort());
 });
 

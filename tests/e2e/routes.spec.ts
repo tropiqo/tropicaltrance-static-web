@@ -202,3 +202,57 @@ test('reduced-motion preference disables carousel snapping and smooth scrolling'
   await expect(track).toHaveCSS('scroll-snap-type', 'none');
   await expect(track).toHaveCSS('scroll-behavior', 'auto');
 });
+
+test('About Emerald Gateway video keeps its scene ratio and page reflows at all target widths', async ({ page }) => {
+  await page.goto('/about/');
+  const video = page.locator('#emerald-gateway-video');
+  await expect(video).toBeVisible();
+  await expect(video).toHaveAttribute('src', '/assets/emerald-gateway-web.mp4');
+  await expect(video).toHaveAttribute('poster', '/assets/emerald-gateway-poster.webp');
+  await expect(video).toHaveAttribute('muted', '');
+  await expect(video).toHaveAttribute('loop', '');
+  await expect(video).toHaveAttribute('playsinline', '');
+  await expect(video).toHaveAttribute('preload', 'none');
+  await expect(video).not.toHaveAttribute('autoplay', /.+/);
+  await expect(page.getByText('A camera approaches a luminous emerald gateway in a tropical forest before revealing a surreal waterfall landscape.')).toHaveCount(1);
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    const geometry = await page.locator('.cinematic-hero__video').evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      return {
+        width: bounds.width,
+        height: bounds.height,
+        objectFit: getComputedStyle(element).objectFit,
+        viewport: document.documentElement.clientWidth,
+        document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+      };
+    });
+    expect(geometry.width).toBeGreaterThan(0);
+    expect(geometry.width / geometry.height).toBeCloseTo(16 / 9, 1);
+    expect(geometry.objectFit).toBe('contain');
+    expect(geometry.document).toBeLessThanOrEqual(geometry.viewport);
+    expect(geometry.body).toBeLessThanOrEqual(geometry.viewport);
+  }
+});
+
+test('About video control is keyboard operable and reduced motion starts on the poster', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/about/');
+  const video = page.locator('#emerald-gateway-video');
+  const toggle = page.getByRole('button', { name: 'Play Emerald Gateway video' });
+  await expect(video).toHaveJSProperty('paused', true);
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.focus();
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveCSS('outline-width', '3px');
+
+  await page.keyboard.press('Enter');
+  await expect.poll(() => video.evaluate(element => !(element as HTMLVideoElement).paused)).toBe(true);
+  await expect(page.getByRole('button', { name: 'Pause Emerald Gateway video' })).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Enter');
+  await expect(video).toHaveJSProperty('paused', true);
+  await expect(page.getByRole('button', { name: 'Play Emerald Gateway video' })).toHaveAttribute('aria-pressed', 'false');
+});

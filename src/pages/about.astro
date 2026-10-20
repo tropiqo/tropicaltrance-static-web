@@ -4,12 +4,16 @@ import release from '#public-release';
 import EditorialHero from '../components/EditorialHero.astro';
 import EditorialSection from '../components/EditorialSection.astro';
 import TrancyMedia from '../components/TrancyMedia.astro';
+import CinematicHeroVideo from '../components/CinematicHeroVideo.astro';
 ---
 <SiteLayout title="Beyond the Ordinary" description="Tropical Trance is a creative universe inspired by tropical energy, vibrant flavors, and the freedom to explore the unexpected.">
   <EditorialHero title="Beyond the Ordinary" description={[
     'Tropical Trance is a creative universe inspired by tropical energy, vibrant flavors, and the freedom to explore the unexpected.',
     'We believe every flavor deserves more than a name. It deserves its own world, atmosphere, and adventure.',
-  ]} eyebrow="Tropical Trance" decoration="tide" atmosphere />
+  ]} eyebrow="Tropical Trance" decoration={release.aboutHeroMedia ? 'none' : 'tide'} atmosphere>
+    {release.aboutHeroMedia && <CinematicHeroVideo slot="visual" {...release.aboutHeroMedia} />}
+  </EditorialHero>
+  {release.aboutHeroMedia && <Fragment set:html={'<script type="module" src="/assets/cinematic-hero-video.js"></script>'} />}
   {release.brandMedia['about-mascot'] && <EditorialSection variant="split" title="Meet Trancy" eyebrow="Tropical Trance" atmosphere>
     <p class="lead">Trancy is the unmistakable face of Tropical Trance.</p>
     <p>Curious, adventurous, and always ready for something unexpected, Trancy travels through surreal tropical worlds where each flavor becomes a new experience.</p>

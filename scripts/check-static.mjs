@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { loadRelease, rejectFixture, digest } from './public-inputs.mjs';
 import { trancy, trancyMedia, validateTrancy } from './trancy-static.mjs';
+import { emeraldGatewayAssets } from './emerald-gateway-static.mjs';
 import { readdir, readFile, lstat } from 'node:fs/promises';
 import { resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,10 +22,11 @@ async function files(dir) {
 }
 export function checkInventory(paths, deliveries = [], flavors = []) {
   const expectedRoutes = [...routes,...flavors.map(f=>'flavors/'+f.slug+'/index.html')];
-  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length))];
+  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length))];
   assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), expectedRoutes.sort(), 'Unexpected static routes');
   assert.equal(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)).length, 1, 'Exactly one referenced stylesheet');
-  assert(paths.every(p => expectedRoutes.includes(p) || assets.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)), 'Unexpected copied/generated file');
+  assert(paths.every(p => expectedRoutes.includes(p) || assets.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p) || /^_astro\/[A-Za-z0-9_.-]+\.js$/.test(p)), 'Unexpected copied/generated file');
+  assert(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.js$/.test(p)).length <= 1, 'Unexpected client script count');
   assert.deepEqual(paths.filter(p => assets.includes(p)).sort(), assets.sort(), 'Selected output media inventory mismatch');
 }
 function decodeAttribute(text) {
@@ -35,7 +37,7 @@ function decodeAttribute(text) {
 function htmlAttributes(source) {
   return new Map([...source.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(match => [match[1].toLowerCase(),decodeAttribute(match[2]??match[3])]));
 }
-export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null) {
+export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null, aboutHeroMedia = null) {
   assert.match(html, /<html[^>]*lang="en"/);
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1);
   assert.equal((html.match(/<main(?:\s|>)/g) || []).length, 1);
@@ -46,7 +48,25 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
   assert.match(html, /name="description" content="[^"]+"/);
   assert.match(html, /noindex, nofollow/);
   assert.match(html, /Development-only foundation/);
-  assert(!/<(?:script|iframe|form|astro-island)\b/i.test(html), 'Unapproved media or client runtime');
+  assert(!/<(?:iframe|form|input|object|embed|audio|canvas|astro-island)\b/i.test(html), 'Unapproved media or client runtime');
+  const videoTags = [...html.matchAll(/<video\b([^>]*)><\/video>/gi)];
+  const scriptTags = [...html.matchAll(/<script\b([^>]*)><\/script>/gi)];
+  assert.equal(videoTags.length, aboutHeroMedia ? 1 : 0, 'Cinematic video belongs only to the About hero');
+  assert.equal(scriptTags.length, aboutHeroMedia ? 1 : 0, 'Cinematic controls use one About-only script');
+  if (aboutHeroMedia) {
+    const attrs = htmlAttributes(videoTags[0][1]);
+    assert.equal(attrs.get('src'), aboutHeroMedia.src);
+    assert.equal(attrs.get('poster'), aboutHeroMedia.poster);
+    for (const name of ['muted','loop','playsinline']) assert(new RegExp(`(?:^|\\s)${name}(?:\\s|$)`).test(videoTags[0][1]), `Video missing ${name}`);
+    assert.equal(attrs.get('preload'), 'none');
+    assert.equal(attrs.get('aria-describedby'), 'emerald-gateway-description');
+    assert(!attrs.has('autoplay'), 'Autoplay must be gated by reduced-motion preference');
+    const scriptAttrs = htmlAttributes(scriptTags[0][1]);
+    assert.equal(scriptAttrs.get('type'), 'module');
+    assert.equal(scriptAttrs.get('src'), '/assets/cinematic-hero-video.js');
+    assert.match(html, /<button\b[^>]*aria-label="Play Emerald Gateway video"[^>]*aria-pressed="false"[^>]*aria-controls="emerald-gateway-video"/);
+    assert.match(html, /id="emerald-gateway-description"[^>]*>A camera approaches a luminous emerald gateway/);
+  }
   const images = [...html.matchAll(/<img\b([^>]*)>/gi)];
   assert.equal(images.length, media.length, 'Unapproved or missing role image');
   for (const [index,image] of images.entries()) {
@@ -78,7 +98,7 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
     const expectedLabel = channel?.accessibleLabel ?? 'Message Tropical Trance on WhatsApp (opens in a new tab)';
     assert.equal(attrs.get('aria-label'),expectedLabel,'External link needs a descriptive accessible name');
   }
-  assert(!/\b(?:srcset|imagesrcset|poster)\s*=/i.test(html),'Unapproved media variant');
+  assert(!/\b(?:srcset|imagesrcset)\s*=/i.test(html),'Unapproved media variant');
   assert(!/THC|lab.test|handcrafted|all.natural|tropical mango|paradise pineapple|sunset strawberry|hello@/i.test(html), 'Legacy claim/content leak');
 }
 export function checkConfig(config) {
@@ -94,6 +114,11 @@ export async function checkFlavorMedia(base,release=loadRelease({base})) {
     assert(metadata.width>0 && metadata.height>0 && metadata.width<=1024 && metadata.height<=1536,'Flavor media dimensions exceed the web profile');
     assert(!metadata.pages || metadata.pages===1,'Animated Flavor media is not supported');
   }
+  const poster=emeraldGatewayAssets.find(asset=>asset.format==='webp');
+  const posterMetadata=await sharp(resolve(base,poster.path)).metadata();
+  assert.equal(posterMetadata.format,'webp','Emerald Gateway poster must be WebP');
+  assert.equal(posterMetadata.width,poster.width);
+  assert.equal(posterMetadata.height,poster.height);
 }
 export async function checkSource(base = root) {
   const config = await readFile(resolve(base, 'astro.config.mjs'), 'utf8');
@@ -103,7 +128,12 @@ export async function checkSource(base = root) {
   assert.deepEqual(pages.sort(), ['404.astro','about.astro','contact.astro','flavors/[slug].astro','flavors/index.astro','index.astro'].sort());
   for (const path of source) {
     const text = await readFile(path, 'utf8');
-    assert(!/fetch\s*\(|https?:|tropical-trance-studio|artwork-workspace|prerender\s*=\s*false|astro:actions|astro:content|<script/.test(text), `Forbidden source dependency: ${path}`);
+    assert(!/fetch\s*\(|https?:|tropical-trance-studio|artwork-workspace|prerender\s*=\s*false|astro:actions|astro:content/.test(text), `Forbidden source dependency: ${path}`);
+    if (/<script\b/i.test(text)) {
+      assert(path.endsWith('/pages/about.astro'), `Unexpected script source: ${path}`);
+      assert.equal((text.match(/<script\b/g)||[]).length,1);
+      assert.match(text, /set:html=\{'<script type="module" src="\/assets\/cinematic-hero-video\.js"><\/script>'\}/);
+    }
   }
   assert.match(await readFile(resolve(base, 'src/pages/flavors/[slug].astro'), 'utf8'), /release\.flavors\.map/);
   const selected = loadRelease({base}).flavors;
@@ -127,6 +157,11 @@ export async function checkOutput(base = root) {
     if (servedPath === trancy.path) validateTrancy(bytes);
     else rejectFixture(bytes);
     if (delivery) assert.equal(digest(bytes),delivery.asset.contentId,'Output delivery digest mismatch');
+    const aboutAsset=emeraldGatewayAssets.find(asset=>asset.path===servedPath);
+    if (aboutAsset) {
+      assert.equal(bytes.length,aboutAsset.size,'Emerald Gateway output byte size mismatch');
+      assert.equal(digest(bytes),aboutAsset.contentId,'Emerald Gateway output digest mismatch');
+    }
     assert(!/tropical-trance-studio|artwork-workspace:|(?:\/Users\/|\/private\/)|authorityEvidence|reviewEvidenceContentId|candidateContentId|publication-decision|projection\.schema\.json/.test(bytes.toString('utf8')), 'Private schema/evidence/output leak');
   }
   for (const page of [...routes,...release.flavors.map(f=>'flavors/'+f.slug+'/index.html')]) {
@@ -137,7 +172,7 @@ export async function checkOutput(base = root) {
     const media = page==='index.html' ? [trancyMedia,...release.flavors] : role ? [trancyMedia] : page==='flavors/index.html' ? release.flavors : detail ? [detail] : [];
     const salesChannels=detail?.salesChannels||[];
     const whatsappBusinessUrl=page==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
-    checkHtml(html,media,salesChannels,whatsappBusinessUrl);
+    checkHtml(html,media,salesChannels,whatsappBusinessUrl,page==='about/index.html'?release.aboutHeroMedia:null);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = decodeAttribute(match[1]).split('#');

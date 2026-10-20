@@ -84,7 +84,7 @@ class Document(HTMLParser):
             return " ".join(self.ids[i].text() for i in node.attrs["aria-labelledby"].split())
         return node.attrs.get("aria-label", node.text()).strip()
 
-    def structure(self):
+    def structure(self, page):
         require(self.doctype, "Missing HTML doctype")
         for tag in ["html", "head", "body", "main", "header", "footer", "title", "h1"]:
             require(len(self.find(tag)) == 1, f"Expected one {tag}")
@@ -118,8 +118,22 @@ class Document(HTMLParser):
         nav = self.find("nav")
         require(len(nav) == 2 and {n.attrs.get("aria-label") for n in nav} == {"Primary", "Footer"}, "Navigation landmarks need distinct labels")
         require(all(n.within("header" if n.attrs["aria-label"] == "Primary" else "footer") for n in nav), "Invalid navigation placement")
+        scripts = self.find("script")
+        videos = self.find("video")
+        require(len(scripts) == len(videos) and len(scripts) <= (1 if page == "about/index.html" else 0), "Unexpected client script/video placement/count")
         for n in self.nodes:
-            require(n.tag not in {"script", "iframe", "form", "input", "object", "embed", "video", "audio", "canvas", "astro-island"}, f"Unexpected runtime/control: {n.tag}")
+            require(n.tag not in {"iframe", "form", "input", "object", "embed", "audio", "canvas", "astro-island"}, f"Unexpected runtime/control: {n.tag}")
+            if n.tag == "script":
+                require(set(n.attrs) == {"type", "src"} and n.attrs["type"] == "module" and n.attrs["src"] == "/assets/cinematic-hero-video.js", "Unexpected script source/attributes")
+                require(not n.text().strip(), "Inline script is forbidden")
+            if n.tag == "video":
+                required = {"src", "poster", "muted", "loop", "playsinline", "preload", "aria-describedby", "tabindex", "class", "id"}
+                scoped = {name for name in n.attrs if re.fullmatch(r"data-astro-cid-[a-z0-9]+", name)}
+                require(set(n.attrs) == required | scoped, "Unexpected video attributes")
+                require(n.attrs["src"] == "/assets/emerald-gateway-web.mp4" and n.attrs["poster"] == "/assets/emerald-gateway-poster.webp", "Unexpected About video assets")
+                require(all(name in n.attrs for name in ["muted", "loop", "playsinline"]) and n.attrs["preload"] == "none", "Unsafe video playback attributes")
+                require("autoplay" not in n.attrs and n.attrs["aria-describedby"] == "emerald-gateway-description", "Video autoplay/accessibility mismatch")
+                require(n.attrs["tabindex"] == "-1" and n.attrs["id"] == "emerald-gateway-video", "Unexpected video focus behavior")
             require(not any(k.startswith("on") for k in n.attrs), "Inline event handler forbidden")
             for attr in ["aria-labelledby", "aria-describedby", "aria-controls"]:
                 if attr in n.attrs:
@@ -172,7 +186,7 @@ def audit(root):
 
     for page, doc in documents.items():
         try:
-            doc.structure()
+            doc.structure(page)
             for n in doc.nodes:
                 for attr in ["href", "src", "poster"]:
                     if attr in n.attrs:

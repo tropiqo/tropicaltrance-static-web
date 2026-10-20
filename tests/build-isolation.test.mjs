@@ -33,8 +33,8 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const selectedPaths=initial.flavors.flatMap(f=>[`content/flavors/${f.slug}.json`,`public-astro/${f.mediaUrl.slice(1)}`]);
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
   for(const p of selectedPaths)rmSync(join(base,p));
-  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,7);
-  const baselineHashes={'index.html':'38c6cfe8b500eb430f6e33453ca1b4a1969c661e6816760327755c15e2a6e8bc','about/index.html':'24c851ea7e809a6f4f5ab0ce8dc64da7ed0bb5330a459312aacd7ee5132512ce','flavors/index.html':'5e1605dead87df4f2ae3640038881adce1ec67abb181cb2f36ae3f18a4251ee6'};
+  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,10);
+  const baselineHashes={'index.html':'38c6cfe8b500eb430f6e33453ca1b4a1969c661e6816760327755c15e2a6e8bc','about/index.html':'4835208486c12df13b1338d162650db1bf3def62c7f325b7320ab521e72d8840','flavors/index.html':'5e1605dead87df4f2ae3640038881adce1ec67abb181cb2f36ae3f18a4251ee6'};
   for(const [p,h]of empty)assert.equal(h,p in baselineHashes?'sha256:'+baselineHashes[p]:normal.find(([n])=>n===p)[1]);
   // Leftover bytes are not a valid withdrawal even without references.
   const firstMedia=initial.flavors[0].mediaUrl.slice(1),strayPath=`public-astro/${firstMedia}`;
