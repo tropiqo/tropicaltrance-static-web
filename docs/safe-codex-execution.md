@@ -64,3 +64,22 @@ python3 -B -m unittest discover -s tools/codex-safe -p 'test_*.py'
 ```
 
 These tests cover mode-to-sandbox mapping, disabled networking/integrations, rejected `github-write`, rejected repository names, and rejected flag/command injection through extra arguments. They do not test host sandbox internals, GitHub settings, or live credentials.
+
+## Docker-isolated offline prototype
+
+`tools/codex-safe/docker_runtime.py` has separate `build` and `test` actions. `build` builds the credential-free probe image from `tools/codex-safe/docker/Dockerfile`. `test` requires that image to exist already, creates a disposable synthetic workspace, and runs the offline isolation probe. It never starts Codex or accepts an authenticated mode. Build/bootstrap may need registry access; the actual probe container is run with no network.
+
+The test container uses a non-root UID, drops all Linux capabilities, enables `no-new-privileges`, runs with a read-only root filesystem, has no network, and receives one writable bind mount for the generated fixture. The bind mount uses `type=bind,src=...,dst=/workspace`; Docker bind mounts are writable by default, so the mount specification has no extra bare `rw` field. CPU, memory, and process limits are set. It does not mount a Docker socket, home directory, SSH/GitHub/Codex configuration, `.envrc`, cloud credentials, or other host path. The probe checks workspace writes, denied writes outside it, network failure, UID, effective capabilities, Docker socket absence, and absence of credential-mount sentinel paths. These checks have not been exercised unless the Docker test command completes successfully on the host.
+
+### Owner-reported Docker Desktop verification
+
+The owner reports that the Docker offline test completed successfully on macOS after the mount syntax fix. This is owner-reported output and was not executed or independently observed by Codex. Reported values were: `docker_socket_absent: true`, `effective_capabilities: 0000000000000000`, `host_mount_sentinels_absent: true`, `network_denied: true`, `no_effective_capabilities: true`, `non_root: true`, `outside_writes_denied` true for both `/` and `/tmp`, `uid: 10001`, and `workspace_write: true`. Codex's managed environment still cannot access the Docker daemon, so it has not independently repeated this Docker Desktop test.
+
+Run bootstrap and offline verification separately:
+
+```sh
+python3 -B tools/codex-safe/docker_runtime.py build
+python3 -B tools/codex-safe/docker_runtime.py test
+```
+
+The Docker options are enforced by Docker for this container invocation; the existing Codex flags/environment filters are only requested inside the separate native Codex prototype. Neither set of controls has been verified by the other. The Python base image is version-tagged but not digest-pinned, so rebuilding is operationally reproducible at the configuration level, not guaranteed byte-for-byte or supply-chain immutable. Do not add Codex or credential injection to this prototype. Any later authenticated runtime requires a separately reviewed image pin, dedicated identity, narrowly scoped broker, and host-side isolation verification.
