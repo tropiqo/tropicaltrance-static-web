@@ -49,11 +49,45 @@ test('current development site stays noindex with origin and auth flags and omit
     build(base,{TROPICAL_SEO_ORIGIN:'https://tropicaltrance.example',TROPICAL_INDEXING_AUTHORIZATION:'OWNER_APPROVED'});
     const home=html(base,'index.html');
     assert.match(home,/<title>Escape the Ordinary \| Tropical Trance<\/title>/);
+    assert.match(home,/<meta name="description" content="Explore Tropical Trance, a creative universe/);
     assert.match(home,/<meta name="robots" content="noindex, nofollow"/);
     assert.doesNotMatch(home,/<link rel="canonical"|hreflang=/);
     assert.match(readFileSync(join(base,'dist/robots.txt'),'utf8'),/Disallow: \/\n/);
     assert(!existsSync(join(base,'dist/sitemap.xml')));
-    assert.match(html(base,'es/index.html'),/<meta name="description" content="Entra en un mundo/);
+    const routeMetadata=[
+      ['index.html','Escape the Ordinary','Explore Tropical Trance, a creative universe'],
+      ['es/index.html','Escapa de lo Ordinario','Explora Tropical Trance: un universo creativo'],
+      ['about/index.html','Our Creative World','Meet Trancy and explore the creative world'],
+      ['es/about/index.html','Nuestro universo creativo','Conoce a Trancy y el universo creativo'],
+      ['flavors/index.html','Explore the Flavors','Explore the Tropical Trance flavor collection'],
+      ['es/flavors/index.html','Explora los sabores','Explora la colección de sabores de Tropical Trance'],
+      ['contact/index.html','Get in Touch','Questions about Tropical Trance?'],
+      ['es/contact/index.html','Ponte en contacto','¿Tienes preguntas sobre Tropical Trance?'],
+      ['flavors/cherry/index.html','Cherry Flavor','Explore the Cherry flavor'],
+      ['es/flavors/cherry/index.html','Sabor Cherry','Explora el sabor Cherry'],
+      ['flavors/grape/index.html','Grape Flavor','Explore the Grape flavor'],
+      ['es/flavors/grape/index.html','Sabor Grape','Explora el sabor Grape'],
+      ['flavors/lime/index.html','Lime Flavor','Explore the Lime flavor'],
+      ['es/flavors/lime/index.html','Sabor Lime','Explora el sabor Lime'],
+    ];
+    for(const [path,title,description] of routeMetadata){
+      const page=html(base,path);
+      assert(page.includes(`<title>${title} | Tropical Trance</title>`),path);
+      assert(page.includes(`name="description" content="${description}`),path);
+      assert.match(page,/<meta name="robots" content="noindex, nofollow"/);
+      assert.equal([...page.matchAll(/<h1(?:\s|>)/g)].length,1,path);
+      assert.doesNotMatch(page,/<link rel="canonical"|hreflang=/,path);
+    }
+    const homeEn=html(base,'index.html'), homeEs=html(base,'es/index.html');
+    for(const [page,hrefs] of [[homeEn,['/flavors/','/flavors/cherry/','/flavors/grape/','/flavors/lime/']],[homeEs,['/es/flavors/','/es/flavors/cherry/','/es/flavors/grape/','/es/flavors/lime/']]]) for(const href of hrefs) assert(page.includes(`href="${href}"`),`homepage link ${href}`);
+    for(const prefix of ['','es/']){
+      const localePath=prefix==='es/'?'/es/':'/';
+      for(const slug of ['cherry','grape','lime']){
+        assert(html(base,`${prefix}flavors/index.html`).includes(`href="${localePath}flavors/${slug}/"`),`${prefix}flavors links to ${slug}`);
+        assert(html(base,`${prefix}flavors/${slug}/index.html`).includes(`href="${localePath}flavors/"`),`${prefix}${slug} detail returns to collection`);
+      }
+    }
+    for(const [path,alt] of [['flavors/cherry/index.html','Trancy relaxes in a cherry-shaped boat'],['es/flavors/cherry/index.html','Trancy descansa en una lancha con forma de cereza'],['flavors/grape/index.html','Grape artwork featuring Trancy'],['es/flavors/lime/index.html','Trancy surfea por un paisaje surrealista de lima y cosmos']]) assert(html(base,path).includes(`alt="${alt}`),`${path} descriptive alt`);
   } finally { rmSync(base,{recursive:true,force:true}); }
 });
 
@@ -64,9 +98,9 @@ test('explicitly authorized production output has bilingual metadata, reciprocal
     const site=JSON.parse(readFileSync(sitePath,'utf8'));site.kind='production-site';writeFileSync(sitePath,JSON.stringify(site,null,2)+'\n');
     build(base,{TROPICAL_SEO_ORIGIN:'https://tropicaltrance.example',TROPICAL_INDEXING_AUTHORIZATION:'OWNER_APPROVED',TROPICAL_CHANNEL_PREVIEW:'1'});
     const pairs=[
-      ['index.html','es/index.html','https://tropicaltrance.example/','https://tropicaltrance.example/es/','Escape the Ordinary','Escapa de lo Ordinario','Step into a world','Entra en un mundo'],
-      ['about/index.html','es/about/index.html','https://tropicaltrance.example/about/','https://tropicaltrance.example/es/about/','Beyond the Ordinary','Más allá de lo ordinario','Tropical Trance is a creative universe','Tropical Trance es un universo creativo'],
-      ['flavors/cherry/index.html','es/flavors/cherry/index.html','https://tropicaltrance.example/flavors/cherry/','https://tropicaltrance.example/es/flavors/cherry/','Cherry','Cherry','Explore the Cherry flavor','Explora el sabor Cherry'],
+      ['index.html','es/index.html','https://tropicaltrance.example/','https://tropicaltrance.example/es/','Escape the Ordinary','Escapa de lo Ordinario','Explore Tropical Trance, a creative universe','Explora Tropical Trance: un universo creativo'],
+      ['about/index.html','es/about/index.html','https://tropicaltrance.example/about/','https://tropicaltrance.example/es/about/','Our Creative World','Nuestro universo creativo','Meet Trancy and explore the creative world','Conoce a Trancy y el universo creativo'],
+      ['flavors/cherry/index.html','es/flavors/cherry/index.html','https://tropicaltrance.example/flavors/cherry/','https://tropicaltrance.example/es/flavors/cherry/','Cherry Flavor','Sabor Cherry','Explore the Cherry flavor','Explora el sabor Cherry'],
     ];
     for (const [englishPath,spanishPath,canonical,alternate,englishTitle,spanishTitle,englishDescription,spanishDescription] of pairs) {
       for (const [route,expectedCanonical,expectedAlternate,title,description] of [[englishPath,canonical,alternate,englishTitle,englishDescription],[spanishPath,alternate,canonical,spanishTitle,spanishDescription]]) {

@@ -61,7 +61,7 @@ test('Home uses approved copy and renders release-derived flavor previews',()=>{
 test('non-empty multi-flavor collection metadata does not describe the collection as empty',()=>{
  const release=loadRelease();assert(release.flavors.length>1);
  const html=normal('flavors/index.html');
- assert.match(html,/<meta name="description" content="Explore the Tropical Trance flavor collection\."/);
+ assert.match(html,/<meta name="description" content="Explore the Tropical Trance flavor collection, where each flavor has its own illustrated world\."/);
  assert(!/<meta name="description" content="Empty development-only collection\."/.test(html));
 });
 test('normal collection/detail derive from all selected flavors and preserve approved Grape copy',()=>{

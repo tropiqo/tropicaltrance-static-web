@@ -201,8 +201,8 @@ export async function checkOutput(base = root) {
     const whatsappBusinessUrl=basePage==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
     const messages=getMessages(locale);
     const pageKind=basePage==='index.html'?'home':basePage==='about/index.html'?'about':basePage==='flavors/index.html'?'flavors':basePage==='contact/index.html'?'contact':basePage==='404.html'||basePage==='404/index.html'?'notFound':detail?'detail':'notFound';
-    const metadataTitle=pageKind==='home'?messages.home.metaTitle:pageKind==='about'?messages.about.title:pageKind==='flavors'?messages.flavors.title:pageKind==='contact'?messages.contact.title:pageKind==='detail'?detail.name:messages.notFound.title;
-    const metadataDescription=pageKind==='home'?messages.home.description:pageKind==='about'?(locale==='en'?messages.about.description1:`${messages.about.description1} ${messages.about.description2}`):pageKind==='flavors'?(pageFlavors.length===1?pageFlavors[0].shortDescription:messages.flavors.description):pageKind==='contact'?messages.contact.description:pageKind==='detail'?detail.shortDescription:messages.notFound.description;
+    const metadataTitle=pageKind==='home'?messages.home.metaTitle:pageKind==='about'?messages.about.metaTitle:pageKind==='flavors'?messages.flavors.metaTitle:pageKind==='contact'?messages.contact.metaTitle:pageKind==='detail'?detail.name:messages.notFound.title;
+    const metadataDescription=pageKind==='home'?messages.home.metaDescription:pageKind==='about'?messages.about.metaDescription:pageKind==='flavors'?messages.flavors.metaDescription:pageKind==='contact'?messages.contact.metaDescription:pageKind==='detail'?detail.shortDescription:messages.notFound.description;
     const seo=pageMetadata({page:pageKind,locale,title:metadataTitle,description:metadataDescription,flavor:detail,settings:seoSettings});
     checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale,seo,seoSettings.indexingAuthorized);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');

@@ -32,13 +32,14 @@ export function pageMetadata({ page, locale = 'en', title, description, flavor =
   const path = pagePath(page, locale, flavor);
   if (!path || typeof title !== 'string' || !title.trim() || typeof description !== 'string' || !description.trim()) throw new Error('SEO page metadata requires a supported route, title, and description');
   const isDetail = page === 'detail';
+  const searchTitle = isDetail ? (locale === 'es-MX' ? `Sabor ${title}` : `${title} Flavor`) : title;
   const hasSpanish = !isDetail || Boolean(flavor?.translations?.['es-MX']);
   const canPublishLinks = settings.indexingAuthorized && page !== 'notFound';
   const alternates = canPublishLinks && hasSpanish
     ? LOCALES.map(language => ({ language, path: pagePath(page, language, flavor) }))
     : [];
   return Object.freeze({
-    title: `${title} | Tropical Trance`,
+    title: `${searchTitle} | Tropical Trance`,
     description,
     robots: canPublishLinks ? 'index, follow' : 'noindex, nofollow',
     canonical: canPublishLinks ? new URL(path, settings.origin).href : null,

@@ -34,7 +34,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
   for(const p of selectedPaths)rmSync(join(base,p));
   run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,17);
-  const baselineHashes={'index.html':'41a5f37081d6d7f7f16005f7cfa0bc90d85c7776ff6b2142932d6153c65526e2','about/index.html':'1042dcea7108b32eda380d26dfefe94f52f95940fdc7aba0804ea883aee91ffe','flavors/index.html':'90ef1997e0f3bbe4a23786a89a1213fbf9abad08479bf68f1f2bcff92d199e5a','es/flavors/index.html':'2745df76ea91feebe27be29c9ca68578553472d4d442dc01215bfce4fadbe1a0','es/index.html':'7f0cb15a509cbd5fbe8028021a1e4901271637433a3e3d1a61d298bc11fffd6b'};
+  const baselineHashes={'index.html':'1c7ab20ad7c31c88d1f9956c0ae99f1366f7d1916ca77e1b061b33e4c8066bf4','about/index.html':'dd53b252f276358f960feebc2879595f3a06f482c1da65ea60950be04031079f','flavors/index.html':'0a42d340db08af3c8aa504526e710e26f5aba4c8923f09cc4069b6316fdb9afe','es/flavors/index.html':'d84c191f1e19e9d01766802b6561016c489dbfb5b797dc066d6b141f1bfc0012','es/index.html':'f36ef7fdfca63844dcfe3b80ce76cef55fd3358c8723109a106ff1dd9c89e895'};
   for(const [p,h]of empty)assert.equal(h,p in baselineHashes?'sha256:'+baselineHashes[p]:normal.find(([n])=>n===p)[1],p);
   // Leftover bytes are not a valid withdrawal even without references.
   const firstMedia=initial.flavors[0].mediaUrl.slice(1),strayPath=`public-astro/${firstMedia}`;

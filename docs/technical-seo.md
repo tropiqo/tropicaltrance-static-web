@@ -38,3 +38,13 @@ Do not change the current site record or set the authorization value as part of 
 ## Output coverage
 
 The sitemap lists the existing Home, About, Flavors collection, Contact, and flavor detail routes. It includes localized pairs only where both routes exist; current English/Spanish fixed pages have reciprocal links, and flavor detail alternates require the Spanish translation record. The technical 404 is excluded. Build validation checks canonical, alternate, robots, sitemap, and route inventories against the same metadata contract.
+
+## Content workflow
+
+For each existing page, keep the search title and description distinct from the visible heading where that makes the result clearer. Use the localized message catalog in `src/i18n/messages.mjs`; provide matching English and Mexican Spanish fields, then verify their meaning and natural phrasing side by side. Keep titles specific to the page and descriptions concise, factual, and based on established brand or page content. Do not repeat keywords or add claims that are absent from approved content.
+
+When adding a flavor, use the documented `flavor:add` workflow and supply both locales' description and image alt text. The flavor detail title is derived from the existing flavor name, and its metadata description reuses that flavor's approved short description. Do not rewrite that description as an SEO task. Describe only the meaningful visual information in alt text; do not use it for keyword lists. Check the Home discovery cards, both Flavors collections, both detail routes, headings, language links, and the artwork's rendered crop.
+
+Future apparel content is out of scope until the owner approves creating it. Once approved, add it through the site's established content and route architecture, base copy only on verified product facts, localize the page and metadata in English and Mexican Spanish, and test its route, navigation, headings, and accessibility. Do not infer materials, availability, pricing, or commercial terms.
+
+Before review, run `npm run validate`, `npm run verify:reproducible`, and `git diff --check`. Inspect local output with `npm run dev` and review Home, About, Flavors, Contact, and each localized detail page. Keep the 014A development defaults and indexing gates intact throughout content work; metadata improvements alone never authorize indexing or publication.

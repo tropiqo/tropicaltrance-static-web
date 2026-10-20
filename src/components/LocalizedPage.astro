@@ -21,7 +21,7 @@ const href = path => localizePath(path, locale);
 const homeMedia = locale === 'en' ? release.brandMedia['home-hero'] : { ...release.brandMedia['home-hero'], alt: t.home.trancyAlt };
 const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...release.brandMedia['about-mascot'], alt: t.about.trancyAlt };
 ---
-{page === 'home' && <SiteLayout page={page} locale={locale} title={t.home.metaTitle} description={t.home.description}>
+{page === 'home' && <SiteLayout page={page} locale={locale} title={t.home.metaTitle} description={t.home.metaDescription}>
   <EditorialHero title={t.home.title} emphasis={t.home.emphasis} description={t.home.description} eyebrow={t.home.eyebrow} decoration="orbit" atmosphere media={homeMedia}>
     <div class="actions"><a class="button button--solid" href={href('/flavors/')}>{t.home.explore} <span aria-hidden="true">↗</span></a></div>
   </EditorialHero>
@@ -39,7 +39,7 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
   </EditorialSection>
 </SiteLayout>}
 
-{page === 'about' && <SiteLayout page={page} locale={locale} title={t.about.title} description={locale === 'en' ? t.about.description1 : `${t.about.description1} ${t.about.description2}`}>
+{page === 'about' && <SiteLayout page={page} locale={locale} title={t.about.metaTitle} description={t.about.metaDescription}>
   <EditorialHero title={t.about.title} description={[t.about.description1, t.about.description2]} eyebrow="Tropical Trance" decoration={release.aboutHeroMedia ? 'none' : 'tide'} atmosphere>
     {release.aboutHeroMedia && <CinematicHeroVideo slot="visual" {...emeraldGatewayMedia} playLabel={t.about.playVideo} pauseLabel={t.about.pauseVideo} description={t.about.videoDescription} />}
   </EditorialHero>
@@ -56,7 +56,7 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
   </EditorialSection>
 </SiteLayout>}
 
-{page === 'flavors' && <SiteLayout page={page} locale={locale} title={t.flavors.title} description={flavors.length === 1 ? flavors[0].shortDescription : t.flavors.description}>
+{page === 'flavors' && <SiteLayout page={page} locale={locale} title={t.flavors.metaTitle} description={t.flavors.metaDescription}>
   <EditorialHero title={t.flavors.title} description={flavors.length === 1 ? flavors[0].shortDescription : t.flavors.heroDescription} eyebrow={t.flavors.eyebrow} />
   <FlavorCollection flavors={flavors} locale={locale} messages={t} />
 </SiteLayout>}
@@ -65,7 +65,7 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
   <FlavorDetail flavor={flavor} locale={locale} messages={t} />
 </SiteLayout>}
 
-{page === 'contact' && <SiteLayout page={page} locale={locale} title={t.contact.title} description={t.contact.description}>
+{page === 'contact' && <SiteLayout page={page} locale={locale} title={t.contact.metaTitle} description={t.contact.metaDescription}>
   <EditorialHero title={t.contact.title} description={t.contact.description} eyebrow="Tropical Trance">
     <ContactPanel slot="visual" whatsappBusinessUrl={release.site.contact?.whatsappBusinessUrl ?? null} messages={t} locale={locale} />
   </EditorialHero>

@@ -63,7 +63,7 @@ The fixed harness uses synthetic `tests/fixtures/public-inputs/` plus one separa
 
 The same exact Trancy WebP is reused on Home/About. If its ignored file is absent, the explicit review command prepares it from the tracked, digest-verified `assets/images/TRANCY-01.png` using the pinned transformation. Source/toolchain/output drift fails closed. Keep the original and existing derivative unchanged, including the intentional **TROPICAL TRANCE** cup lettering.
 
-Technical metadata, canonical-origin validation, sitemap output and the explicit indexing authorization gate are documented in [Technical SEO and indexing controls](docs/technical-seo.md). Development and review builds remain `noindex, nofollow`.
+Technical metadata and indexing safeguards are documented in [Technical SEO and indexing controls](docs/technical-seo.md), with practical copy and review steps in the [SEO content workflow](docs/technical-seo.md#content-workflow). Development and review builds remain `noindex, nofollow`.
 
 ## Validation
 
