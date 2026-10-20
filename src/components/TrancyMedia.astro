@@ -1,0 +1,8 @@
+---
+import type { BrandMediaView } from './public-view';
+interface Props { media: BrandMediaView; loading?: 'lazy' | 'eager'; }
+const { media, loading = 'lazy' } = Astro.props;
+---
+<figure class="trancy-media">
+  <img src={media.mediaUrl} alt={media.alt} width={media.width} height={media.height} loading={loading} decoding="async" />
+</figure>

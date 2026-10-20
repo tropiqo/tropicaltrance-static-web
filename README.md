@@ -1,179 +1,99 @@
-# [Minimal Mistakes Jekyll theme](https://mmistakes.github.io/minimal-mistakes/)
+# Tropical Trance website
 
-[![LICENSE](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://raw.githubusercontent.com/mmistakes/minimal-mistakes/master/LICENSE)
-[![Jekyll](https://img.shields.io/badge/jekyll-%3E%3D%203.7-blue.svg)](https://jekyllrb.com/)
+The current website is an independent Astro static project using the Tropical Editorial Hybrid design: Home, Flavors, About, Contact, a technical 404 and reusable Flavor Detail pages selected by validated local inputs.
 
-Minimal Mistakes is a flexible two-column Jekyll theme, perfect for building personal sites, blogs, and portfolios. As the name implies, styling is purposely minimalistic to be enhanced and customized by you :smile:.
+This is a development foundation. A passing build or local preview does not authorize publication. The normal Flavor release is empty; real Trancy media appears only in the explicitly isolated local review build.
 
-:sparkles: See what's new in the [CHANGELOG](CHANGELOG.md).
+See the [authoritative internal foundation handoff](docs/migration/astro-foundation-handoff.md) for current scope, exact inventories, recovery, responsibilities and deferred production work. This README remains the quick start; dated slice documents preserve earlier evidence.
 
-**Note:** The theme uses the [jekyll-include-cache](https://github.com/benbalter/jekyll-include-cache) plugin which will need to be installed in your `Gemfile` and must be retained in the `plugins` array of `_config.yml`. Otherwise you'll encounter `Unknown tag 'include_cached'` errors at build.
+## Prerequisites
 
-[![Minimal Mistakes live preview][2]][1]
+- Node **24.21.0** and npm **11.19.0**, matching the engines and lockfile.
+- Python **3.9 or newer** for standard-library HTML audits and CI policy checks.
+- Existing repository inputs/dependencies; normal builds require no Studio connection or credentials.
 
-[1]: https://mmistakes.github.io/minimal-mistakes/
-[2]: screenshot.png (live preview)
+If you use nvm, run `nvm use` here. Confirm `node --version` and `npm --version`. For a fresh checkout, install locked dependencies without lifecycle scripts:
 
-![layout examples](screenshot-layouts.png)
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+```
 
-## Notable features
+Astro **7.3.8** is locked. Use the Astro commands below; the obsolete Ruby/Rake/Jekyll build tooling has been retired.
 
-- Bundled as a "theme gem" for easier installation/upgrading.
-- Compatible with GitHub Pages.
-- Support for Jekyll's built-in Sass/SCSS preprocessor.
-- Nine different skins (color variations).
-- Several responsive layout options (single, archive index, search, splash, and paginated home page).
-- Optimized for search engines with support for [Twitter Cards](https://dev.twitter.com/cards/overview) and [Open Graph](http://ogp.me/) data.
-- Optional [header images](https://mmistakes.github.io/minimal-mistakes/docs/layouts/#headers), [custom sidebars](https://mmistakes.github.io/minimal-mistakes/docs/layouts/#sidebars), [table of contents](https://mmistakes.github.io/minimal-mistakes/docs/helpers/#table-of-contents), [galleries](https://mmistakes.github.io/minimal-mistakes/docs/helpers/#gallery), related posts, [breadcrumb links](https://mmistakes.github.io/minimal-mistakes/docs/configuration/#breadcrumb-navigation-beta), [navigation lists](https://mmistakes.github.io/minimal-mistakes/docs/helpers/#navigation-list), and more.
-- Commenting support (powered by [Disqus](https://disqus.com/), [Facebook](https://developers.facebook.com/docs/plugins/comments), Google+, [Discourse](https://www.discourse.org/), static-based via [Staticman](https://staticman.net/), [utterances](https://utteranc.es/), and [giscus](https://giscus.app/)).
-- [Google Analytics](https://www.google.com/analytics/) support.
-- UI localized text in English (default), Arabic (عربي), Brazilian Portuguese (Português brasileiro), Bulgarian, Catalan, Chinese, Czech, Danish, Dutch, Finnish, French (Français), German (Deutsch), Greek, Hebrew, Hindi (हिंदी), Hungarian, Indonesian, Irish (Gaeilge), Italian (Italiano), Japanese, Kiswahili, Korean, Malayalam, Myanmar (Burmese), Nepali (Nepalese), Norwegian (Norsk), Persian (فارسی), Polish, Punjabi (ਪੰਜਾਬੀ), Romanian, Russian, Slovak, Spanish (Español), Swedish, Thai, Turkish (Türkçe), Ukrainian (Українська) and Vietnamese.
+## Local development
 
-## Skins (color variations)
+```sh
+npm run dev
+```
 
-This theme comes in nine different skins (in addition to the default one).
+Open <http://127.0.0.1:4321/>. Development uses normal validated inputs, without review media or synthetic Flavor fixtures. Navigation works without client JavaScript.
 
-| `air` | `contrast` | `dark` |
-| --- | --- | --- |
-| [![air skin](https://mmistakes.github.io/minimal-mistakes/assets/images/air-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/air-skin-archive-large.png) | [![contrast skin](https://mmistakes.github.io/minimal-mistakes/assets/images/contrast-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/contrast-skin-archive-large.png) | [![dark skin](https://mmistakes.github.io/minimal-mistakes/assets/images/dark-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/dark-skin-archive-large.png) |
+## Normal build and preview
 
-| `dirt` | `mint` | `sunrise` |
-| --- | --- | --- |
-| [![dirt skin](https://mmistakes.github.io/minimal-mistakes/assets/images/dirt-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/dirt-skin-archive-large.png) | [![mint skin](https://mmistakes.github.io/minimal-mistakes/assets/images/mint-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/mint-skin-archive-large.png) | [![sunrise skin](https://mmistakes.github.io/minimal-mistakes/assets/images/sunrise-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/sunrise-skin-archive-large.png) |
+```sh
+npm run build
+npm run preview -- --port 4321
+```
 
-| `aqua` | `neon` | `plum` |
-| --- | --- | --- |
-| [![aqua skin](https://mmistakes.github.io/minimal-mistakes/assets/images/aqua-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/aqua-skin-archive-large.png) | [![neon skin](https://mmistakes.github.io/minimal-mistakes/assets/images/neon-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/neon-skin-archive-large.png) | [![plum skin](https://mmistakes.github.io/minimal-mistakes/assets/images/plum-skin-archive.png)](https://mmistakes.github.io/minimal-mistakes/assets/images/plum-skin-archive-large.png) |
+Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/` or `/contact/`. Output is `dist/`: currently five HTML pages plus CSS, no mascot media or fixture detail routes.
 
-## Demo pages
+Only explicitly validated local release inputs enter normal output. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
 
-| Name                                        | Description                                           |
-| ------------------------------------------- | ----------------------------------------------------- |
-| [Post with Header Image][header-image-post] | A post with a large header image. |
-| [HTML Tags and Formatting Post][html-tags-post] | A variety of common markup showing how the theme styles them. |
-| [Syntax Highlighting Post][syntax-post] | Post displaying highlighted code. |
-| [Post with a Gallery][gallery-post] | A post showing several images wrapped in `<figure>` elements. |
-| [Sample Collection Page][sample-collection] | Single page from a collection. |
-| [Categories Archive][categories-archive] | Posts grouped by category. |
-| [Tags Archive][tags-archive] | Posts grouped by tag. |
+## Isolated local review
 
-Additional sample posts are available under [posts archive][year-archive] on the demo site. Source files for these (and the entire demo site) can be found in [`/docs`](docs).
+**Never publish synthetic Flavor fixtures, review-only Trancy media or `.review-build/`.** This is an internal visual test, not a public release.
 
-[header-image-post]: https://mmistakes.github.io/minimal-mistakes/layout-header-image-text-readability/
-[gallery-post]: https://mmistakes.github.io/minimal-mistakes/post%20formats/post-gallery/
-[html-tags-post]: https://mmistakes.github.io/minimal-mistakes/markup/markup-html-tags-and-formatting/
-[syntax-post]: https://mmistakes.github.io/minimal-mistakes/markup-syntax-highlighting/
-[sample-collection]: https://mmistakes.github.io/minimal-mistakes/recipes/chocolate-chip-cookies/
-[categories-archive]: https://mmistakes.github.io/minimal-mistakes/categories/
-[tags-archive]: https://mmistakes.github.io/minimal-mistakes/tags/
-[year-archive]: https://mmistakes.github.io/minimal-mistakes/year-archive/
+```sh
+npm run review:build
+python3 -B -m http.server 4333 --bind 127.0.0.1 --directory .review-build
+```
 
-## Installation
+Local review URLs:
 
-There are three ways to install: as a [gem-based theme](https://jekyllrb.com/docs/themes/#understanding-gem-based-themes), as a [remote theme](https://blog.github.com/2017-11-29-use-any-theme-with-github-pages/) (GitHub Pages compatible), or forking/directly copying all of the theme files into your project.
+- Home: <http://127.0.0.1:4333/>
+- About: <http://127.0.0.1:4333/about/>
+- Flavors: <http://127.0.0.1:4333/flavors/>
+- Synthetic details: <http://127.0.0.1:4333/flavors/fixture-coral/> and <http://127.0.0.1:4333/flavors/fixture-orchid/>
+- Contact: <http://127.0.0.1:4333/contact/>
+- Technical 404: <http://127.0.0.1:4333/404.html>
 
-### Gem-based method
+Stop the server with Ctrl-C. Keep it on loopback. Review HTML has a labeled disclosure and `noindex, nofollow`; neither grants public approval.
 
-With Gem-based themes, directories such as the `assets`, `_layouts`, `_includes`, and `_sass` are stored in the theme’s gem, hidden from your immediate view. Yet all of the necessary directories will be read and processed during Jekyll’s build process.
+The fixed harness uses synthetic `tests/fixtures/public-inputs/` plus one separately pinned real Trancy delivery in ignored `review-assets/`. It builds into `.review-build/`, without modifying `dist/` or admitting review assets to normal publicDir. Every output resource and delivery digest is checked.
 
-This allows for easier installation and updating as you don't have to manage any of the theme files. To install:
+The same exact Trancy WebP is reused on Home/About. If its ignored file is absent, the explicit review command prepares it from the tracked, digest-verified `assets/images/TRANCY-01.png` using the pinned transformation. Source/toolchain/output drift fails closed. Keep the original and existing derivative unchanged, including the intentional **TROPICAL TRANCE** cup lettering.
 
-1. Add the following to your `Gemfile`:
+## Validation
 
-   ```ruby
-   gem "minimal-mistakes-jekyll"
-   ```
+```sh
+npm run validate
+python3 -B .github/ci/check_policy.py --self-test
+git diff --check
+```
 
-2. Fetch and update bundled gems by running the following [Bundler](http://bundler.io/) command:
+`validate` runs inputs, normal build, review build, tests and both output audits. Tests include independent deterministic builds/isolation and mascot integrity. Review tests require the original master and selected review delivery; normal builds remain independent of them.
 
-   ```bash
-   bundle
-   ```
+| Command | Checks |
+| --- | --- |
+| `npm run validate:inputs` | Closed inputs, release/media/eligibility joins and source boundaries |
+| `npm run build` | Normal inputs/source/build/output |
+| `npm run review:build` | Isolated review inventory and exact delivery digests |
+| `npm test` | Automated tests; verifies/prepares pinned local review asset first |
+| `npm run validate:output` | Existing `dist/` routes/resources/privacy/isolation |
+| `npm run validate:review-output` | Existing `.review-build/` resources and exact deliveries |
+| `npm run verify:reproducible` | Repeated isolated builds and deliberate drift/extra-output failures |
 
-3. Set the `theme` in your project's Jekyll `_config.yml` file:
+Build first before standalone output audits or `verify:reproducible`. Structural PASS is distinct from user browser acceptance, remote CI and publication/release authorization. None of these commands deploys.
 
-   ```yaml
-   theme: minimal-mistakes-jekyll
-   ```
+## Retained legacy material and URL decisions
 
-To update the theme run `bundle update`.
+Obsolete root prototype pages `index.md`, `about.md` and `contact.md` are retired. Astro retains `/`, `/about/` and `/contact/`. The approved legacy Jekyll/theme/Ruby/demo-source/custom-JavaScript implementation has also been retired. Historical demo media, author/comment data, license/history material and copyright notices remain preserved; they are not build inputs. Active migration notes remain in `docs/migration/`; active tests use plural `tests/`.
 
-### Remote theme method
+Future URL-migration decisions: old `#products` is intended to point to `/flavors/`; old `#trancy` to `/about/`; unsupported `#why-choose-us` has no replacement. These are **not implemented redirects or preserved hash anchors**. This batch adds no feed, sitemap or canonical-domain behavior.
 
-Remote themes are similar to Gem-based themes, but do not require `Gemfile` changes or whitelisting making them ideal for sites hosted with GitHub Pages.
+## Attribution
 
-To install:
-
-1. Create/replace the contents of your `Gemfile` with the following:
-
-   ```ruby
-   source "https://rubygems.org"
-
-   gem "github-pages", group: :jekyll_plugins
-   gem "jekyll-include-cache", group: :jekyll_plugins
-   ```
-
-2. Add `jekyll-include-cache` to the `plugins` array of your `_config.yml`.
-
-3. Fetch and update bundled gems by running the following [Bundler](https://bundler.io/) command:
-
-   ```bash
-   bundle
-   ```
-
-4. Add `remote_theme: "mmistakes/minimal-mistakes@4.26.2"` to your `_config.yml` file. Remove any other `theme:` or `remote_theme:` entry.
-
-<!--
-  Dev note: The version number is currently hard-coded in these files:
-
-    - package.json
-    - README.md (this file)
-    - docs/_data/theme.yml
-    - docs/_pages/home.md (in Front Matter "excerpt")
-
-  `package.json` holds the authoritative version number, and the others can be updated with `bundle exec rake version`.
-
-  The following files should also be regenerated:
-
-    - _includes/copyright.html, _includes/copyright.js, _sass/minimal-mistakes/_copyright.scss
-      (Run `bundle exec rake clean` then `bundle exec rake copyright` - all three references `package.json`)
-    - assets/js/main.min.js (Run `bundle exec rake js`, references `_includes/copyright.js`)
-
-  *Tip*: The default Rake task will update all of the above files at once.
-
-  Additionally, the license year is hard-coded in these files and are NOT covered by a Rake task:
-
-    - README.md (this file, near the end)
-    - LICENSE
--->
-
-**Looking for an example?** Use the [Minimal Mistakes remote theme starter](https://github.com/mmistakes/mm-github-pages-starter/generate) for the quickest method of getting a GitHub Pages hosted site up and running. Generate a new repository from the starter, replace sample content with your own, and configure as needed.
-
-## Usage
-
-For detailed instructions on how to configure, customize, add/migrate content, and more read the [theme's documentation](https://mmistakes.github.io/minimal-mistakes/docs/quick-start-guide/).
-
-## Contributing
-
-Found a typo in the documentation or interested in [fixing a bug](https://github.com/mmistakes/minimal-mistakes/issues)? Then by all means [submit an issue](https://github.com/mmistakes/minimal-mistakes/issues/new) or [pull request](https://help.github.com/articles/using-pull-requests/). If this is your first pull request, it may be helpful to read up on the [GitHub Flow](https://guides.github.com/introduction/flow/) first.
-
-For help with using the theme or general Jekyll support questions, please use the [Jekyll Talk forums](https://talk.jekyllrb.com/).
-
-### Pull Requests
-
-When submitting a pull request:
-
-1. Clone the repo.
-2. Create a branch off of `master` and give it a meaningful name (e.g. `my-awesome-new-feature`).
-3. Open a pull request on GitHub and describe the feature or fix.
-
-Theme documentation and demo pages can be found in the [`/docs`](docs) if submitting improvements, typo corrections, etc.
-
-## Development
-
-To set up your environment to develop this theme, run `bundle install`.
-
-To test the theme, run `bundle exec rake preview` and open your browser at `http://localhost:4000/test/`. This starts a Jekyll server using content in the `test/` directory. As modifications are made to the theme and test site, it will regenerate and you should see the changes in the browser after a refresh.
+This repository retains legacy [Minimal Mistakes](https://github.com/mmistakes/minimal-mistakes) **4.26.2** material by Michael Rose and contributors. The existing [LICENSE](LICENSE), copyright headers and upstream credits/license notices below are preserved. They describe the retained theme and incorporated dependencies, not a new license declaration for brand artwork or a claim that Astro uses those legacy assets.
 
 ## Credits
 

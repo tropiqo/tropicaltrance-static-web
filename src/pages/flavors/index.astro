@@ -1,0 +1,10 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import EditorialHero from '../../components/EditorialHero.astro';
+import FlavorCollection from '../../components/FlavorCollection.astro';
+import release from '#public-release';
+---
+<SiteLayout title="Flavors" description="Empty development-only collection.">
+  <EditorialHero title="Flavors" description="Local development preview — not a public release." eyebrow="Tropical Trance" />
+  <FlavorCollection flavors={release.flavors} />
+</SiteLayout>

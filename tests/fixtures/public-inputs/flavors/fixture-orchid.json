@@ -1,0 +1,24 @@
+{
+  "contractVersion": "1",
+  "flavor": {
+    "id": "fixture-orchid",
+    "revision": "test-1"
+  },
+  "name": "fixture-orchid",
+  "shortDescription": "INTERNAL SYNTHETIC TEST ONLY. Fictional noncommercial validator input.",
+  "alt": "Synthetic grey square placeholder.",
+  "canonicalArtwork": {
+    "assetId": "fixture-orchid-source",
+    "revision": "test-1",
+    "contentId": "sha256:963a31dd59c98d1edd93a109249d23f4b174665b1b452888e2fb543227569a7f"
+  },
+  "artwork": {
+    "assetId": "fixture-orchid-derivative",
+    "revision": "test-1",
+    "contentId": "sha256:abe30968e56f57f20efb530d26a1d8691d0b5dddbdc6b821b6f107a8a353bc21",
+    "deliveryRef": "fixture-orchid-delivery",
+    "recipe": "fixture-placeholder",
+    "recipeVersion": "1",
+    "parameters": {}
+  }
+}

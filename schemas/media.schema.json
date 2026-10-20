@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1"
+    },
+    "kind": {
+      "const": "website-public-media"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deliveryRef",
+          "asset",
+          "path"
+        ],
+        "properties": {
+          "deliveryRef": {
+            "$ref": "publication/common.schema.json#/$defs/token"
+          },
+          "asset": {
+            "$ref": "publication/common.schema.json#/$defs/assetRef"
+          },
+          "path": {
+            "$ref": "publication/common.schema.json#/$defs/relativePath"
+          }
+        }
+      }
+    }
+  }
+}

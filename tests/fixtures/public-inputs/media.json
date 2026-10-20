@@ -1,0 +1,24 @@
+{
+  "contractVersion": "1",
+  "kind": "website-public-media",
+  "entries": [
+    {
+      "deliveryRef": "fixture-orchid-delivery",
+      "asset": {
+        "assetId": "fixture-orchid-derivative",
+        "revision": "test-1",
+        "contentId": "sha256:abe30968e56f57f20efb530d26a1d8691d0b5dddbdc6b821b6f107a8a353bc21"
+      },
+      "path": "tests/fixtures/public-inputs/assets/orchid.svg"
+    },
+    {
+      "deliveryRef": "fixture-coral-delivery",
+      "asset": {
+        "assetId": "fixture-coral-derivative",
+        "revision": "test-1",
+        "contentId": "sha256:28965010f1c6bb51a8304ca8adb12990f227723307fdd7a6a8276453699c9fee"
+      },
+      "path": "tests/fixtures/public-inputs/assets/coral.svg"
+    }
+  ]
+}

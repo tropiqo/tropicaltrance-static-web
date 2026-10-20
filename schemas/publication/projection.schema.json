@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tropicaltrance.invalid/website-publication/v1/projection.schema.json",
+  "title": "Public Flavor projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "flavor",
+    "name",
+    "shortDescription",
+    "alt",
+    "canonicalArtwork",
+    "artwork"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1"
+    },
+    "flavor": {
+      "$ref": "common.schema.json#/$defs/flavorRef"
+    },
+    "name": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "shortDescription": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "alt": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "canonicalArtwork": {
+      "$ref": "common.schema.json#/$defs/assetRef"
+    },
+    "artwork": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assetId",
+        "revision",
+        "contentId",
+        "deliveryRef",
+        "recipe",
+        "recipeVersion",
+        "parameters"
+      ],
+      "properties": {
+        "assetId": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "revision": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "contentId": {
+          "$ref": "common.schema.json#/$defs/digest"
+        },
+        "deliveryRef": {
+          "$ref": "common.schema.json#/$defs/token"
+        },
+        "recipe": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "recipeVersion": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parameters": {
+          "$ref": "common.schema.json#/$defs/parameters"
+        }
+      }
+    }
+  }
+}

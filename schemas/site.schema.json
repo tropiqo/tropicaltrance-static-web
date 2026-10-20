@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "kind",
+    "lang",
+    "title",
+    "description"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1"
+    },
+    "kind": {
+      "const": "development-site"
+    },
+    "lang": {
+      "const": "en"
+    },
+    "title": {
+      "$ref": "publication/common.schema.json#/$defs/text"
+    },
+    "description": {
+      "$ref": "publication/common.schema.json#/$defs/text"
+    }
+  }
+}

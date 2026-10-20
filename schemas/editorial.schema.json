@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "kind",
+    "flavor",
+    "paragraphs"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1"
+    },
+    "kind": {
+      "const": "flavor-editorial"
+    },
+    "flavor": {
+      "$ref": "publication/common.schema.json#/$defs/flavorRef"
+    },
+    "title": {
+      "$ref": "publication/common.schema.json#/$defs/text"
+    },
+    "paragraphs": {
+      "type": "array",
+      "items": {
+        "$ref": "publication/common.schema.json#/$defs/text"
+      }
+    }
+  }
+}

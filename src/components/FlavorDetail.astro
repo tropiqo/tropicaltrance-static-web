@@ -1,0 +1,19 @@
+---
+import type { PublicFlavor } from './public-view';
+interface Props { flavor: PublicFlavor; }
+import MediaFrame from './MediaFrame.astro';
+import FlavorStory from './FlavorStory.astro';
+const { flavor } = Astro.props;
+---
+<div class="container flavor-detail">
+  <a class="detail-return" href="/flavors/">Return to Flavors</a>
+  <div class="detail-grid">
+    <div class="detail-copy">
+      <p class="eyebrow">Flavors</p>
+      <h1>{flavor.name}</h1>
+      <p class="lead muted">{flavor.shortDescription}</p>
+    </div>
+    <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} loading="eager" />
+  </div>
+  <FlavorStory editorial={flavor.editorial} />
+</div>

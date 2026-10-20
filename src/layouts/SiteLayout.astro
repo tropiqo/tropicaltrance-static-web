@@ -1,0 +1,32 @@
+---
+import '../styles/global.css';
+import release from '#public-release';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+interface Props { title: string; description: string; }
+const { title, description } = Astro.props;
+---
+<!doctype html>
+<html lang={release.site.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} | {release.site.title}</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <SiteHeader />
+    {release.review ? <aside class="review-note" aria-label="Local review status">
+      <div class="container">
+        <details class="review-indicator">
+          <summary>Local review · synthetic Flavors · real Trancy · publication pending</summary>
+          <p>INTERNAL SYNTHETIC TEST ONLY — Flavor fixtures. LOCAL MASCOT REVIEW ONLY — Trancy is a real reference. This website is not approved for public publication.</p>
+        </details>
+      </div>
+    </aside> : <div class="development-note"><div class="container">Development-only foundation. Public content and release approval are pending.</div></div>}
+    <main id="main" tabindex="-1"><slot /></main>
+    <SiteFooter />
+  </body>
+</html>

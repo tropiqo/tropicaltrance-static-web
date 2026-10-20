@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "kind",
+    "members"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1"
+    },
+    "kind": {
+      "const": "website-release-set"
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "flavor",
+          "slug",
+          "projection"
+        ],
+        "properties": {
+          "flavor": {
+            "$ref": "publication/common.schema.json#/$defs/flavorRef"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "not": {
+              "enum": [
+                "index",
+                "404"
+              ]
+            }
+          },
+          "projection": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "contentId"
+            ],
+            "properties": {
+              "path": {
+                "$ref": "publication/common.schema.json#/$defs/relativePath"
+              },
+              "contentId": {
+                "$ref": "publication/common.schema.json#/$defs/digest"
+              }
+            }
+          },
+          "editorial": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "contentId"
+            ],
+            "properties": {
+              "path": {
+                "$ref": "publication/common.schema.json#/$defs/relativePath"
+              },
+              "contentId": {
+                "$ref": "publication/common.schema.json#/$defs/digest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "eligibilitySnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "contentId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "publication/common.schema.json#/$defs/token"
+        },
+        "revision": {
+          "$ref": "publication/common.schema.json#/$defs/token"
+        },
+        "contentId": {
+          "$ref": "publication/common.schema.json#/$defs/digest"
+        }
+      }
+    }
+  }
+}

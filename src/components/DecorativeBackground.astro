@@ -1,0 +1,10 @@
+---
+interface Props { variation?: 'orbit' | 'tide'; }
+const { variation = 'orbit' } = Astro.props;
+---
+<div class:list={['decorative-background', `decoration--${variation}`]} aria-hidden="true">
+  <span class="shape shape--sun"></span>
+  <span class="shape shape--orbit"></span>
+  <span class="shape shape--orbit-second"></span>
+  <span class="shape shape--horizon"></span>
+</div>

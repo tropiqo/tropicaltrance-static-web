@@ -1,0 +1,12 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import FlavorDetail from '../../components/FlavorDetail.astro';
+import release from '#public-release';
+export function getStaticPaths() {
+  return release.flavors.map(flavor => ({ params: { slug: flavor.slug }, props: { flavor } }));
+}
+const { flavor } = Astro.props;
+---
+<SiteLayout title={flavor.name} description={flavor.shortDescription}>
+  <FlavorDetail flavor={flavor} />
+</SiteLayout>

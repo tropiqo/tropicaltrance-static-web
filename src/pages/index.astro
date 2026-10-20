@@ -1,0 +1,25 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import release from '#public-release';
+import EditorialHero from '../components/EditorialHero.astro';
+import EditorialSection from '../components/EditorialSection.astro';
+import DecorativeBackground from '../components/DecorativeBackground.astro';
+---
+<SiteLayout title="Home" description="Escape the ordinary. Explore a world of tropical flavor.">
+  <EditorialHero title="Tropical" emphasis="Trance" description="Escape the ordinary. Explore a world of tropical flavor." eyebrow="A tropical state of mind" decoration="orbit" atmosphere media={release.brandMedia['home-hero']}>
+    <div class="actions"><a class="button button--solid" href="/flavors/">View Flavors <span aria-hidden="true">↗</span></a></div>
+  </EditorialHero>
+  <EditorialSection variant="text" title="About" eyebrow="Tropical Trance">
+    <p class="lead">A tropical state of mind.</p>
+    <div class="actions"><a class="button" href="/about/">About <span aria-hidden="true">↗</span></a></div>
+  </EditorialSection>
+  <EditorialSection variant="split" title="Flavors" eyebrow="Tropical Trance">
+    {release.flavors.length === 0 && <p class="lead">No flavors are included in this development build.</p>}
+    <div class="actions"><a class="button" href="/flavors/">View the Flavors collection <span aria-hidden="true">↗</span></a></div>
+    <DecorativeBackground slot="visual" variation="tide" />
+  </EditorialSection>
+  <EditorialSection variant="band" title="Contact" eyebrow="Tropical Trance">
+    <p class="lead">The approved contact channel is pending.</p>
+    <div class="actions"><a class="button" href="/contact/">Contact <span aria-hidden="true">↗</span></a></div>
+  </EditorialSection>
+</SiteLayout>

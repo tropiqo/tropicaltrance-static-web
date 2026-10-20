@@ -1,0 +1,12 @@
+---
+import type { PublicFlavor } from './public-view';
+interface Props { flavors: PublicFlavor[]; }
+import FlavorCard from './FlavorCard.astro';
+import EmptyCollectionState from './EmptyCollectionState.astro';
+const { flavors } = Astro.props;
+---
+<section class="collection-section" aria-label="Flavors collection">
+  <div class="container">
+    {flavors.length === 0 ? <EmptyCollectionState /> : <div class="flavor-grid">{flavors.map(flavor => <FlavorCard flavor={flavor} />)}</div>}
+  </div>
+</section>

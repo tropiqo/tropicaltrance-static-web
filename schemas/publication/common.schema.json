@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tropicaltrance.invalid/website-publication/v1/common.schema.json",
+  "title": "Publication contract shared definitions",
+  "$defs": {
+    "text": {
+      "type": "string",
+      "pattern": "\\S",
+      "not": {
+        "pattern": "[aA][rR][tT][wW][oO][rR][kK]-[wW][oO][rR][kK][sS][pP][aA][cC][eE]:|[fF][iI][lL][eE]:|[hH][tT][tT][pP][sS]?://|[a-zA-Z]:[\\\\/]|(?:^|\\s)[/\\\\]|[/\\\\](?:Users|home|private|tmp|var)[/\\\\]|<[^>]*>|\\{\\{|\\{%|\\$\\(|`|%2[fF]|%5[cC]|\\u0000"
+      }
+    },
+    "identifier": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/text"
+        },
+        {
+          "not": {
+            "pattern": "^\\s|\\s$"
+          }
+        }
+      ]
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "not": {
+        "enum": [
+          ".",
+          ".."
+        ]
+      }
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$",
+      "not": {
+        "pattern": "(?:^|/)\\.{1,2}(?:/|$)"
+      }
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "safeScalar": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/text"
+            },
+            {
+              "not": {
+                "pattern": "[/\\\\]"
+              }
+            }
+          ]
+        },
+        {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "safeValue": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/safeScalar"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/safeValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "allOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                "not": {
+                  "enum": [
+                    ".",
+                    ".."
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "pattern": "[lL][oO][cC][aA][tT][iI][oO][nN]|[pP][aA][tT][hH]|[pP][rR][oO][mM][pP][tT]|[cC][rR][eE][dD][eE][nN][tT][iI][aA][lL]|[pP][aA][sS][sS][wW][oO][rR][dD]|[sS][eE][cC][rR][eE][tT]|[tT][oO][kK][eE][nN]|[rR][eE][vV][iI][eE][wW][eE][rR]|[aA][pP][pP][rR][oO][vV][aA][lL]|[iI][nN][tT][eE][rR][nN][aA][lL]|[nN][oO][tT][eE][sS]|[cC][oO][mM][mM][aA][nN][dD]|[sS][cC][rR][iI][pP][tT]|[hH][tT][mM][lL]|[cC][sS][sS]|[tT][eE][mM][pP][lL][aA][tT][eE]"
+                }
+              }
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/safeValue"
+          }
+        }
+      ]
+    },
+    "parameters": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/safeValue"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "flavorRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "revision": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        }
+      }
+    },
+    "assetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assetId",
+        "revision",
+        "contentId"
+      ],
+      "properties": {
+        "assetId": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "revision": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "contentId": {
+          "$ref": "common.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "recordRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "contentId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "revision": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "contentId": {
+          "$ref": "common.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "role",
+        "authorityEvidence"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "role": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "authorityEvidence": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      }
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "([zZ]|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "decision": {
+      "enum": [
+        "APPROVED",
+        "REJECTED",
+        "CHANGES_REQUESTED"
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference",
+        "contentId"
+      ],
+      "properties": {
+        "reference": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "contentId": {
+          "$ref": "common.schema.json#/$defs/digest"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "contractVersion": "1",
+  "kind": "flavor-editorial",
+  "flavor": {
+    "id": "fixture-orchid",
+    "revision": "test-1"
+  },
+  "paragraphs": [
+    "INTERNAL SYNTHETIC TEST ONLY. A fictional story exercises optional editorial rendering."
+  ]
+}

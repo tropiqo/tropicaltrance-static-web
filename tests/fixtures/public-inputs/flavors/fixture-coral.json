@@ -1,0 +1,24 @@
+{
+  "contractVersion": "1",
+  "flavor": {
+    "id": "fixture-coral",
+    "revision": "test-1"
+  },
+  "name": "fixture-coral",
+  "shortDescription": "INTERNAL SYNTHETIC TEST ONLY. Fictional noncommercial validator input.",
+  "alt": "Synthetic grey square placeholder.",
+  "canonicalArtwork": {
+    "assetId": "fixture-coral-source",
+    "revision": "test-1",
+    "contentId": "sha256:4435a078a11333d5f3cc43a9fd7afdf04124cb6bd9e0f05e626a2f26ba4b5e0d"
+  },
+  "artwork": {
+    "assetId": "fixture-coral-derivative",
+    "revision": "test-1",
+    "contentId": "sha256:28965010f1c6bb51a8304ca8adb12990f227723307fdd7a6a8276453699c9fee",
+    "deliveryRef": "fixture-coral-delivery",
+    "recipe": "fixture-placeholder",
+    "recipeVersion": "1",
+    "parameters": {}
+  }
+}
