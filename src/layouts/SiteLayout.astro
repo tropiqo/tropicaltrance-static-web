@@ -4,18 +4,22 @@ import release from '#public-release';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import { getMessages } from '../i18n/messages.mjs';
-interface Props { title: string; description: string; locale?: 'en' | 'es-MX'; }
-const { title, description, locale = 'en' } = Astro.props;
+import { seoBuildSettings, pageMetadata } from '../../scripts/seo-metadata.mjs';
+interface Props { title: string; description: string; page: string; flavor?: any; locale?: 'en' | 'es-MX'; }
+const { title, description, page, flavor = null, locale = 'en' } = Astro.props;
 const t = getMessages(locale);
+const seo = pageMetadata({ page, locale, title, description, flavor, settings: seoBuildSettings({ production: import.meta.env.PROD, productionSite: release.site.kind === 'production-site', review: release.review === true }) });
 ---
 <!doctype html>
 <html lang={t.language}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="noindex, nofollow" />
-    <title>{title} | {release.site.title}</title>
-    <meta name="description" content={description} />
+    <meta name="robots" content={seo.robots} />
+    <title>{seo.title}</title>
+    <meta name="description" content={seo.description} />
+    {seo.canonical && <link rel="canonical" href={seo.canonical} />}
+    {seo.alternates.map(alternate => <link rel="alternate" hreflang={alternate.language} href={new URL(alternate.path, seo.canonical).href} />)}
   </head>
   <body>
     <a class="skip-link" href="#main">{t.skip}</a>
@@ -27,7 +31,7 @@ const t = getMessages(locale);
           <p>INTERNAL SYNTHETIC TEST ONLY — Flavor fixtures. LOCAL MASCOT REVIEW ONLY — Trancy is a real reference. This website is not approved for public publication.</p>
         </details>
       </div>
-    </aside> : <div class="development-note"><div class="container">{t.developmentNotice}</div></div>}
+    </aside> : release.site.kind === 'development-site' && <div class="development-note"><div class="container">{t.developmentNotice}</div></div>}
     <main id="main" tabindex="-1"><slot /></main>
     <SiteFooter locale={locale} />
     <Fragment set:html={'<script type="module" src="/assets/language-preference.js"></script>'} />

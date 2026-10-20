@@ -14,7 +14,10 @@
       "const": "1"
     },
     "kind": {
-      "const": "development-site"
+      "enum": [
+        "development-site",
+        "production-site"
+      ]
     },
     "lang": {
       "const": "en"

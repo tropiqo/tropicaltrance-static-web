@@ -26,15 +26,15 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const blocker=join(base,'no-network.cjs');
   writeFileSync(blocker,"const fail=()=>{throw Error('Content network forbidden in isolated test')};globalThis.fetch=fail;for(const name of ['http','https','net','tls','dns']){const m=require('node:'+name);for(const k of ['request','get','connect','lookup','resolve'])if(typeof m[k]==='function')m[k]=fail;}\n");
   env.NODE_OPTIONS='--require='+blocker;
-  writeFileSync(join(base,'normal-build.mjs'),"import {build} from 'astro';await build({root:process.cwd()});\n");
+  writeFileSync(join(base,'normal-build.mjs'),"import {build} from 'astro';await build({root:process.cwd()});await import('./scripts/write-seo-output.mjs');\n");
   run(base,'normal-build.mjs');await checkOutput(base);const normal=snapshot(base,'dist');
   run(base,'normal-build.mjs');assert.deepEqual(snapshot(base,'dist'),normal);await checkOutput(base);
   // Withdraw only in this isolated candidate; preserve all original repository inputs/history.
   const selectedPaths=initial.flavors.flatMap(f=>[`content/flavors/${f.slug}.json`,`public-astro/${f.mediaUrl.slice(1)}`]);
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
   for(const p of selectedPaths)rmSync(join(base,p));
-  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,16);
-  const baselineHashes={'index.html':'5b6c480b87b1b82c1853edd246258aa28118252d23fccc64a98afb5cf691b567','about/index.html':'60bda2498ed1527d0468ca44866ccbcc16c7b6c6f44f43a00a3ad1aba768d016','flavors/index.html':'3acd9b13768896dfa7cd7c6b950c3ba0feac9e793d95b42a0bfc7911e043fae5','es/flavors/index.html':'c65ff5c484441576cba10713019bc093ab9a7bac54a83a67be102ac41cc4c7c0','es/index.html':'b54f6c1dcfb93c9ab6aa821bf356d7e816f909cfe281a2c0486050068cbaa7e4'};
+  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,17);
+  const baselineHashes={'index.html':'41a5f37081d6d7f7f16005f7cfa0bc90d85c7776ff6b2142932d6153c65526e2','about/index.html':'1042dcea7108b32eda380d26dfefe94f52f95940fdc7aba0804ea883aee91ffe','flavors/index.html':'90ef1997e0f3bbe4a23786a89a1213fbf9abad08479bf68f1f2bcff92d199e5a','es/flavors/index.html':'2745df76ea91feebe27be29c9ca68578553472d4d442dc01215bfce4fadbe1a0','es/index.html':'7f0cb15a509cbd5fbe8028021a1e4901271637433a3e3d1a61d298bc11fffd6b'};
   for(const [p,h]of empty)assert.equal(h,p in baselineHashes?'sha256:'+baselineHashes[p]:normal.find(([n])=>n===p)[1],p);
   // Leftover bytes are not a valid withdrawal even without references.
   const firstMedia=initial.flavors[0].mediaUrl.slice(1),strayPath=`public-astro/${firstMedia}`;

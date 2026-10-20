@@ -84,7 +84,8 @@ class Document(HTMLParser):
             return " ".join(self.ids[i].text() for i in node.attrs["aria-labelledby"].split())
         return node.attrs.get("aria-label", node.text()).strip()
 
-    def structure(self, page):
+    def structure(self, page, indexing_authorized=False):
+        page_indexable = indexing_authorized and page not in {"404.html", "404/index.html", "es/404/index.html"}
         require(self.doctype, "Missing HTML doctype")
         for tag in ["html", "head", "body", "main", "header", "footer", "title", "h1"]:
             require(len(self.find(tag)) == 1, f"Expected one {tag}")
@@ -102,10 +103,16 @@ class Document(HTMLParser):
             if name == "viewport":
                 require("width=device-width" in content and not re.search(r"user-scalable\s*=\s*no|maximum-scale", content), "Viewport restricts zoom")
             if name == "robots":
-                require({"noindex", "nofollow"}.issubset({x.strip() for x in content.split(",")}), "Missing noindex/nofollow")
+                expected = {"index", "follow"} if page_indexable else {"noindex", "nofollow"}
+                require(expected.issubset({x.strip() for x in content.split(",")}), "Missing noindex/nofollow or authorized index/follow robots directive")
         require(not self.find("base"), "Base URL override forbidden")
-        # There is no reviewed canonical origin in current website-owned inputs.
-        require(not any("canonical" in n.attrs.get("rel", "").split() for n in self.find("link")), "Unexpected canonical: no reviewed canonical origin")
+        canonicals = [n for n in self.find("link") if "canonical" in n.attrs.get("rel", "").split()]
+        require(len(canonicals) == (1 if page_indexable else 0), "Unexpected canonical or missing authorized canonical")
+        if page_indexable:
+            require(canonicals[0].attrs.get("href", "").startswith("https://"), "Canonical must use verified HTTPS origin")
+        alternates = [n for n in self.find("link") if n.attrs.get("rel") == "alternate"]
+        require(len(alternates) in ({0, 2} if page_indexable else {0}), "Language alternate count does not match build authorization")
+        require(all(n.attrs.get("hreflang") in {"en", "es-MX"} and n.attrs.get("href", "").startswith("https://") for n in alternates), "Unsafe language alternate")
         main = self.find("main")[0]
         require(main.attrs.get("id") == "main" and main.attrs.get("tabindex") == "-1", "Invalid skip target")
         require(any(n.attrs.get("href") == "#main" and self.name(n) for n in self.find("a")), "Missing named skip link")
@@ -159,7 +166,7 @@ class Document(HTMLParser):
                 require(children and children[0].tag == "summary" and sum(c.tag == "summary" for c in children) == 1, "Invalid native disclosure")
 
 
-def audit(root):
+def audit(root, indexing_authorized=False):
     require(not root.is_symlink(), "Symlink output root")
     root = root.resolve()
     require(root.is_dir(), "Missing build output")
@@ -192,10 +199,12 @@ def audit(root):
 
     for page, doc in documents.items():
         try:
-            doc.structure(page)
+            doc.structure(page, indexing_authorized)
             for n in doc.nodes:
                 for attr in ["href", "src", "poster"]:
                     if attr in n.attrs:
+                        if n.tag == "link" and ("canonical" in n.attrs.get("rel", "").split() or n.attrs.get("rel") == "alternate"):
+                            continue
                         value = n.attrs[attr]
                         parsed = urlsplit(value)
                         if n.tag == "a" and attr == "href" and (parsed.scheme or parsed.netloc):
@@ -215,7 +224,7 @@ def audit(root):
         except (ValueError, KeyError) as error:
             raise ValueError(f"{page}: {error}") from error
     for page, file in files.items():
-        if not page.endswith(".html"):
+        if not page.endswith(".html") and page not in {"robots.txt", "sitemap.xml"}:
             require(page in referenced, f"Unreferenced output resource: {page}")
         if page.endswith(".css"):
             require(not re.search(r"url\s*\(|@import\b|sourceMappingURL", file.read_text(), re.I), f"Unreviewed CSS resource/map: {page}")
@@ -224,8 +233,8 @@ def audit(root):
 
 if __name__ == "__main__":
     try:
-        require(len(sys.argv) == 2, "Usage: audit-html.py OUTPUT_DIRECTORY")
-        audit(Path(sys.argv[1]))
+        require(len(sys.argv) == 3 and sys.argv[2] in {"--indexing-authorized", "--noindex"}, "Usage: audit-html.py OUTPUT_DIRECTORY (--indexing-authorized|--noindex)")
+        audit(Path(sys.argv[1]), sys.argv[2] == "--indexing-authorized")
     except (ValueError, OSError) as error:
         print(f"Rendered HTML audit FAIL: {error}", file=sys.stderr)
         sys.exit(1)

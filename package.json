@@ -10,7 +10,7 @@
   "packageManager": "npm@11.19.0",
   "scripts": {
     "dev": "node scripts/public-inputs.mjs && ASTRO_TELEMETRY_DISABLED=1 astro dev --host 127.0.0.1",
-    "build": "node scripts/public-inputs.mjs && node scripts/check-static.mjs --source && ASTRO_TELEMETRY_DISABLED=1 astro build && node scripts/check-static.mjs",
+    "build": "node scripts/public-inputs.mjs && node scripts/check-static.mjs --source && ASTRO_TELEMETRY_DISABLED=1 astro build && node scripts/write-seo-output.mjs && node scripts/check-static.mjs",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview --host 127.0.0.1",
     "test": "node scripts/prepare-trancy-review.mjs && node --test tests/*.test.mjs",
     "review:build": "node scripts/build-review.mjs",

@@ -35,7 +35,7 @@ npm run build
 npm run preview -- --port 4321
 ```
 
-Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/`, each `/flavors/<slug>/` route or `/contact/`. Output is `dist/`: five base HTML pages plus one detail page per selected flavor, one stylesheet, the exact Trancy WebP and one selected WebP per flavor, with no fixture detail routes.
+Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/`, each `/flavors/<slug>/` route or `/contact/`. Output is `dist/`: five base HTML pages plus one detail page per selected flavor, a disallow-all `robots.txt`, one stylesheet, the exact Trancy WebP and one selected WebP per flavor, with no fixture detail routes. A sitemap is omitted unless a future production-site record, verified origin, and explicit owner indexing authorization are all present.
 
 Flavor content uses one closed JSON file per flavor under `content/flavors/`, with the local WebP path and SHA-256 in that same record. The normal website build does not read Studio eligibility snapshots, authorization records, or Grape-specific source/recipe pins. This is a local website content model; it does not establish legal rights, commercial eligibility, or permission to deploy. The approved mascot is independently pinned at `public-astro/assets/trancy-web-r1.webp`. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
 
@@ -62,6 +62,8 @@ Stop the server with Ctrl-C. Keep it on loopback. Review HTML has a labeled disc
 The fixed harness uses synthetic `tests/fixtures/public-inputs/` plus one separately pinned real Trancy delivery in ignored `review-assets/`. It builds into `.review-build/`, without modifying `dist/` or copying review paths or synthetic assets into normal publicDir. The approved normal WebP has identical bytes at its own fixed path. Every output resource and delivery digest is checked.
 
 The same exact Trancy WebP is reused on Home/About. If its ignored file is absent, the explicit review command prepares it from the tracked, digest-verified `assets/images/TRANCY-01.png` using the pinned transformation. Source/toolchain/output drift fails closed. Keep the original and existing derivative unchanged, including the intentional **TROPICAL TRANCE** cup lettering.
+
+Technical metadata, canonical-origin validation, sitemap output and the explicit indexing authorization gate are documented in [Technical SEO and indexing controls](docs/technical-seo.md). Development and review builds remain `noindex, nofollow`.
 
 ## Validation
 
@@ -159,7 +161,7 @@ boundaries, see [Sales channel management](docs/sales-channel-management.md).
 
 Obsolete root prototype pages `index.md`, `about.md` and `contact.md` are retired. Astro retains `/`, `/about/` and `/contact/`. The approved legacy Jekyll/theme/Ruby/demo-source/custom-JavaScript implementation has also been retired. Historical demo media, author/comment data, license/history material and copyright notices remain preserved; they are not build inputs. Active migration notes remain in `docs/migration/`; active tests use plural `tests/`.
 
-Future URL-migration decisions: old `#products` is intended to point to `/flavors/`; old `#trancy` to `/about/`; unsupported `#why-choose-us` has no replacement. These are **not implemented redirects or preserved hash anchors**. This batch adds no feed, sitemap or canonical-domain behavior.
+Future URL-migration decisions: old `#products` is intended to point to `/flavors/`; old `#trancy` to `/about/`; unsupported `#why-choose-us` has no replacement. These are **not implemented redirects or preserved hash anchors**. This batch adds no feed.
 
 ## Attribution
 

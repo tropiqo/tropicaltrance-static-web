@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { auditRendered } from './rendered-audit.mjs';
 import sharp from 'sharp';
 import { getMessages } from '../src/i18n/messages.mjs';
+import { pageMetadata, seoBuildSettings, renderRobots, renderSitemap, sitemapEntries } from './seo-metadata.mjs';
 
 export const routes = ['index.html', 'about/index.html', 'contact/index.html', 'flavors/index.html', '404.html'];
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -21,14 +22,15 @@ async function files(dir) {
   }
   return result;
 }
-export function checkInventory(paths, deliveries = [], flavors = []) {
+export function checkInventory(paths, deliveries = [], flavors = [], seoSettings = seoBuildSettings()) {
   const expectedRoutes = [...routes,...flavors.map(f=>'flavors/'+f.slug+'/index.html')];
   const spanishRoutes = ['es/index.html','es/about/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
   const allRoutes = [...expectedRoutes,...spanishRoutes];
   const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length)), ...localizationAssets.map(asset => asset.path.slice('public-astro/'.length))];
   assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), allRoutes.sort(), 'Unexpected static routes');
   assert.equal(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)).length, 1, 'Exactly one referenced stylesheet');
-  assert(paths.every(p => allRoutes.includes(p) || assets.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p) || /^_astro\/[A-Za-z0-9_.-]+\.js$/.test(p)), 'Unexpected copied/generated file');
+  const seoFiles = ['robots.txt', ...(seoSettings.indexingAuthorized ? ['sitemap.xml'] : [])];
+  assert(paths.every(p => allRoutes.includes(p) || assets.includes(p) || seoFiles.includes(p) || /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p) || /^_astro\/[A-Za-z0-9_.-]+\.js$/.test(p)), 'Unexpected copied/generated file');
   assert(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.js$/.test(p)).length <= 1, 'Unexpected client script count');
   assert.deepEqual(paths.filter(p => assets.includes(p)).sort(), assets.sort(), 'Selected output media inventory mismatch');
 }
@@ -40,7 +42,7 @@ function decodeAttribute(text) {
 function htmlAttributes(source) {
   return new Map([...source.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(match => [match[1].toLowerCase(),decodeAttribute(match[2]??match[3])]));
 }
-export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null, aboutHeroMedia = null, locale = 'en') {
+export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null, aboutHeroMedia = null, locale = 'en', seo = null, productionAuthorized = false) {
   const isSpanish = locale === 'es-MX';
   assert.match(html, new RegExp(`<html[^>]*lang="${locale}"`));
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1);
@@ -50,8 +52,21 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
   assert.match(html, new RegExp(`aria-label="${isSpanish?'Principal':'Primary'}"`));
   assert.match(html, /<title>[^<]+<\/title>/);
   assert.match(html, /name="description" content="[^"]+"/);
-  assert.match(html, /noindex, nofollow/);
-  assert.match(html, isSpanish ? /Sitio exclusivo de desarrollo/ : /Development-only foundation/);
+  const robots = html.match(/<meta name="robots" content="([^"]+)"/);
+  assert(robots);
+  if (seo) {
+    const title = decodeAttribute(html.match(/<title>([^<]+)<\/title>/)?.[1] ?? '');
+    const description = html.match(/<meta name="description" content="([^"]+)"/)?.[1];
+    assert.equal(title, seo.title);
+    assert.equal(decodeAttribute(description), seo.description);
+    assert.equal(robots[1], seo.robots);
+    const canonical = [...html.matchAll(/<link rel="canonical" href="([^"]+)"\s*\/?\s*>/g)].map(match => decodeAttribute(match[1]));
+    assert.deepEqual(canonical, seo.canonical ? [seo.canonical] : []);
+    const alternates = [...html.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)"\s*\/?\s*>/g)].map(match => ({ language: match[1], href: decodeAttribute(match[2]) }));
+    assert.deepEqual(alternates, seo.alternates.map(alternate => ({ language: alternate.language, href: new URL(alternate.path, seo.canonical).href })));
+  } else assert.match(html, /noindex, nofollow/);
+  if (productionAuthorized) assert(!html.includes('development-note') && !html.includes('Development-only foundation') && !html.includes('Sitio exclusivo de desarrollo'));
+  else assert.match(html, isSpanish ? /Sitio exclusivo de desarrollo/ : /Development-only foundation/);
   assert(!/<(?:iframe|form|input|object|embed|audio|canvas|astro-island)\b/i.test(html), 'Unapproved media or client runtime');
   const videoTags = [...html.matchAll(/<video\b([^>]*)><\/video>/gi)];
   const scriptTags = [...html.matchAll(/<script\b([^>]*)><\/script>/gi)];
@@ -130,7 +145,7 @@ export async function checkSource(base = root) {
   checkConfig(config);
   const source = await files(resolve(base, 'src'));
   const pages = source.map(p => relative(resolve(base, 'src/pages'), p)).filter(p => !p.startsWith('..'));
-  assert.deepEqual(pages.sort(), ['404.astro','about.astro','contact.astro','flavors/[slug].astro','flavors/index.astro','index.astro','es/index.astro','es/about.astro','es/contact.astro','es/404.astro','es/flavors/index.astro','es/flavors/[slug].astro'].sort());
+  assert.deepEqual(pages.sort(), ['404.astro','about.astro','contact.astro','flavors/[slug].astro','flavors/index.astro','index.astro','robots.txt.ts','es/index.astro','es/about.astro','es/contact.astro','es/404.astro','es/flavors/index.astro','es/flavors/[slug].astro'].sort());
   for (const path of source) {
     const text = await readFile(path, 'utf8');
     assert(!/fetch\s*\(|https?:|tropical-trance-studio|artwork-workspace|prerender\s*=\s*false|astro:actions|astro:content/.test(text), `Forbidden source dependency: ${path}`);
@@ -150,8 +165,12 @@ export async function checkSource(base = root) {
 export async function checkOutput(base = root) {
   const dist = resolve(base, 'dist');
   const release = loadRelease({base});
+  const seoSettings = seoBuildSettings({ production: true, productionSite: release.site.kind === 'production-site', review: release.review === true });
   const output = await files(dist);
-  checkInventory(output.map(p => relative(dist, p)), release.deliveries, release.flavors);
+  checkInventory(output.map(p => relative(dist, p)), release.deliveries, release.flavors, seoSettings);
+  assert.equal(await readFile(resolve(dist,'robots.txt'),'utf8'),renderRobots(seoSettings),'Robots output must match build authorization');
+  if (seoSettings.indexingAuthorized) assert.equal(await readFile(resolve(dist,'sitemap.xml'),'utf8'),renderSitemap(sitemapEntries({origin:seoSettings.origin,flavors:release.flavors})),'Sitemap must contain only declared localized routes');
+  else assert(!output.some(path => path === resolve(dist,'sitemap.xml')),'Unauthorized builds must not contain a sitemap');
   for (const path of output) {
     const bytes = await readFile(path);
     const servedPath = 'public-astro/'+relative(dist,path);
@@ -180,12 +199,18 @@ export async function checkOutput(base = root) {
     const media = basePage==='index.html' ? [pageTrancy,...pageFlavors] : role ? [pageTrancy] : basePage==='flavors/index.html' ? pageFlavors : detail ? [detail] : [];
     const salesChannels=detail?.salesChannels||[];
     const whatsappBusinessUrl=basePage==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
-    checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale);
+    const messages=getMessages(locale);
+    const pageKind=basePage==='index.html'?'home':basePage==='about/index.html'?'about':basePage==='flavors/index.html'?'flavors':basePage==='contact/index.html'?'contact':basePage==='404.html'||basePage==='404/index.html'?'notFound':detail?'detail':'notFound';
+    const metadataTitle=pageKind==='home'?messages.home.metaTitle:pageKind==='about'?messages.about.title:pageKind==='flavors'?messages.flavors.title:pageKind==='contact'?messages.contact.title:pageKind==='detail'?detail.name:messages.notFound.title;
+    const metadataDescription=pageKind==='home'?messages.home.description:pageKind==='about'?(locale==='en'?messages.about.description1:`${messages.about.description1} ${messages.about.description2}`):pageKind==='flavors'?(pageFlavors.length===1?pageFlavors[0].shortDescription:messages.flavors.description):pageKind==='contact'?messages.contact.description:pageKind==='detail'?detail.shortDescription:messages.notFound.description;
+    const seo=pageMetadata({page:pageKind,locale,title:metadataTitle,description:metadataDescription,flavor:detail,settings:seoSettings});
+    checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale,seo,seoSettings.indexingAuthorized);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = decodeAttribute(match[1]).split('#');
       assert(href !== trancyMedia.mediaUrl && !release.deliveries.some(m => href==='/' + m.path.slice('public-astro/'.length)),'Unapproved media link');
       if (href.startsWith('https:')) {
+        if (href === seo.canonical || seo.alternates.some(alternate => new URL(alternate.path,seo.canonical).href === href)) continue;
         assert(salesChannels.some(channel=>channel.destinationUrl===href) || (basePage==='contact/index.html' && href===release.site.contact?.whatsappBusinessUrl),'Unapproved external destination');
         continue;
       }
@@ -197,7 +222,7 @@ export async function checkOutput(base = root) {
       if (fragment) assert(targetText.includes(`id="${fragment}"`), 'Broken fragment');
     }
   }
-  auditRendered(base, 'dist');
+  auditRendered(base, 'dist', {indexingAuthorized:seoSettings.indexingAuthorized});
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await checkSource();

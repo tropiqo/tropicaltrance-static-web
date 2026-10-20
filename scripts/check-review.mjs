@@ -13,8 +13,9 @@ export async function checkReviewOutput(base = process.cwd()) {
   const files = inventory(base,'.review-build').map(p=>p.slice('.review-build/'.length));
   assert.deepEqual(files.filter(p=>p.endsWith('.html')).sort(),expected.sort());
   const media = [...release.deliveries.map(m=>m.path.split('/').at(-1)), selected.outputPath, 'assets/language-preference.js'];
-  assert.deepEqual(files.filter(p=>!p.endsWith('.html') && !/^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)).sort(), media.sort(), 'Exact review delivery inventory');
-  assert(files.every(p=>expected.includes(p)||media.includes(p)||/^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)), 'Unexpected review output');
+  assert.deepEqual(files.filter(p=>!p.endsWith('.html') && !/^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p) && p!=='robots.txt').sort(), media.sort(), 'Exact review delivery inventory');
+  assert(files.every(p=>expected.includes(p)||media.includes(p)||p==='robots.txt'||/^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)), 'Unexpected review output');
+  assert.equal(readFileSync(resolve(base,'.review-build/robots.txt'),'utf8'),'User-agent: *\nDisallow: /\n','Review robots must disallow crawling');
   for (const file of expected) {
     const html=readFileSync(resolve(base,'.review-build',file),'utf8');
     assert.match(html,/INTERNAL SYNTHETIC TEST ONLY/); assert.match(html,/noindex, nofollow/);
