@@ -1,0 +1,27 @@
+---
+import type { PublicFlavor } from './public-view';
+import type { getMessages } from '../i18n/messages.mjs';
+
+interface Props {
+  flavor: PublicFlavor;
+  locale: 'en' | 'es-MX';
+  messages: ReturnType<typeof getMessages>;
+}
+
+const { flavor, locale, messages } = Astro.props;
+const channels = flavor.salesChannels ?? [];
+const localizedLinkLabel = (channelName: string) => messages.flavors.channelLinkLabel
+  .replace('{flavor}', flavor.name)
+  .replace('{channel}', channelName);
+---
+{channels.length > 0 && <section class="sales-channels" lang={locale} aria-labelledby={`sales-channels-${flavor.slug}`}>
+  <div class="section-heading">
+    <p class="eyebrow">{messages.flavors.find}</p>
+    <h2 id={`sales-channels-${flavor.slug}`}>{messages.flavors.where}</h2>
+  </div>
+  <ul class="sales-channel-list">
+    {channels.map(channel => <li>
+      <a class="button" href={channel.destinationUrl} target="_blank" rel="noopener noreferrer" aria-label={localizedLinkLabel(channel.name)}>{channel.name}</a>
+    </li>)}
+  </ul>
+</section>}

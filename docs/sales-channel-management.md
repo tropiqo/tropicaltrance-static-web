@@ -13,6 +13,12 @@ Treat these as separate gates:
 
 The CLI below requires `--development-only`, always keeps new records disabled, and cannot enable a channel. Technical validation is not commercial approval.
 
+## Website rendering
+
+`scripts/public-inputs.mjs` loads this registry through the existing sales-channel schema and URL validation, then associates only enabled channels whose optional `flavors` list includes the current flavor. An omitted list applies to every flavor; an empty list applies to none. Invalid destinations and unknown flavor slugs fail validation before rendering.
+
+The reusable `SalesChannels` component renders on English and Spanish flavor detail pages only when that validated association list is non-empty. Its heading and accessible link labels use the page locale. Links retain `target="_blank"` with `rel="noopener noreferrer"`; there is no empty section or placeholder when no destination is available. Registry changes therefore affect flavor detail pages after the normal build, without adding links to Home or the collection pages.
+
 ## Prerequisites
 
 Use Node 24.21.0 and npm 11.19.0 in the Website repository:

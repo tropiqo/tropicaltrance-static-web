@@ -34,7 +34,10 @@ test('initial sales channels are disabled and render no section, placeholder, or
   assert(release.flavors.every(flavor=>flavor.salesChannels.length===0));
   const home=readFileSync(join(root,'dist/index.html'),'utf8');
   assert(!home.includes('Where to Find Us'));
-  for(const flavor of release.flavors) assert(!readFileSync(join(root,'dist/flavors',flavor.slug,'index.html'),'utf8').includes('Where to Find Us'));
+  for(const flavor of release.flavors) {
+    assert(!readFileSync(join(root,'dist/flavors',flavor.slug,'index.html'),'utf8').includes('Where to Find Us'));
+    assert(!readFileSync(join(root,'dist/es/flavors',flavor.slug,'index.html'),'utf8').includes('Dónde encontrarnos'));
+  }
   assert(!existsSync(join(root,'dist/sales-channels.json')));
 });
 
@@ -48,13 +51,20 @@ test('enabled synthetic channels render only on associated Flavor details with s
     const build=spawnSync('npm',['run','build'],{cwd:base,encoding:'utf8',timeout:120000,maxBuffer:4*1024*1024});
     assert.equal(build.status,0,build.stdout+'\n'+build.stderr);
     const grape=readFileSync(join(base,'dist/flavors/grape/index.html'),'utf8');
+    const spanishGrape=readFileSync(join(base,'dist/es/flavors/grape/index.html'),'utf8');
     const lime=readFileSync(join(base,'dist/flavors/lime/index.html'),'utf8');
+    const spanishLime=readFileSync(join(base,'dist/es/flavors/lime/index.html'),'utf8');
     const home=readFileSync(join(base,'dist/index.html'),'utf8');
     assert.match(grape,/Where to Find Us/);
     assert.match(grape,/href="https:\/\/wa\.me\/5215555555555" target="_blank" rel="noopener noreferrer" aria-label="Find Grape at WhatsApp \(opens in a new tab\)"/);
     assert.match(grape,/href="https:\/\/seller\.example\/grape"/);
+    assert.match(spanishGrape,/Dónde encontrarnos/);
+    assert.match(spanishGrape,/Encontrar Grape en WhatsApp \(se abre en una pestaña nueva\)/);
+    assert.match(spanishGrape,/Encontrar Grape en Demo Market \(se abre en una pestaña nueva\)/);
+    assert.match(spanishGrape,/href="https:\/\/wa\.me\/5215555555555" target="_blank" rel="noopener noreferrer"/);
     assert(!lime.includes('https://wa.me/'));
     assert.match(lime,/href="https:\/\/seller\.example\/grape"/);
+    assert(!spanishLime.includes('https://wa.me/'));
     assert(!home.includes('seller.example'));
     assert(!existsSync(join(base,'dist/sales-channels.json')));
     await checkOutput(base);
@@ -78,6 +88,7 @@ test('invalid destinations, activation without a URL, duplicate IDs and unknown 
     for(const channels of invalid){writeConfig(base,channels);assert.throws(()=>loadRelease({base}));}
     writeConfig(base,[{...sample('shop','Shop','website',null),enabled:false}]);
     assert.doesNotThrow(()=>loadRelease({base}));
+    assert(loadRelease({base}).flavors.every(flavor=>flavor.salesChannels.length===0));
     writeConfig(base,[{...sample('shop','Shop','website','https://seller.example/grape'),unexpected:'field'}]);
     assert.throws(()=>loadRelease({base}));
     writeFileSync(join(base,'content/sales-channels.json'),'{} trailing');

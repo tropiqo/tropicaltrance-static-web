@@ -3,6 +3,7 @@ import type { PublicFlavor } from './public-view';
 interface Props { flavor: PublicFlavor; }
 import MediaFrame from './MediaFrame.astro';
 import FlavorStory from './FlavorStory.astro';
+import SalesChannels from './SalesChannels.astro';
 import { localizePath } from '../i18n/messages.mjs';
 const { flavor, locale = 'en', messages } = Astro.props;
 ---
@@ -17,15 +18,5 @@ const { flavor, locale = 'en', messages } = Astro.props;
     <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} loading="eager" />
   </div>
   <FlavorStory editorial={flavor.editorial} messages={messages} />
-  {flavor.salesChannels?.length > 0 && <section class="sales-channels" aria-labelledby={`sales-channels-${flavor.slug}`}>
-    <div class="section-heading">
-      <p class="eyebrow">{messages.flavors.find}</p>
-      <h2 id={`sales-channels-${flavor.slug}`}>{messages.flavors.where}</h2>
-    </div>
-    <ul class="sales-channel-list">
-      {flavor.salesChannels.map(channel => <li>
-        <a class="button" href={channel.destinationUrl} target="_blank" rel="noopener noreferrer" aria-label={locale === 'es-MX' ? `Encontrar ${flavor.name} en ${channel.name} (se abre en una pestaña nueva)` : channel.accessibleLabel}>{channel.name}</a>
-      </li>)}
-    </ul>
-  </section>}
+  <SalesChannels flavor={flavor} locale={locale} messages={messages} />
 </div>
