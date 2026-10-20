@@ -19,7 +19,7 @@ try {
       if (result.status !== 0) throw Error(`${script} exited ${result.status}`);
     }
   } else throw Error(`Unknown validation stage: ${stage}`);
-  console.log(`VALIDATION ${stage}: structural PASS; current upstream authorization, human visual/accessibility review and exact publication/release approval remain separate and UNVERIFIED.`);
+  console.log(`VALIDATION ${stage}: structural PASS; legal/commercial eligibility, owner visual acceptance, remote CI and external publication/deployment remain separate and UNVERIFIED.`);
 } catch (error) {
   console.error(`VALIDATION ${stage}: FAIL: ${error.message}`);
   process.exitCode = 1;

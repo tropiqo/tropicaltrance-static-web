@@ -38,7 +38,7 @@ test('one explicitly selected immutable delivery is shared across exactly Home a
   assert.match(preview.brandMedia['home-hero'].alt, /Trancy.*green.*chameleon.*sunglasses/);
   const flavors = loadRelease({ review: true });
   assert.deepEqual(preview.flavors, flavors.flavors); assert.deepEqual(preview.deliveries, flavors.deliveries);
-  assert.deepEqual(loadRelease().flavors.map(f=>f.slug), ['grape']); assert.equal(loadRelease().deliveries.length, 1);
+  assert(loadRelease().flavors.some(f=>f.slug==='grape')); assert.equal(loadRelease().deliveries.length, loadRelease().flavors.length);
 });
 test('missing, changed, stray or symlinked local review media fails closed', () => {
   sandbox(base => { rmSync(resolve(base, selected.path)); assert.throws(() => loadTrancyReview(base)); });
@@ -52,7 +52,7 @@ test('review derivative cannot enter normal publicDir or synthetic Flavor assets
   assert.throws(() => rejectFixture(Buffer.from(selected.contentId)));
   sandbox(base => { writeFileSync(resolve(base, 'public-astro/assets/renamed.webp'), bytes); assert.throws(() => loadRelease({ base })); });
   sandbox(base => { writeFileSync(resolve(base, 'tests/fixtures/public-inputs/assets/renamed.webp'), bytes); assert.throws(() => loadRelease({ base, review: true }), /Unlisted/); });
-  sandbox(base => { writeFileSync(resolve(base, 'content/brand-media.json'), '{}'); assert.throws(() => loadRelease({ base }), /Unexpected input/); });
+  sandbox(base => { writeFileSync(resolve(base, 'content/brand-media.json'), '{}'); assert.throws(() => loadRelease({ base }), /Unexpected normal content/); });
 });
 test('intact responsive presentation uses the approved static image without transformations', () => {
   const css = readFileSync(resolve(root, 'src/styles/global.css'), 'utf8');

@@ -5,6 +5,7 @@ import { readdir, readFile, lstat } from 'node:fs/promises';
 import { resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditRendered } from './rendered-audit.mjs';
+import sharp from 'sharp';
 
 export const routes = ['index.html', 'about/index.html', 'contact/index.html', 'flavors/index.html', '404.html'];
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -69,6 +70,14 @@ export function checkConfig(config) {
   assert(!/adapter|integrations|output: 'server'/.test(config), 'Forbidden runtime config');
   assert(!/tropical-trance-studio|artwork-workspace|fetch\s*\(|https?:/.test(config), 'Forbidden external/private config dependency');
 }
+export async function checkFlavorMedia(base,release=loadRelease({base})) {
+  for (const flavor of release.flavors) {
+    const metadata=await sharp(resolve(base,'public-astro',flavor.mediaUrl.slice(1))).metadata();
+    assert.equal(metadata.format,'webp','Flavor media must decode as WebP');
+    assert(metadata.width>0 && metadata.height>0 && metadata.width<=1024 && metadata.height<=1536,'Flavor media dimensions exceed the web profile');
+    assert(!metadata.pages || metadata.pages===1,'Animated Flavor media is not supported');
+  }
+}
 export async function checkSource(base = root) {
   const config = await readFile(resolve(base, 'astro.config.mjs'), 'utf8');
   checkConfig(config);
@@ -81,7 +90,8 @@ export async function checkSource(base = root) {
   }
   assert.match(await readFile(resolve(base, 'src/pages/flavors/[slug].astro'), 'utf8'), /release\.flavors\.map/);
   const selected = loadRelease({base}).flavors;
-  assert(selected.length<=1 && selected.every(f=>f.flavor.id==='grape' && f.slug==='grape'), 'Unreviewed normal Flavor selection');
+  assert(selected.every(f=>/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(f.slug) && f.flavor.id===f.slug), 'Invalid normal Flavor selection');
+  await checkFlavorMedia(base,{flavors:selected});
   const packageJson = JSON.parse(await readFile(resolve(base, 'package.json'), 'utf8'));
   assert.deepEqual(packageJson.devDependencies, { astro: '7.3.8' });
   assert(!packageJson.dependencies);

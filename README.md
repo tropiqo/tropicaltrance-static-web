@@ -37,7 +37,7 @@ npm run preview -- --port 4321
 
 Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/`, `/flavors/grape/` or `/contact/`. Output is `dist/`: currently six HTML pages (including `/flavors/grape/`), one stylesheet, the exact Trancy WebP and one approved Grape WebP, with no fixture detail routes.
 
-Flavor content uses the unchanged closed v1 release contracts. The approved mascot is independently pinned at `public-astro/assets/trancy-web-r1.webp`; it requires no brand JSON, v2 eligibility or Studio lookup. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
+Flavor content uses one closed JSON file per flavor under `content/flavors/`, with the local WebP path and SHA-256 in that same record. The normal website build does not read Studio eligibility snapshots, authorization records, or Grape-specific source/recipe pins. This is a local website content model; it does not establish legal rights, commercial eligibility, or permission to deploy. The approved mascot is independently pinned at `public-astro/assets/trancy-web-r1.webp`. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
 
 ## Isolated local review
 
@@ -75,7 +75,7 @@ git diff --check
 
 | Command | Checks |
 | --- | --- |
-| `npm run validate:inputs` | Closed inputs, release/media/eligibility joins and source boundaries |
+| `npm run validate:inputs` | Closed flavor content, image integrity and source boundaries |
 | `npm run build` | Normal inputs/source/build/output |
 | `npm run review:build` | Isolated review inventory and exact delivery digests |
 | `npm test` | Automated tests; verifies/prepares pinned local review asset first |
@@ -87,18 +87,35 @@ Build first before standalone output audits or `verify:reproducible`. Structural
 
 ## Grape candidate and future artwork replacement
 
-The existing Flavor v1 inputs select Grape with approved copy and one full-frame
-lossless WebP at `/assets/grape-web-r1.webp`, shared by collection/detail.
-Input/output validation checks its exact source/derivative/recipe and file pins;
-original artwork and private authorization evidence remain outside the build.
-Final rendered Grape acceptance is pending owner local review. Nothing deploys.
+The current Grape record retains its approved copy and exact WebP at
+`/assets/grape-web-r1.webp`, shared by collection/detail. Its source artwork and
+Studio history remain outside the website content model.
 
-Future artwork editing is planned as **prepare → preview → confirm** through
-one small CLI that coordinates existing projection/media/eligibility/release
-pins and delivery, preserving revisions/history and genuine review. It is not
-implemented; no CMS, new schema or publication authority is needed. Initial
-Grape does not depend on this helper. Source/base/byte drift and missing
-permission must fail; confirmation never automatically publishes.
+### Add or replace flavor artwork locally
+
+Use one command for either an existing flavor slug or a new slug:
+
+```sh
+npm run flavor:update -- grape --image /path/to/replacement.png
+npm run flavor:update -- mango --image /path/to/new-flavor.png --name Mango --description "Explore Mango." --alt "Mango flavor artwork."
+```
+
+If content options are omitted, existing values are retained; for a new flavor,
+the CLI prompts for them. It validates and decodes the image, prepares one
+full-frame lossless WebP, builds a temporary isolated Astro candidate, and
+starts a loopback preview at `/flavors/` and `/flavors/<slug>/`. Review those
+pages, then answer `y` to apply or press Enter/answer `n` to cancel. Cancellation
+leaves website inputs unchanged. Confirmation writes a new versioned image and
+single flavor JSON, removes the superseded image only after the update succeeds,
+checks that inputs did not change during preview, and runs `npm run validate`;
+validation failure restores the prior content and asset. Do not run concurrent
+content edits during a preview.
+
+This command edits local website content only. It does not create Studio asset
+or approval records, assert legal rights, or authorize deployment/publication.
+The normal build includes selected local flavor content; treat deployment as a
+separate release decision. Review fixtures and review-only Trancy media remain
+confined to `npm run review:build` and must never be deployed.
 
 ## Retained legacy material and URL decisions
 

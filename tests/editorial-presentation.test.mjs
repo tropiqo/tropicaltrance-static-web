@@ -46,12 +46,17 @@ test('three reusable editorial variants compose Home without fabricated claims o
   assert.equal((html.match(/<img\b/g)||[]).length, hero ? 1 : 0);
   assert(!/class="flavor-card"|Trancy is the constant|The adventure changes|testimonial|award|ingredients|manufactur|sustainab|founder|coming soon|launch date/i.test(html));
 });
-test('normal collection/detail show exactly Grape with approved copy and one shared image',()=>{
- const release=loadRelease();assert.deepEqual(release.flavors.map(f=>f.slug),['grape']);const f=release.flavors[0];
- const html=normal('flavors/index.html'),detail=normal('flavors/grape/index.html');
- assert.equal((html.match(/class="flavor-card"/g)||[]).length,1);assert(!html.includes('class="empty-collection"'));assert.match(html,/href="\/flavors\/grape\/"/);
- for(const page of [html,detail]){assert(page.includes(f.shortDescription));assert(page.includes(`src="${f.mediaUrl}" alt="${f.alt}"`));assert.equal((page.match(/<img\b/g)||[]).length,1);assert(!/fixture-|review-media|Flavor story|Worlds/.test(page));}
- assert.equal(headings(detail,1)[0],'Grape');assert(detail.includes('Return to Flavors'));assert(detail.includes('loading="eager"'));assert(html.includes('loading="lazy"'));
+test('normal collection/detail derive from all selected flavors and preserve approved Grape copy',()=>{
+ const release=loadRelease();assert(release.flavors.some(f=>f.slug==='grape'));
+ const html=normal('flavors/index.html');
+ assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);assert(!html.includes('class="empty-collection"'));
+ for(const f of release.flavors){
+  const detail=normal(`flavors/${f.slug}/index.html`);
+  for(const page of [html,detail]){assert(page.includes(f.shortDescription));assert(page.includes(`src="${f.mediaUrl}" alt="${f.alt}"`));assert(!/fixture-|review-media|Flavor story|Worlds/.test(page));}
+  assert.equal(headings(detail,1)[0],f.name);assert(detail.includes('Return to Flavors'));assert(detail.includes('loading="eager"'));assert(html.includes('loading="lazy"'));
+ }
+ const grape=release.flavors.find(f=>f.slug==='grape');assert(grape.name && grape.shortDescription && grape.alt);
+ assert.equal((normal('flavors/grape/index.html').match(/<img\b/g)||[]).length,1);
  assert(!normal('index.html').includes('No flavors are included'));assert(!normal('about/index.html').includes('No flavors are included'));
 });
 test('review fixtures render reusable cards and detail media from the validated model, preserving bytes and alt',async()=>{
@@ -65,7 +70,7 @@ test('review fixtures render reusable cards and detail media from the validated 
     for(const rendered of [html,collection])assert(rendered.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`));
     assert(html.includes('loading="eager"'));assert(collection.includes('loading="lazy"'));
     assert(html.includes('Return to Flavors'));assert(html.includes('INTERNAL SYNTHETIC TEST ONLY'));assert(html.includes('noindex, nofollow'));
-    const delivery=release.deliveries.find(m=>m.deliveryRef===flavor.artwork.deliveryRef);assert.equal(digest(readFileSync(resolve(root,'.review-build',flavor.mediaUrl.slice(1)))),delivery.asset.contentId);
+    const delivery=release.deliveries.find(m=>m.path.endsWith(flavor.mediaUrl.slice(1)));assert.equal(digest(readFileSync(resolve(root,'.review-build',flavor.mediaUrl.slice(1)))),delivery.asset.contentId);
     for(const nav of navs(html))assert(!/world|Trancy/i.test(nav));
     assert.match(navs(html)[0], /href="\/flavors\/" aria-current="location"/);
   }
@@ -90,10 +95,11 @@ test('decoration is hidden, static and separate from approved media; no remote C
   const css=text('src/styles/global.css');assert.match(css,/object-fit: contain/);assert(!/object-fit:\s*cover|@font-face|https?:|url\(|@keyframes/.test(css));
   assert.match(text('src/components/DecorativeBackground.astro'),/aria-hidden="true"/);assert.match(css,/pointer-events: none/);
   assert(!/transform:|filter:/.test(css.match(/\.media-frame img\s*\{([^}]+)\}/)[1]));
-  for (const route of ['flavors/index.html', 'flavors/grape/index.html']) {
-    const html = normal(route);
-    assert.match(html, /class="media-frame"/);
-    assert.match(html, /<img[^>]+src="\/assets\/grape-web-r1\.webp"[^>]+alt="Grape artwork featuring Trancy in a purple cosmic landscape\./);
+  const release=loadRelease();
+  for (const [route,flavors] of [['flavors/index.html',release.flavors],['flavors/grape/index.html',[release.flavors.find(f=>f.slug==='grape')]]]) {
+    const html = normal(route);assert.match(html, /class="media-frame"/);
+    for(const flavor of flavors)assert(html.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`));
+    assert.equal((html.match(/<img\b/g)||[]).length,flavors.length);
   }
   const frame = css.match(/\.media-frame\s*\{([^}]+)\}/)?.[1] ?? '';
   const image = css.match(/\.media-frame img\s*\{([^}]+)\}/)?.[1] ?? '';
@@ -123,8 +129,9 @@ test('presentation reads validated props only; contracts, fixture roots and publ
   for(const name of ['FlavorCard','FlavorCollection','FlavorDetail','FlavorStory','MediaFrame']) {
     const source=text(`src/components/${name}.astro`);assert(!/readFile|loadRelease|fetch\s*\(|fixture-|grape|cherry|lime|JSON\.parse|content\//.test(source));
   }
-  assert.deepEqual(inventory(root,'public-astro',true), ['public-astro/assets/grape-web-r1.webp','public-astro/assets/trancy-web-r1.webp']);
-  assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)),[...routes,'flavors/grape/index.html'].sort());
+  const release=loadRelease();
+  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/trancy-web-r1.webp'].sort());
+  assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`)].sort());
 });
 
 test('local Trancy candidate anchors Home and About with one intact delivery and no other-page image', async () => {

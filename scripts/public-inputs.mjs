@@ -37,24 +37,16 @@ export function rejectFixture(bytes) {
 function unique(items, key, message) {
   const keys = items.map(key); requireThat(new Set(keys).size === keys.length,message);
 }
-function recipe(artwork, review, base, context) {
-  if (review) {
-    requireThat(artwork.recipe === 'fixture-placeholder' && artwork.recipeVersion === '1','No reviewed recipe/version profile');
-    validateSchema(artwork.parameters,resolve(base,'schemas/fixture-placeholder-parameters.schema.json'));
-    return;
-  }
-  // One genuinely reviewed Grape source/output. No general recipe or authority registry.
-  same(context.flavor,{id:'grape',revision:'r2'},'Unknown normal Flavor recipe context');
-  same(context.canonicalArtwork,{assetId:'grape-package-artwork',revision:'r1',contentId:'sha256:6ac10d7bc79b331ee310e3c54c1f78688c884cc8fa1ef0b9be0e281e67e5a04b'},'Grape source profile mismatch');
-  same({...artwork,parameters:undefined},{assetId:'grape-web-artwork',revision:'r1',contentId:'sha256:66c5313e7bb9dd8bc733f51aa56b1c7d5679a463a67a1c11deffd9326aade839',deliveryRef:'grape-web-r1',recipe:'grape-full-frame-webp',recipeVersion:'1',parameters:undefined},'No reviewed recipe/version profile');
-  same(artwork.parameters,{resize:{width:1024,fit:'inside',withoutEnlargement:true,kernel:'lanczos3',fastShrinkOnLoad:false},webp:{lossless:true,effort:6}},'Grape recipe parameter mismatch');
+function fixtureRecipe(artwork, base) {
+  requireThat(artwork.recipe === 'fixture-placeholder' && artwork.recipeVersion === '1','No reviewed fixture recipe/version profile');
+  validateSchema(artwork.parameters,resolve(base,'schemas/fixture-placeholder-parameters.schema.json'));
 }
-export function loadRelease({ base = process.cwd(), review = false } = {}) {
-  requireThat(typeof review === 'boolean','Explicit boolean review context required');
-  const input = review ? 'tests/fixtures/public-inputs' : 'content';
-  const assets = review ? input + '/assets' : 'public-astro/assets';
+function loadReviewRelease({ base }) {
+  const review = true;
+  const input = 'tests/fixtures/public-inputs';
+  const assets = input + '/assets';
   const schema = name => resolve(base,'schemas',name + '.schema.json');
-  const bytes = path => { const p = safePath(base,path); requireThat(lstatSync(p).isFile(),'Expected regular file'); const b = readFileSync(p); if (!review) rejectFixture(b); return b; };
+  const bytes = path => { const p = safePath(base,path); requireThat(lstatSync(p).isFile(),'Expected regular file'); return readFileSync(p); };
   const read = (path,name) => validateSchema(parseJson(bytes(path)),schema(name));
   const origin = parseJson(readFileSync(safePath(base,'schemas/origin.json')));
   requireThat(origin.contractVersion === '1' && origin.sourceRevision === '24d848f691dd99cbb844374fb2f992f4804183ca','Schema provenance drift');
@@ -67,7 +59,7 @@ export function loadRelease({ base = process.cwd(), review = false } = {}) {
   for (const name of readdirSync(safePath(base,input))) requireThat(expectedRoot.has(name),'Unexpected input root entry');
   const records = (dir,name) => inventory(base,input+'/'+dir,true).map(path => {
     requireThat(new RegExp('^'+input+'/'+dir+'/[A-Za-z0-9_.-]+\\.json$').test(path),'Unexpected content path');
-    const value = read(path,name); if (name === 'publication/projection') recipe(value.artwork,review,base,value);
+    const value = read(path,name); if (name === 'publication/projection') fixtureRecipe(value.artwork,base);
     return {path,contentId:digest(bytes(path)),value};
   });
   const projections = records('flavors','publication/projection');
@@ -84,10 +76,6 @@ export function loadRelease({ base = process.cwd(), review = false } = {}) {
     requireThat(item.path.startsWith(assets+'/'),'Delivery outside approved asset root');
     const deliveryBytes = bytes(item.path);
     same(digest(deliveryBytes),item.asset.contentId,'Delivery digest mismatch');
-    if (!review && item.asset.assetId==='grape-web-artwork') {
-      same(item.path,'public-astro/assets/grape-web-r1.webp','Grape delivery path mismatch');
-      same(deliveryBytes.length,2866364,'Grape delivery size mismatch');
-    }
   }
   const hasSnapshot = readdirSync(safePath(base,input)).includes('eligibility.json');
   requireThat(!release.members.length || (hasSnapshot && release.eligibilitySnapshot),'Included member requires pinned eligibility snapshot');
@@ -99,12 +87,8 @@ export function loadRelease({ base = process.cwd(), review = false } = {}) {
     entries = review ? snapshot.assumptions : snapshot.entries;
     unique(entries,x=>x.flavor.id,'Duplicate eligibility Flavor');
     unique(entries,x=>x.artwork.deliveryRef,'Duplicate eligibility delivery');
-    for (const e of entries) recipe(e.artwork,review,base,e);
+    for (const e of entries) fixtureRecipe(e.artwork,base);
   } else requireThat(!release.eligibilitySnapshot,'Snapshot pin without snapshot');
-  for (const member of release.members) if (!review) {
-    same(member.flavor,{id:'grape',revision:'r2'},'Unsupported normal Flavor selection');
-    same(member.slug,'grape','Grape slug mismatch');
-  }
   const selected = new Set();
   const flavors = [...release.members].sort((a,b)=>a.flavor.id < b.flavor.id ? -1 : a.flavor.id > b.flavor.id ? 1 : 0).map(member=>{
     const p = projections.find(x=>x.path===member.projection.path);
@@ -122,17 +106,50 @@ export function loadRelease({ base = process.cwd(), review = false } = {}) {
     }
     return {slug:member.slug,...p.value,mediaUrl:'/'+m.path.slice(review?assets.length+1:'public-astro/'.length),editorial};
   });
-  // One explicitly owner-approved static image, independent of Flavor publication authority.
-  if (!review) {
-    const path = safePath(base, trancy.path);
-    requireThat(lstatSync(path).isFile(), 'Expected regular static Trancy image');
-    validateTrancy(readFileSync(path));
-    selected.add(trancy.path);
-  }
-  const served = inventory(base,review?assets:'public-astro',!review);
-  same(served.sort(),[...selected].sort(),'Unlisted file would be copied by publicDir');
+  const served=inventory(base,assets);
+  same(served.sort(),[...selected].sort(),'Unlisted file would be copied by review publicDir');
   return {site,flavors,review,deliveries:media.entries.filter(x=>selected.has(x.path)).sort((a,b)=>a.deliveryRef<b.deliveryRef?-1:a.deliveryRef>b.deliveryRef?1:0)};
 }
+
+function loadFlavorContent({base}) {
+  const schema = resolve(base,'schemas/flavor-content.schema.json');
+  const sitePath = safePath(base,'content/site.json');
+  const readContent=path=>{const bytes=readFileSync(safePath(base,path));rejectFixture(bytes);return bytes;};
+  const site = validateSchema(parseJson(readContent('content/site.json')),resolve(base,'schemas/site.schema.json'));
+  const flavorsPath = 'content/flavors';
+  const flavorFiles = inventory(base,flavorsPath,true);
+  const rootEntries = readdirSync(safePath(base,'content'));
+  requireThat(rootEntries.every(name=>['site.json','flavors','editorial'].includes(name)),'Unexpected normal content entry');
+  requireThat(inventory(base,'content/editorial',true).length===0,'Unsupported normal editorial content');
+  unique(flavorFiles,x=>x,'Duplicate flavor content path');
+  const flavors = flavorFiles.map(path=>{
+    requireThat(/^content\/flavors\/[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(path),'Unexpected flavor content path');
+    const value=validateSchema(parseJson(readContent(path)),schema);
+    const slug=path.slice('content/flavors/'.length,-'.json'.length);
+    same(value.slug,slug,'Flavor slug/file name mismatch');
+    const mediaPath='public-astro/'+value.media.path;
+    requireThat(value.media.path.startsWith('assets/') && value.media.path===`assets/${slug}-web-r${value.revision}.webp`,'Flavor media path mismatch');
+    const bytes=readFileSync(safePath(base,mediaPath));
+    rejectFixture(bytes);
+    requireThat(bytes.length>=16 && bytes.toString('ascii',0,4)==='RIFF' && bytes.toString('ascii',8,12)==='WEBP','Flavor delivery is not a WebP image');
+    same(digest(bytes),value.media.contentId,'Flavor media digest mismatch');
+    return {flavor:{id:slug,revision:value.revision},slug,name:value.name,shortDescription:value.shortDescription,alt:value.alt,mediaUrl:'/'+value.media.path,media:{contentId:value.media.contentId}};
+  }).sort((a,b)=>a.slug.localeCompare(b.slug));
+  unique(flavors,x=>x.slug,'Duplicate Flavor slug');
+  const deliveries=flavors.map(f=>({path:'public-astro/'+f.mediaUrl.slice(1),asset:{contentId:f.media.contentId}}));
+  const selected=new Set([trancy.path,...deliveries.map(d=>d.path)]);
+  const trancyPath=safePath(base,trancy.path);
+  requireThat(lstatSync(trancyPath).isFile(),'Expected regular static Trancy image');
+  validateTrancy(readFileSync(trancyPath));
+  same(inventory(base,'public-astro').sort(),[...selected].sort(),'Unlisted file would be copied by publicDir');
+  return {site,flavors,review:false,deliveries};
+}
+
+export function loadRelease({base=process.cwd(),review=false}={}) {
+  requireThat(typeof review==='boolean','Explicit boolean review context required');
+  return review ? loadReviewRelease({base}) : loadFlavorContent({base});
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const result = loadRelease(); console.log(`Normal public inputs: PASS (${result.flavors.length} members)`);
+  const result = loadRelease(); console.log(`Normal website content: PASS (${result.flavors.length} flavors)`);
 }
