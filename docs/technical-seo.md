@@ -48,3 +48,5 @@ When adding a flavor, use the documented `flavor:add` workflow and supply both l
 Future apparel content is out of scope until the owner approves creating it. Once approved, add it through the site's established content and route architecture, base copy only on verified product facts, localize the page and metadata in English and Mexican Spanish, and test its route, navigation, headings, and accessibility. Do not infer materials, availability, pricing, or commercial terms.
 
 Before review, run `npm run validate`, `npm run verify:reproducible`, and `git diff --check`. Inspect local output with `npm run dev` and review Home, About, Flavors, Contact, and each localized detail page. Keep the 014A development defaults and indexing gates intact throughout content work; metadata improvements alone never authorize indexing or publication.
+
+For owner Search Console setup, organic-search measurement, future event definitions, and the independent production launch gates, see [SEO measurement and launch readiness](seo-measurement-launch-readiness.md). This guide does not enable measurement or authorize a launch.
