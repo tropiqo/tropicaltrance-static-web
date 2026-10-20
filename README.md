@@ -157,6 +157,10 @@ analytics behavior.
 For the repeatable draft workflow, previews, and development/production
 boundaries, see [Sales channel management](docs/sales-channel-management.md).
 
+Customer contact uses independent business-email and WhatsApp Business settings
+in `content/site.json`. Both remain unset until their public destinations and
+responders are owner-verified. See the [customer contact configuration guide](docs/customer-contact-configuration.md).
+
 ## Retained legacy material and URL decisions
 
 Obsolete root prototype pages `index.md`, `about.md` and `contact.md` are retired. Astro retains `/`, `/about/` and `/contact/`. The approved legacy Jekyll/theme/Ruby/demo-source/custom-JavaScript implementation has also been retired. Historical demo media, author/comment data, license/history material and copyright notices remain preserved; they are not build inputs. Active migration notes remain in `docs/migration/`; active tests use plural `tests/`.

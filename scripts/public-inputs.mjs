@@ -118,6 +118,13 @@ function loadFlavorContent({base}) {
   const sitePath = safePath(base,'content/site.json');
   const readContent=path=>{const bytes=readFileSync(safePath(base,path));rejectFixture(bytes);return bytes;};
   const site = validateSchema(parseJson(readContent('content/site.json')),resolve(base,'schemas/site.schema.json'));
+  const businessEmail = site.contact?.businessEmail;
+  if (businessEmail !== undefined && businessEmail !== null) {
+    const [local, domain, ...extra] = businessEmail.split('@');
+    const atom = "A-Za-z0-9!#$%&'*+/=?^_`{|}~-";
+    const labels = domain?.split('.') ?? [];
+    requireThat(!extra.length && local && local.length <= 64 && new RegExp(`^[${atom}]+(?:\\.[${atom}]+)*$`).test(local) && labels.length >= 2 && labels.every(label => label.length <= 63 && /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(label)), 'Invalid business email destination');
+  }
   const whatsappBusinessUrl = site.contact?.whatsappBusinessUrl;
   if (whatsappBusinessUrl !== undefined && whatsappBusinessUrl !== null) {
     let parsed;

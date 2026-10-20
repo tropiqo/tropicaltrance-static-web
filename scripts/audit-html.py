@@ -6,12 +6,26 @@ import re
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlsplit, unquote
+from urllib.parse import quote, urlsplit, unquote
 
 
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def safe_mailto(value):
+    parsed = urlsplit(value)
+    if parsed.scheme != "mailto" or parsed.netloc or parsed.query or parsed.fragment:
+        return False
+    address = unquote(parsed.path)
+    if quote(address, safe="@!~*'()-._") != parsed.path or address.count("@") != 1:
+        return False
+    local, domain = address.split("@")
+    atom = r"A-Za-z0-9.!#$%&'*+/=?^_`{|}~-"
+    labels = domain.split(".")
+    return (len(local) <= 64 and re.fullmatch(rf"[{atom}]+(?:\.[{atom}]+)*", local) is not None
+            and len(labels) >= 2 and all(len(label) <= 63 and re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label) for label in labels))
 
 
 class Node:
@@ -208,6 +222,8 @@ def audit(root, indexing_authorized=False):
                         value = n.attrs[attr]
                         parsed = urlsplit(value)
                         if n.tag == "a" and attr == "href" and (parsed.scheme or parsed.netloc):
+                            if safe_mailto(value):
+                                continue
                             require(parsed.scheme == "https" and parsed.netloc and parsed.username is None and parsed.password is None and parsed.fragment == "", f"Unsafe external link: {value}")
                             require(n.attrs.get("target") == "_blank", "External link must open in a new tab")
                             require({"noopener", "noreferrer"}.issubset(set(n.attrs.get("rel", "").split())), "External link missing safe rel attributes")

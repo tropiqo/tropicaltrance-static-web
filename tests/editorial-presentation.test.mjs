@@ -100,7 +100,7 @@ test('optional Flavor story remains omitted when absent',()=>{
   for(const route of routes) { assert(!/Trancy’s Worlds|aria-label="Flavor story"|class="flavor-story"/.test(normal(route))); if (!['index.html','about/index.html'].includes(route)) assert(!normal(route).includes(trancyMedia.mediaUrl)); }
 });
 test('Contact and About contain restrained copy without invented contact endpoints',()=>{
-  const contact=normal('contact/index.html');assert.match(contact,/class="contact-panel"/);assert.match(contact,/WhatsApp Business/);assert.match(contact,/Coming Soon/);
+  const contact=normal('contact/index.html');assert.match(contact,/class="contact-panel"/);assert.match(contact,/Choose how to reach us/);assert.match(contact,/Contact destinations are not configured in this development build/);
   const about=normal('about/index.html');
   for(const phrase of ['Beyond the Ordinary','Tropical Trance is a creative universe inspired by tropical energy, vibrant flavors, and the freedom to explore the unexpected.','We believe every flavor deserves more than a name. It deserves its own world, atmosphere, and adventure.','Trancy is the unmistakable face of Tropical Trance.','Curious, adventurous, and always ready for something unexpected, Trancy travels through surreal tropical worlds where each flavor becomes a new experience.','Different places. Different adventures. One familiar explorer.','Our Creative Philosophy','Trancy is the constant. The adventure changes.','Our creative direction combines imaginative storytelling, expressive artwork, and a refined tropical aesthetic.','Explore the Worlds','Explore the Flavors']) assert(about.includes(phrase));
   for(const route of routes)assert(!/mailto:|tel:|https?:|\b[\w.-]+@[\w.-]+\.[a-z]+|<form\b|<input\b|social profile|founder|manufacturing|certified/i.test(normal(route)));
@@ -127,7 +127,7 @@ test('Spanish pages localize interface, metadata, accessibility text, flavor con
   assert(collection.includes(grapeRecord.translations['es-MX'].shortDescription));
   assert(collection.includes(grapeRecord.translations['es-MX'].alt));
   assert(grape.includes('Volver a sabores'));
-  assert(contact.includes('WhatsApp Business')&&contact.includes('Próximamente'));
+  assert(contact.includes('Elige cómo contactarnos')&&contact.includes('Los destinos de contacto no están configurados en esta versión de desarrollo'));
   assert(about.includes('Más allá de lo ordinario'));
   assert(about.includes('Trancy es la constante. La aventura cambia.'));
   assert.match(about,/aria-label="Reproducir video de la Puerta Esmeralda"/);

@@ -1,13 +1,24 @@
 ---
 import { localizePath } from '../i18n/messages.mjs';
-interface Props { whatsappBusinessUrl?: string | null; locale?: 'en' | 'es-MX'; messages: any; }
-const { whatsappBusinessUrl = null, locale = 'en', messages } = Astro.props;
+interface Props { businessEmail?: string | null; whatsappBusinessUrl?: string | null; locale?: 'en' | 'es-MX'; messages: any; }
+const { businessEmail = null, whatsappBusinessUrl = null, locale = 'en', messages } = Astro.props;
+const mailto = businessEmail ? `mailto:${encodeURIComponent(businessEmail).replace('%40', '@')}` : null;
 ---
 <section class="contact-panel" aria-labelledby="contact-heading">
   <p class="eyebrow">{messages.contact.eyebrow}</p>
   <h2 id="contact-heading">{messages.contact.heading}</h2>
-  {whatsappBusinessUrl
-    ? <a class="button" href={whatsappBusinessUrl} target="_blank" rel="noopener noreferrer" aria-label={messages.contact.whatsappLabel}>{locale === 'en' ? 'Message us on WhatsApp' : 'Escríbenos por WhatsApp'} <span aria-hidden="true">↗</span></a>
-    : <p class="status-line">{messages.contact.comingSoon}</p>}
+  <div class="contact-methods">
+    {mailto && <a class="contact-method" href={mailto} aria-label={messages.contact.emailLabel.replace('{email}', businessEmail)}>
+      <span class="contact-method__name">{messages.contact.emailHeading}</span>
+      <span class="contact-method__value">{businessEmail}</span>
+      <span class="contact-method__action">{messages.contact.emailAction} <span aria-hidden="true">↗</span></span>
+    </a>}
+    {whatsappBusinessUrl && <a class="contact-method" href={whatsappBusinessUrl} target="_blank" rel="noopener noreferrer" aria-label={messages.contact.whatsappLabel}>
+      <span class="contact-method__name">WhatsApp Business</span>
+      <span class="contact-method__value">{messages.contact.whatsappDescription}</span>
+      <span class="contact-method__action">{messages.contact.whatsappAction} <span aria-hidden="true">↗</span></span>
+    </a>}
+    {!mailto && !whatsappBusinessUrl && <p class="status-line">{messages.contact.developmentPlaceholder}</p>}
+  </div>
   <a class="button" href={localizePath('/', locale)}>{messages.contact.return} <span aria-hidden="true">↗</span></a>
 </section>

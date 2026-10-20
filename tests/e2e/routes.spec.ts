@@ -71,19 +71,19 @@ test('navigation works between primary routes and footer links are available', a
   }
 });
 
-test('disabled sales channels and unset WhatsApp Business stay placeholders', async ({ page }) => {
+test('disabled sales channels and unset customer contact methods stay placeholders', async ({ page }) => {
   for (const route of ['/flavors/grape/', '/flavors/lime/', '/es/flavors/grape/', '/es/flavors/lime/']) {
     await page.goto(route);
     await expect(page.getByRole('heading', { name: 'Where to Find Us' })).toHaveCount(0);
     await expect(page.locator('a[href*="splift"], a[href*="cannaland"], a[href*="wa.me"], a[href*="whatsapp.com"]')).toHaveCount(0);
   }
   await page.goto('/contact/');
-  await expect(page.getByRole('heading', { name: 'WhatsApp Business' })).toBeVisible();
-  await expect(page.getByText('Coming Soon')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose how to reach us' })).toBeVisible();
+  await expect(page.getByText('Contact destinations are not configured in this development build.')).toBeVisible();
   await expect(page.getByRole('link', { name: /Message us on WhatsApp/ })).toHaveCount(0);
   await page.goto('/es/contact/');
-  await expect(page.getByRole('heading', { name: 'WhatsApp Business' })).toBeVisible();
-  await expect(page.getByText('Próximamente')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Elige cómo contactarnos' })).toBeVisible();
+  await expect(page.getByText('Los destinos de contacto no están configurados en esta versión de desarrollo.')).toBeVisible();
   await expect(page.getByRole('link', { name: /Escríbenos por WhatsApp/ })).toHaveCount(0);
 });
 

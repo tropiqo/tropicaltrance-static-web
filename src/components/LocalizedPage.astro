@@ -67,7 +67,7 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
 
 {page === 'contact' && <SiteLayout page={page} locale={locale} title={t.contact.metaTitle} description={t.contact.metaDescription}>
   <EditorialHero title={t.contact.title} description={t.contact.description} eyebrow="Tropical Trance">
-    <ContactPanel slot="visual" whatsappBusinessUrl={release.site.contact?.whatsappBusinessUrl ?? null} messages={t} locale={locale} />
+    <ContactPanel slot="visual" businessEmail={release.site.contact?.businessEmail ?? null} whatsappBusinessUrl={release.site.contact?.whatsappBusinessUrl ?? null} messages={t} locale={locale} />
   </EditorialHero>
 </SiteLayout>}
 

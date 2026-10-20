@@ -42,7 +42,7 @@ function decodeAttribute(text) {
 function htmlAttributes(source) {
   return new Map([...source.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(match => [match[1].toLowerCase(),decodeAttribute(match[2]??match[3])]));
 }
-export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null, aboutHeroMedia = null, locale = 'en', seo = null, productionAuthorized = false) {
+export function checkHtml(html, media = [], salesChannels = [], whatsappBusinessUrl = null, aboutHeroMedia = null, locale = 'en', seo = null, productionAuthorized = false, businessEmail = null) {
   const isSpanish = locale === 'es-MX';
   assert.match(html, new RegExp(`<html[^>]*lang="${locale}"`));
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1);
@@ -118,6 +118,9 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
     const expectedLabel = channel ? (isSpanish ? `Encontrar ${channelFlavor} en ${channel.name} (se abre en una pestaña nueva)` : channel.accessibleLabel) : isSpanish ? getMessages('es-MX').contact.whatsappLabel : 'Message Tropical Trance on WhatsApp (opens in a new tab)';
     assert.equal(attrs.get('aria-label'),expectedLabel,'External link needs a descriptive accessible name');
   }
+  const mailto = [...html.matchAll(/<a\b([^>]*)>/gi)].map(match=>htmlAttributes(match[1])).filter(attrs=>(attrs.get('href')||'').startsWith('mailto:'));
+  assert.deepEqual(mailto.map(attrs=>attrs.get('href')),businessEmail?[`mailto:${encodeURIComponent(businessEmail).replace('%40','@')}`]:[],'Email link must match the independently configured business contact');
+  for (const attrs of mailto) assert.equal(attrs.get('aria-label'),(isSpanish?getMessages('es-MX'):getMessages('en')).contact.emailLabel.replace('{email}',businessEmail),'Email link needs a localized descriptive name');
   assert(!/\b(?:srcset|imagesrcset)\s*=/i.test(html),'Unapproved media variant');
   assert(!/THC|lab.test|handcrafted|all.natural|tropical mango|paradise pineapple|sunset strawberry|hello@/i.test(html), 'Legacy claim/content leak');
 }
@@ -199,12 +202,13 @@ export async function checkOutput(base = root) {
     const media = basePage==='index.html' ? [pageTrancy,...pageFlavors] : role ? [pageTrancy] : basePage==='flavors/index.html' ? pageFlavors : detail ? [detail] : [];
     const salesChannels=detail?.salesChannels||[];
     const whatsappBusinessUrl=basePage==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
+    const businessEmail=basePage==='contact/index.html' ? release.site.contact?.businessEmail ?? null : null;
     const messages=getMessages(locale);
     const pageKind=basePage==='index.html'?'home':basePage==='about/index.html'?'about':basePage==='flavors/index.html'?'flavors':basePage==='contact/index.html'?'contact':basePage==='404.html'||basePage==='404/index.html'?'notFound':detail?'detail':'notFound';
     const metadataTitle=pageKind==='home'?messages.home.metaTitle:pageKind==='about'?messages.about.metaTitle:pageKind==='flavors'?messages.flavors.metaTitle:pageKind==='contact'?messages.contact.metaTitle:pageKind==='detail'?detail.name:messages.notFound.title;
     const metadataDescription=pageKind==='home'?messages.home.metaDescription:pageKind==='about'?messages.about.metaDescription:pageKind==='flavors'?messages.flavors.metaDescription:pageKind==='contact'?messages.contact.metaDescription:pageKind==='detail'?detail.shortDescription:messages.notFound.description;
     const seo=pageMetadata({page:pageKind,locale,title:metadataTitle,description:metadataDescription,flavor:detail,settings:seoSettings});
-    checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale,seo,seoSettings.indexingAuthorized);
+    checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale,seo,seoSettings.indexingAuthorized,businessEmail);
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = decodeAttribute(match[1]).split('#');
@@ -212,6 +216,10 @@ export async function checkOutput(base = root) {
       if (href.startsWith('https:')) {
         if (href === seo.canonical || seo.alternates.some(alternate => new URL(alternate.path,seo.canonical).href === href)) continue;
         assert(salesChannels.some(channel=>channel.destinationUrl===href) || (basePage==='contact/index.html' && href===release.site.contact?.whatsappBusinessUrl),'Unapproved external destination');
+        continue;
+      }
+      if (href.startsWith('mailto:')) {
+        assert(basePage==='contact/index.html' && href===`mailto:${encodeURIComponent(release.site.contact?.businessEmail ?? '').replace('%40','@')}`,'Unapproved email destination');
         continue;
       }
       assert(!/^(?:\/\/|[a-z][a-z0-9+.-]*:)/i.test(href), 'Unexpected external destination');
