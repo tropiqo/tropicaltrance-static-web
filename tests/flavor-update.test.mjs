@@ -4,10 +4,16 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync, s
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import sharp from 'sharp';
-import { applyCandidate, applyRemoval, cancelCandidate, createCandidate, createRemovalCandidate } from '../scripts/flavor-workflow.mjs';
+import { applyCandidate, applyRemoval, cancelCandidate, createCandidate, createRemovalCandidate, runAddUpdate } from '../scripts/flavor-workflow.mjs';
 import { digest, loadRelease } from '../scripts/public-inputs.mjs';
 
 const root=process.cwd();
+
+test('interactive flavor changes require an explicit development-only scope',async()=>{
+ await assert.rejects(()=>runAddUpdate('add',['cherry']),/explicit --development-only scope/);
+ await assert.rejects(()=>runAddUpdate('add',['cherry','--development-only']),/Choose artwork with --image/);
+});
+
 function sandbox(){
  const base=mkdtempSync(join(tmpdir(),'tt-flavor-update-'));
  for(const path of ['src','scripts','schemas','content','public-astro','astro.config.mjs','package.json','package-lock.json'])if(existsSync(join(root,path)))cpSync(join(root,path),join(base,path),{recursive:true});

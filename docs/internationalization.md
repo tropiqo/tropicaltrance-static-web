@@ -6,11 +6,11 @@ Flavor names and slugs remain product identifiers. Each normal flavor JSON recor
 
 ## Add a flavor
 
-Run `npm run flavor:add -- <slug> --image <path>`. The interactive workflow asks for the existing English name, description, and alt text, then the Mexican Spanish description and alt text. You can provide the latter as `--es-description` and `--es-alt`; the content must be reviewed Spanish, not a machine translated placeholder. The preview includes the English and Spanish collection/detail routes. The CLI validates both locales before applying the new record. Flavor removal deletes the single flavor record and its translations together.
+Run `npm run flavor:add -- <slug> --development-only --image <path>`. The explicit flag scopes this existing workflow to local development and owner review; it does not grant production approval. The interactive workflow asks for the existing English name, description, and alt text, then the Mexican Spanish description and alt text. You can provide the latter as `--es-description` and `--es-alt`; the content must be reviewed Spanish, not a machine translated placeholder. The preview includes the English and Spanish collection/detail routes. The CLI validates both locales before applying the new record. Flavor removal deletes the single flavor record and its translations together.
 
 ## Update a flavor
 
-Run `npm run flavor:update -- <slug> --image <path>`. Existing English and Spanish values are offered as defaults. Review and update the Spanish description and alt text whenever their meaning changes. The product name and route slug are preserved unless the separately reviewed content identity calls for a change.
+Run `npm run flavor:update -- <slug> --development-only --image <path>`. Existing English and Spanish values are offered as defaults. Review and update the Spanish description and alt text whenever their meaning changes. The product name and route slug are preserved unless the separately reviewed content identity calls for a change.
 
 ## Update shared interface copy
 

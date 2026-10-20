@@ -94,17 +94,19 @@ Studio history remain outside the website content model.
 ### Add, update or remove a flavor locally
 
 ```sh
-npm run flavor:add -- mango --image /path/to/mango.png --name Mango --description "Explore Mango." --alt "Mango flavor artwork."
-npm run flavor:update -- grape --image /path/to/replacement.png
+npm run flavor:add -- mango --development-only --image /path/to/mango.png --name Mango --description "Explore Mango." --alt "Mango flavor artwork."
+npm run flavor:update -- grape --development-only --image /path/to/replacement.png
 npm run flavor:remove -- mango
 ```
 
 `flavor:add` rejects a slug that already exists; `flavor:update` rejects an
 unknown slug and retains existing copy unless an option overrides it. Both
-commands accept `--name`, `--description` and `--alt`, optimize the selected
-image to one full-frame lossless WebP, build an isolated Astro candidate and
-serve the actual collection/detail preview. Confirm with `y`; Enter or `n`
-cancels without changing website inputs. Updates increment the flavor revision
+commands require `--development-only` to make their scope explicit, accept
+`--name`, `--description` and `--alt`, optimize the selected image to one
+full-frame lossless WebP, build an isolated Astro candidate and serve the actual
+collection/detail preview. The preview prints source and derivative SHA-256
+identities and states that this action creates no production approval. Confirm
+with `y`; Enter or `n` cancels without changing website inputs. Updates increment the flavor revision
 and keep the previous image until validation succeeds. `flavor:remove` builds a
 preview of the selected flavor, shows its name, slug, artwork URL and digest,
 then asks for confirmation with No as the default. It deletes the content record
@@ -112,11 +114,14 @@ and only deletes artwork no other flavor references. All confirmed changes run
 `npm run validate`; a validation failure restores the original files. Do not
 run concurrent content edits during a preview or removal confirmation.
 
-This command edits local website content only. It does not create Studio asset
-or approval records, assert legal rights, or authorize deployment/publication.
-The normal build includes selected local flavor content; treat deployment as a
-separate release decision. Review fixtures and review-only Trancy media remain
-confined to `npm run review:build` and must never be deployed.
+This workflow is for local development and owner review only. It does not create
+Studio asset or approval records, assert legal rights, establish canonical
+artwork, or authorize production publication/deployment. Keep the exact source
+path and SHA-256, selected recipe, and derivative SHA-256 in the task report.
+The normal build includes selected local flavor content, so it remains a
+development artifact until the separate production gates are satisfied. Review
+fixtures and review-only Trancy media remain confined to `npm run review:build`
+and must never be deployed.
 
 ### Sales-channel links
 

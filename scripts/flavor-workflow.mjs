@@ -212,14 +212,17 @@ async function stopPreview(child) {
 }
 export async function startCandidatePreview(candidate) {
   const port=await availablePort();
-  const child=spawn(join(candidate.candidateRoot,'node_modules/.bin/astro'),['preview','--host','127.0.0.1','--port',String(port)],{cwd:candidate.candidateRoot,stdio:'ignore'});
+  // Astro 7 auto-backgrounds preview commands launched by agents. The workflow
+  // owns this child lifecycle, so opt into a foreground, untracked preview.
+  const child=spawn(join(candidate.candidateRoot,'node_modules/.bin/astro'),['preview','--ignore-lock','--host','127.0.0.1','--port',String(port)],{cwd:candidate.candidateRoot,stdio:'ignore'});
   try { await waitForPreview(port,child);return {port,child}; }
   catch(error) { await stopPreview(child);throw error; }
 }
 function parseArgs(args) {
-  const options={}; let slug;
+  const options={developmentOnly:false}; let slug;
   for(let i=0;i<args.length;i++){
     const item=args[i];
+    if(item==='--development-only'){options.developmentOnly=true;continue;}
     if(item==='--image'||item==='--name'||item==='--description'||item==='--alt'||item==='--es-description'||item==='--es-alt'){
       const value=args[++i];if(!value)throw Error(`${item} requires a value`);
       options[{ '--image':'imagePath','--name':'name','--description':'shortDescription','--alt':'alt','--es-description':'esShortDescription','--es-alt':'esAlt' }[item]]=value;
@@ -232,6 +235,7 @@ function parseArgs(args) {
 export async function runAddUpdate(mode,args=process.argv.slice(2)) {
   assert(['add','update'].includes(mode),'Flavor operation must be add or update');
   const options=parseArgs(args);
+  assert(options.developmentOnly,'Flavor artwork changes require the explicit --development-only scope');
   if(!options.imagePath) throw Error('Choose artwork with --image /path/to/image.png');
   if(!options.slug) throw Error('Choose an existing flavor slug or a new flavor slug');
   if(!stdin.isTTY) throw Error('Interactive preview and confirmation require a terminal');
@@ -249,9 +253,11 @@ export async function runAddUpdate(mode,args=process.argv.slice(2)) {
     }
     candidate=await createCandidate({...options,mode});
     const server=await startCandidatePreview(candidate);preview=server.child;const {port}=server;
-    stdout.write(`\nCandidate preview: http://127.0.0.1:${port}/flavors/ and http://127.0.0.1:${port}/flavors/${candidate.slug}/\n`);
+    stdout.write('\nDevelopment-only candidate; this operation does not create production artwork approval, publication approval, or deployment authorization.\n');
+    stdout.write(`Source SHA-256: ${candidate.sourceHash}\n`);
+    stdout.write(`Candidate preview: http://127.0.0.1:${port}/flavors/ and http://127.0.0.1:${port}/flavors/${candidate.slug}/\n`);
     stdout.write(`Prepared WebP: ${candidate.width}x${candidate.height}, ${candidate.size} bytes, ${candidate.projection.media.contentId}\n`);
-    const answer=(await prompt.question(`${mode==='add'?'Add':'Update'} this local flavor after review? [y/N] `)).trim().toLowerCase();
+    const answer=(await prompt.question(`${mode==='add'?'Add':'Update'} this development-only flavor after review? [y/N] `)).trim().toLowerCase();
     if(answer!=='y' && answer!=='yes') { stdout.write('Cancelled; website files are unchanged.\n'); return; }
     const changed=applyCandidate(candidate);
     stdout.write(`Applied and validated ${candidate.slug}: ${changed.contentPath}, ${changed.assetPath}\n`);
