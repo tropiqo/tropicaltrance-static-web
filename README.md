@@ -123,6 +123,10 @@ development artifact until the separate production gates are satisfied. Review
 fixtures and review-only Trancy media remain confined to `npm run review:build`
 and must never be deployed.
 
+See the step-by-step [Flavor management guide](docs/flavor-management.md) for
+adding flavors, replacing artwork, editing bilingual content, and reviewing
+development-only changes.
+
 ### Sales-channel links
 
 `content/sales-channels.json` is a separate, closed website configuration for
