@@ -4,7 +4,7 @@
     "workflow_dispatch": {
       "inputs": {
         "confirmation": {
-          "description": "Type DEPLOY_TO_PAGES to authorize this manual deployment",
+          "description": "Type DEPLOY_TO_PAGES to confirm only a Cloudflare Access-protected private deployment; this does not authorize public publication, indexing, custom domains, DNS changes, or sales activation",
           "required": true,
           "type": "string"
         },
@@ -14,8 +14,8 @@
           "type": "boolean",
           "default": false
         },
-        "publication_approved": {
-          "description": "Confirm separate owner approval for public Pages deployment of this exact master commit",
+        "private_deployment_approved": {
+          "description": "Confirm this exact master commit is authorized only for a private Cloudflare Access-protected deployment; public publication, indexing, custom domains, DNS changes, and sales activation remain unauthorized",
           "required": true,
           "type": "boolean",
           "default": false
@@ -41,9 +41,9 @@
             "GITHUB_REF": "${{ github.ref }}",
             "CONFIRMATION": "${{ inputs.confirmation }}",
             "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}",
-            "PUBLICATION_APPROVED": "${{ inputs.publication_approved }}"
+            "PRIVATE_DEPLOYMENT_APPROVED": "${{ inputs.private_deployment_approved }}"
           },
-          "run": "set -eu\nif [ \"$GITHUB_REF\" != 'refs/heads/master' ]; then\n  echo 'Refused: deployment is allowed only from protected master.' >&2\n  exit 1\nfi\nif [ \"$CONFIRMATION\" != 'DEPLOY_TO_PAGES' ]; then\n  echo 'Refused: type DEPLOY_TO_PAGES in the confirmation input.' >&2\n  exit 1\nfi\nif [ \"$ACCESS_PROTECTION_VERIFIED\" != 'true' ]; then\n  echo 'Refused: verify Cloudflare Access protection before deployment.' >&2\n  exit 1\nfi\nif [ \"$PUBLICATION_APPROVED\" != 'true' ]; then\n  echo 'Refused: public deployment needs separate owner publication approval.' >&2\n  exit 1\nfi"
+          "run": "set -eu\nif [ \"$GITHUB_REF\" != 'refs/heads/master' ]; then\n  echo 'Refused: deployment is allowed only from protected master.' >&2\n  exit 1\nfi\nif [ \"$CONFIRMATION\" != 'DEPLOY_TO_PAGES' ]; then\n  echo 'Refused: type DEPLOY_TO_PAGES in the confirmation input.' >&2\n  exit 1\nfi\nif [ \"$ACCESS_PROTECTION_VERIFIED\" != 'true' ]; then\n  echo 'Refused: verify Cloudflare Access protection before deployment.' >&2\n  exit 1\nfi\nif [ \"$PRIVATE_DEPLOYMENT_APPROVED\" != 'true' ]; then\n  echo 'Refused: only an Access-protected private deployment is authorized; public launch, indexing, custom domains, DNS, and sales activation are excluded.' >&2\n  exit 1\nfi"
         }
       ]
     },
@@ -122,6 +122,22 @@
           "run": "set -eu\ncase \"$CLOUDFLARE_PAGES_PROJECT\" in ''|*[!a-z0-9-]*) echo 'Set a valid existing Pages project name in the environment variable.' >&2; exit 1;; esac\nif [ \"$CLOUDFLARE_ACCESS_READY\" != 'true' ]; then echo 'Set CLOUDFLARE_ACCESS_READY=true only after anonymous Access rejection is verified.' >&2; exit 1; fi\ntest -s dist/index.html\ntest -s dist/robots.txt\nif [ -e dist/sitemap.xml ]; then echo 'Unexpected sitemap in deployment artifact.' >&2; exit 1; fi"
         },
         {
+          "name": "Use pinned Node.js for Wrangler",
+          "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+          "with": {
+            "node-version": "24.21.0",
+            "package-manager-cache": false
+          }
+        },
+        {
+          "name": "Use repository-pinned npm for Wrangler",
+          "run": "npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test \"$(npm --version)\" = \"11.19.0\""
+        },
+        {
+          "name": "Install pinned Wrangler with only reviewed dependency scripts",
+          "run": "set -eu\ntest \"$(node --version)\" = 'v24.21.0'\ntest \"$(npm --version)\" = '11.19.0'\nTMP_PREFIX=\"$RUNNER_TEMP/wrangler-cli\"\nmkdir -p \"$TMP_PREFIX/lib/node_modules\" \"$TMP_PREFIX/bin\"\nnpm install --global --prefix \"$TMP_PREFIX\" wrangler@4.152.0 --ignore-scripts=false --allow-scripts=workerd,esbuild --strict-allow-scripts --no-audit --no-fund --registry=https://registry.npmjs.org\nversion_output=$(\"$TMP_PREFIX/bin/wrangler\" --version)\nprintf '%s\\n' \"$version_output\"\nversion_line=$(printf '%s\\n' \"$version_output\" | sed -n '1p')\nprintf '%s\\n' \"$version_line\" | grep -Eq '(^|[^0-9.])4\\.152\\.0([^0-9.]|$)'\necho \"$TMP_PREFIX/bin\" >> \"$GITHUB_PATH\""
+        },
+        {
           "name": "Verify existing Cloudflare Pages project",
           "env": {
             "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}",
@@ -129,10 +145,6 @@
             "CLOUDFLARE_PAGES_PROJECT": "${{ vars.CLOUDFLARE_PAGES_PROJECT }}"
           },
           "run": "set -eu\ntest -n \"$CLOUDFLARE_API_TOKEN\"\ncase \"$CLOUDFLARE_ACCOUNT_ID\" in ''|*[!a-f0-9]*) echo 'Cloudflare account ID must be a 32-character lowercase hex value.' >&2; exit 1;; esac\ntest \"${#CLOUDFLARE_ACCOUNT_ID}\" -eq 32\nresponse=$(curl --fail --silent --show-error --get \\\n  --header \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  \"https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT\")\nprintf '%s' \"$response\" | jq -e --arg project \"$CLOUDFLARE_PAGES_PROJECT\" '.success == true and .result.name == $project' >/dev/null"
-        },
-        {
-          "name": "Install pinned Wrangler CLI",
-          "run": "npm install --global wrangler@4.152.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test \"$(wrangler --version | head -n 1)\" = '4.152.0'"
         },
         {
           "name": "Upload to existing Pages project",

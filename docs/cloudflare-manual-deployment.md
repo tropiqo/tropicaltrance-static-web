@@ -1,6 +1,6 @@
 # Manual Cloudflare Pages deployment
 
-This runbook describes a manually triggered Direct Upload from the protected `master` branch. It does not configure Cloudflare, authorize a public launch, activate indexing or sales, or run a deployment. The deployment workflow has no push or pull request trigger.
+This runbook describes a manually triggered Direct Upload from the protected `master` branch for an explicitly approved, Cloudflare Access-protected private deployment. It does not authorize public publication, indexing, custom domains, DNS changes, or sales activation. It does not configure Cloudflare or run a deployment. The deployment workflow has no push or pull request trigger.
 
 ## Public access is a release blocker
 
@@ -28,7 +28,7 @@ The workflow expects an existing GitHub Actions environment named `cloudflare-pr
 
 Environment secrets are only referenced in the deployment job's project-check and upload steps. The authorization and build jobs have no environment and receive no Cloudflare secrets. The build uses `.nvmrc`'s Node `24.21.0`, npm `11.19.0`, `npm ci --ignore-scripts`, `npm run build`, and `npm run validate:output`. It requires `dist/index.html`, a `robots.txt` with `Disallow: /`, `noindex, nofollow` in the home page, and no sitemap. It passes no indexing authorization or production SEO origin.
 
-The workflow uses pinned full-SHA GitHub artifact actions and Wrangler CLI `4.152.0`. The Pages project slug is read from the environment variable; the workflow does not infer or create it. The Pages upload uses branch `master` and records the triggering commit SHA.
+The workflow uses pinned full-SHA GitHub artifact actions and Wrangler CLI `4.152.0`. The deploy job sets Node `24.21.0` and npm `11.19.0` before installing Wrangler. npm permits only the reviewed `workerd` and `esbuild` install scripts and fails on other dependency install scripts. The command verifies that the first `wrangler --version` output line contains the exact `4.152.0` version token. Wrangler's top-level version is pinned, but this isolated global install has no committed lockfile for its transitive dependency versions; resolve and review that dependency tree before treating deployments as fully reproducible. The Pages project slug is read from the environment variable; the workflow does not infer or create it. The Pages upload uses branch `master` and records the triggering commit SHA.
 
 ### GitHub environment approval limitation
 
@@ -39,11 +39,11 @@ GitHub plan and repository visibility affect which environment rules are enforce
 Only after the protected `master` branch, environment restrictions, existing project, and Access protections are reviewed:
 
 1. In GitHub Actions, select **Manual Cloudflare Pages deployment → Run workflow** and choose `master`.
-2. Type `DEPLOY_TO_PAGES`, check the Access verification box, and check the separate publication approval box only after public deployment of that exact `master` commit is approved. These are explicit dispatch gates, not a technical re-test of Cloudflare Access. The workflow also requires `CLOUDFLARE_ACCESS_READY=true`. Public publication is not approved by this implementation; leave that box unchecked unless a later owner decision authorizes the release.
+2. Type `DEPLOY_TO_PAGES`, check the Access verification box, and check the private-deployment approval box only for an Access-protected private deployment of that exact `master` commit. The confirmation explicitly excludes public publication, indexing, custom domains, DNS, and sales. These inputs are dispatch gates, not a technical re-test of Cloudflare Access. The workflow also requires `CLOUDFLARE_ACCESS_READY=true`.
 3. Confirm the authorization job passes before the build. A non-`master` ref or missing/mistyped confirmation fails before any environment credential is available.
 4. Review the Node/npm version, build and output validation, artifact creation, and deployment logs. The deployment job checks the configured existing project, installs the pinned Wrangler version, and Direct Uploads `dist` to that project.
 
-Do not dispatch unless public publication is separately approved for the exact `master` commit. This workflow itself does not add a domain or enable indexing or sales. Note that an uploaded build may be publicly reachable at `pages.dev` if Access is misconfigured; stop and restrict access immediately if an unauthenticated check succeeds.
+Do not dispatch unless the exact `master` commit is approved for a private deployment and both Access hostname scopes have been verified. This workflow does not add a domain or enable indexing or sales. Public publication remains a separate decision and is not authorized by the private-deployment input. An uploaded build may be publicly reachable at `pages.dev` if Access is misconfigured; stop and restrict access immediately if an unauthenticated check succeeds.
 
 ## Verify and roll back
 
