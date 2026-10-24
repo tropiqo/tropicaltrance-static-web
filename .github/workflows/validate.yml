@@ -5,6 +5,11 @@
       "branches": [
         "master"
       ]
+    },
+    "push": {
+      "branches": [
+        "master"
+      ]
     }
   },
   "permissions": {
@@ -43,6 +48,10 @@
         {
           "name": "Install reviewed lockfile without lifecycle scripts",
           "run": "npm ci --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org"
+        },
+        {
+          "name": "Test release version calculation",
+          "run": "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v"
         },
         {
           "name": "Validate application and isolated review builds",

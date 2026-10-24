@@ -12,6 +12,8 @@ import json
 import re
 from pathlib import Path
 
+from release_version import latest_version, next_version
+
 CHECKOUT = "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803"
 SETUP_NODE = "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38"
 UPLOAD_ARTIFACT = "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
@@ -28,7 +30,16 @@ DEPLOY_SCRIPT_DIGESTS = {
     "wrangler-install": "49404a8b9bff235daab65fd0c4ad3823b5af7659972b859a6d74037aaa2c7005",
 }
 WRANGLER_VERSION_PATTERN = re.compile(r"(?<![0-9A-Za-z.+-])v?4\.152\.0(?![0-9A-Za-z.+-])")
+RELEASE_SCRIPT_DIGESTS = {
+    "authorize": "e50be684e910a9701279e4ede962ed24c9bf4ac002cf06f430c60ce3d200163e",
+    "source": "78c297dd73e09277eb0d0518a96595bcf18e6408e42d041bf8183e44ba4ecebb",
+    "ci": "d07a71cbe13547a8dbea001b9cb6c670737ec2965867cd9f79d6f6f1fbd2da03",
+    "version": "7ad2c28958e4d4215f19285ef881d0568466deaaab954052b29b8f4e6a2d7a71",
+    "tag": "5ba34960597199417ea510084d36c2dcb3306bba4eb27a210e393f5e6db5c668",
+    "publish": "44b886f63af7176dae7ff00950244723a14d1c5895451d8783b5f822b4686aaf",
+}
 VALIDATION_STEPS = [
+    ("Test release version calculation", "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v"),
     ("Validate application and isolated review builds", "npm run validate"),
     ("Verify reproducible builds", "npm run verify:reproducible"),
     ("Install Chromium and required Linux dependencies", "npx playwright install --with-deps chromium"),
@@ -50,8 +61,10 @@ def check_workflow(workflow):
     require(set(workflow) == {"name", "on", "permissions", "jobs"},
             "unexpected workflow keys or missing policy fields")
     require(isinstance(workflow["name"], str), "workflow name must be text")
-    require(workflow["on"] == {"pull_request": {"branches": ["master"]}},
-            "only nonprivileged pull_request to master is allowed")
+    require(workflow["on"] == {
+        "pull_request": {"branches": ["master"]},
+        "push": {"branches": ["master"]},
+    }, "validation may run only for pull requests and pushes to master")
     require(workflow["permissions"] == {"contents": "read"},
             "only contents:read permissions are allowed")
     jobs = workflow["jobs"]
@@ -64,7 +77,7 @@ def check_workflow(workflow):
     require(type(job["timeout-minutes"]) is int and job["timeout-minutes"] == 20,
             "policy job timeout must be twenty minutes")
     steps = job["steps"]
-    require(isinstance(steps, list) and len(steps) == 9,
+    require(isinstance(steps, list) and len(steps) == 10,
             "exactly reviewed checkout, policy, runtime, npm pin, locked install and validation steps are allowed")
     checkout, check, setup, pin_npm, install, *validation = steps
     require(isinstance(checkout, dict) and set(checkout) == {"name", "uses", "with"},
@@ -208,6 +221,158 @@ def check_cloudflare_workflow(workflow):
             "Direct Upload command differs from reviewed production command")
 
 
+def check_release_workflow(workflow):
+    require(isinstance(workflow, dict) and
+            set(workflow) == {"name", "on", "permissions", "concurrency", "jobs"},
+            "unexpected release workflow shape")
+    require(workflow["name"] == "Create GitHub Release", "release workflow name differs")
+    require(workflow["on"] == {"workflow_dispatch": {"inputs": {
+        "version_bump": {"description": "Semantic version increment", "required": True,
+                          "type": "choice", "options": ["patch", "minor", "major"],
+                          "default": "patch"},
+        "confirmation": {"description": "Type CREATE_RELEASE to authorize an annotated tag and prerelease for this exact master commit",
+                         "required": True, "type": "string"},
+    }}}, "release creation must be manual only with the reviewed inputs")
+    require(workflow["permissions"] == {"contents": "read"},
+            "release workflow defaults must be read-only")
+    require(workflow["concurrency"] == {"group": "github-release-creation", "cancel-in-progress": False},
+            "release creation must serialize runs without cancellation")
+    jobs = workflow["jobs"]
+    require(isinstance(jobs, dict) and set(jobs) == {"authorize", "prepare", "create_tag", "publish"},
+            "unexpected release jobs or deployment job")
+    authorize = jobs["authorize"]
+    require(set(authorize) == {"runs-on", "timeout-minutes", "steps"} and
+            authorize["runs-on"] == "ubuntu-24.04" and authorize["timeout-minutes"] == 2,
+            "authorization must run without elevated token permissions")
+    auth_steps = authorize["steps"]
+    require(len(auth_steps) == 1 and set(auth_steps[0]) == {"name", "env", "run"} and
+            auth_steps[0]["name"] == "Require master and explicit release confirmation" and
+            auth_steps[0]["env"] == {
+                "GITHUB_REF": "${{ github.ref }}",
+                "VERSION_BUMP": "${{ inputs.version_bump }}",
+                "CONFIRMATION": "${{ inputs.confirmation }}",
+            } and script_digest(auth_steps[0]["run"]) == RELEASE_SCRIPT_DIGESTS["authorize"],
+            "authorization must reject wrong refs, bumps, or missing confirmation")
+
+    prepare = jobs["prepare"]
+    require(set(prepare) == {"needs", "if", "runs-on", "timeout-minutes", "permissions", "outputs", "steps"} and
+            prepare["needs"] == "authorize" and prepare["if"] == "needs.authorize.result == 'success'" and
+            prepare["runs-on"] == "ubuntu-24.04" and prepare["timeout-minutes"] == 10 and
+            prepare["permissions"] == {"contents": "read", "actions": "read"},
+            "source and CI verification must use read-only token permissions")
+    require(prepare["outputs"] == {
+        "source_sha": "${{ steps.source.outputs.source_sha }}",
+        "version": "${{ steps.version.outputs.version }}",
+    }, "prepare job must expose only the validated source SHA and version")
+    prep_steps = prepare["steps"]
+    require(len(prep_steps) == 4, "prepare job must use checkout, source, CI, and version steps")
+    checkout, source, ci, version = prep_steps
+    require(checkout == {
+        "name": "Check out the dispatched master commit",
+        "uses": CHECKOUT,
+        "with": {"ref": "${{ github.sha }}", "fetch-depth": 0, "persist-credentials": False},
+    }, "release source checkout must be pinned to the dispatch SHA without persisted credentials")
+    for step, key, name in ((source, "source", "Pin source commit and verify master ancestry"),
+                            (ci, "ci", "Require successful master validation for this commit"),
+                            (version, "version", "Calculate version and reject an existing release for this commit")):
+        expected_keys = {"name", "run", "env"}
+        if key in {"source", "version"}:
+            expected_keys.add("id")
+        require(set(step) == expected_keys and
+                step["name"] == name and script_digest(step["run"]) == RELEASE_SCRIPT_DIGESTS[key],
+                "release prepare step differs from reviewed policy: " + name)
+    require(source["id"] == "source" and source["env"] == {"DISPATCH_SHA": "${{ github.sha }}"},
+            "source SHA must be pinned to the dispatch commit")
+    require(ci["env"] == {
+        "GH_TOKEN": "${{ github.token }}",
+        "GITHUB_REPOSITORY": "${{ github.repository }}",
+        "SOURCE_SHA": "${{ steps.source.outputs.source_sha }}",
+    }, "CI verification may use only a read-scoped token and pinned SHA")
+    require(version["id"] == "version" and version["env"] == {
+        "GH_TOKEN": "${{ github.token }}",
+        "GITHUB_REPOSITORY": "${{ github.repository }}",
+        "SOURCE_SHA": "${{ steps.source.outputs.source_sha }}",
+        "VERSION_BUMP": "${{ inputs.version_bump }}",
+    }, "version check may use only read-scoped token and approved release inputs")
+
+    create_tag = jobs["create_tag"]
+    require(set(create_tag) == {"needs", "if", "runs-on", "timeout-minutes", "permissions", "steps"} and
+            create_tag["needs"] == "prepare" and create_tag["if"] == "needs.prepare.result == 'success'" and
+            create_tag["runs-on"] == "ubuntu-24.04" and create_tag["timeout-minutes"] == 5 and
+            create_tag["permissions"] == {"contents": "write"},
+            "annotated tag creation must be the only step with contents:write at this stage")
+    tag_steps = create_tag["steps"]
+    require(len(tag_steps) == 1 and set(tag_steps[0]) == {"name", "run", "env"} and
+            tag_steps[0]["name"] == "Create immutable annotated version tag" and
+            script_digest(tag_steps[0]["run"]) == RELEASE_SCRIPT_DIGESTS["tag"] and
+            tag_steps[0]["env"] == {
+                "GH_TOKEN": "${{ github.token }}",
+                "GITHUB_REPOSITORY": "${{ github.repository }}",
+                "SOURCE_SHA": "${{ needs.prepare.outputs.source_sha }}",
+                "VERSION": "${{ needs.prepare.outputs.version }}",
+            }, "tag creation must use only the exact validated source and version")
+
+    publish = jobs["publish"]
+    require(set(publish) == {"needs", "if", "runs-on", "timeout-minutes", "permissions", "steps"} and
+            publish["needs"] == ["prepare", "create_tag"] and publish["if"] == "needs.create_tag.result == 'success'" and
+            publish["runs-on"] == "ubuntu-24.04" and publish["timeout-minutes"] == 5 and
+            publish["permissions"] == {"contents": "write"},
+            "release publication must use only contents:write")
+    publish_steps = publish["steps"]
+    require(len(publish_steps) == 1 and set(publish_steps[0]) == {"name", "id", "run", "env"} and
+            publish_steps[0]["name"] == "Publish prerelease with generated notes" and
+            publish_steps[0]["id"] == "published" and
+            script_digest(publish_steps[0]["run"]) == RELEASE_SCRIPT_DIGESTS["publish"] and
+            publish_steps[0]["env"] == tag_steps[0]["env"],
+            "release publication must use the exact annotated tag and source SHA")
+    serialized = json.dumps(workflow).lower()
+    require("cloudflare" not in serialized and "wrangler" not in serialized and
+            "secrets." not in serialized and "deployment" not in serialized,
+            "release workflow must not contain deployment logic or external service credentials")
+
+
+def release_negative_checks(valid):
+    check_release_workflow(valid)
+    require(next_version([], "patch") == "v0.1.1" and
+            next_version(["v0.1.0"], "minor") == "v0.2.0" and
+            next_version(["v0.1.0"], "major") == "v1.0.0" and
+            next_version(["v1.2.9"], "patch") == "v1.2.10",
+            "patch/minor/major calculations differ from the release policy")
+    for fixture in (("v01.2.3",), ("v1.2",), ("v1.2.3-rc.1",), ("v1.2.3", "v1.2.3")):
+        try:
+            latest_version(fixture)
+        except ValueError:
+            continue
+        raise PolicyError("malformed or duplicate version tag was accepted: " + repr(fixture))
+    mutations = {
+        "automatic release trigger": lambda w: w["on"].update({"push": {"branches": ["master"]}}),
+        "wrong default bump": lambda w: w["on"]["workflow_dispatch"]["inputs"]["version_bump"].update({"default": "major"}),
+        "missing confirmation": lambda w: w["on"]["workflow_dispatch"]["inputs"].pop("confirmation"),
+        "wrong ref authorization": lambda w: w["jobs"]["authorize"]["steps"][0].update({"run": "echo authorized"}),
+        "missing source ancestry check": lambda w: w["jobs"]["prepare"]["steps"][1].update({"run": "echo source"}),
+        "missing CI verification": lambda w: w["jobs"]["prepare"]["steps"][2].update({"run": "true"}),
+        "missing duplicate-release check": lambda w: w["jobs"]["prepare"]["steps"][3].update({"run": "echo version"}),
+        "lightweight tag instead of annotated tag": lambda w: w["jobs"]["create_tag"]["steps"][0].update({"run": "git tag $VERSION"}),
+        "tag not bound to source commit": lambda w: w["jobs"]["create_tag"]["steps"][0].update({"run": "gh api git/tags"}),
+        "broadened token permissions": lambda w: w["jobs"]["publish"]["permissions"].update({"administration": "write"}),
+        "missing generated notes": lambda w: w["jobs"]["publish"]["steps"][0].update({
+            "run": w["jobs"]["publish"]["steps"][0]["run"].replace("--generate-notes ", "")}),
+        "missing tag and release consistency checks": lambda w: w["jobs"]["publish"]["steps"][0].update({"run": "gh release create $VERSION"}),
+        "Cloudflare secret": lambda w: w["jobs"]["publish"]["steps"][0]["env"].update({"CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}"}),
+        "automatic deployment": lambda w: w["jobs"].update({"deploy": {"needs": "publish"}}),
+        "stable release instead of prerelease": lambda w: w["jobs"]["publish"]["steps"][0].update({"run": "gh release create --verify-tag"}),
+        "missing release concurrency": lambda w: w.update({"concurrency": {"group": "release", "cancel-in-progress": True}}),
+    }
+    for name, mutate in mutations.items():
+        specimen = copy.deepcopy(valid)
+        mutate(specimen)
+        try:
+            check_release_workflow(specimen)
+        except (PolicyError, KeyError, AttributeError):
+            print("REJECTED release negative case: " + name)
+        else:
+            raise PolicyError("release negative case was incorrectly accepted: " + name)
+
 def unique_object(pairs):
     obj = {}
     for key, value in pairs:
@@ -328,13 +493,15 @@ def main():
     directory = root / ".github/workflows"
     require(not directory.is_symlink(), "workflow directory must not be a symlink")
     active = sorted(p for p in directory.iterdir() if p.suffix.lower() in {".yml", ".yaml"})
-    require([p.name for p in active] == ["deploy-cloudflare.yml", "validate.yml"],
-            "only the reviewed validation and manual Cloudflare deployment workflows are allowed")
+    require([p.name for p in active] == ["create-release.yml", "deploy-cloudflare.yml", "validate.yml"],
+            "only the reviewed validation, manual release, and manual Cloudflare workflows are allowed")
     workflows = {path.name: load_workflow(path) for path in active}
     workflow = workflows["validate.yml"]
     check_workflow(workflow)
     cloudflare = workflows["deploy-cloudflare.yml"]
     check_cloudflare_workflow(cloudflare)
+    release = workflows["create-release.yml"]
+    check_release_workflow(release)
     require((root / ".github/ci/check_policy.py").is_file(), "policy command file is missing")
     require((root / "docs/migration/astro-foundation-baseline.md").is_file(), "baseline document is missing")
     package = json.loads((root / "package.json").read_text())
@@ -343,6 +510,7 @@ def main():
     if args.self_test:
         negative_checks(workflow)
         cloudflare_negative_checks(cloudflare)
+        release_negative_checks(release)
     print("LOCAL CI ISOLATION: PASS (bounded source policy; remote controls unverified)")
 
 
