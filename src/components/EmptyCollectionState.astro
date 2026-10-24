@@ -1,0 +1,10 @@
+---
+import { localizePath } from '../i18n/messages.mjs';
+interface Props { locale?: 'en' | 'es-MX'; messages: any; }
+const { locale = 'en', messages } = Astro.props;
+---
+<div class="empty-collection">
+  <span class="empty-mark" aria-hidden="true"></span>
+  <p class="lead">{messages.empty.description}</p>
+  <a class="button" href={localizePath('/about/', locale)}>{messages.empty.about} <span aria-hidden="true">↗</span></a>
+</div>

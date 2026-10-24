@@ -1,0 +1,13 @@
+---
+import type { PublicFlavor } from './public-view';
+interface Props { flavor: PublicFlavor; locale?: 'en' | 'es-MX'; }
+import MediaFrame from './MediaFrame.astro';
+import { localizePath } from '../i18n/messages.mjs';
+const { flavor } = Astro.props;
+const { locale = 'en' } = Astro.props;
+---
+<article class="flavor-card" role="listitem">
+  <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} />
+  <h2><a href={localizePath(`/flavors/${flavor.slug}/`, locale)}>{flavor.name}</a></h2>
+  <p>{flavor.shortDescription}</p>
+</article>

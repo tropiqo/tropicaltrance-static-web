@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "kind",
+    "notice",
+    "id",
+    "mediaContentId",
+    "assumptions"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1"
+    },
+    "kind": {
+      "const": "fixture-eligibility-assumptions"
+    },
+    "notice": {
+      "const": "INTERNAL SYNTHETIC TEST ONLY"
+    },
+    "id": {
+      "$ref": "publication/common.schema.json#/$defs/token"
+    },
+    "mediaContentId": {
+      "$ref": "publication/common.schema.json#/$defs/digest"
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "flavor",
+          "projectionContentId",
+          "canonicalArtwork",
+          "artwork",
+          "use",
+          "validity"
+        ],
+        "properties": {
+          "flavor": {
+            "$ref": "publication/common.schema.json#/$defs/flavorRef"
+          },
+          "projectionContentId": {
+            "$ref": "publication/common.schema.json#/$defs/digest"
+          },
+          "canonicalArtwork": {
+            "$ref": "publication/common.schema.json#/$defs/assetRef"
+          },
+          "artwork": {
+            "$ref": "publication/projection.schema.json#/properties/artwork"
+          },
+          "use": {
+            "enum": [
+              "web",
+              "package"
+            ]
+          },
+          "validity": {
+            "enum": [
+              "eligible-at-review",
+              "ineligible",
+              "stale",
+              "revoked",
+              "superseded",
+              "rejected",
+              "conflicted",
+              "unverified"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

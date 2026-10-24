@@ -1,0 +1,21 @@
+---
+import { getMessages, localizePath } from '../i18n/messages.mjs';
+interface Props { locale?: 'en' | 'es-MX'; }
+const { locale = 'en' } = Astro.props;
+const t = getMessages(locale);
+const pathname = Astro.url.pathname;
+const currentPath = pathname.startsWith('/es/') ? pathname.slice(3) : pathname === '/es/' ? '/' : pathname;
+const nav = [['/', t.nav.home], ['/flavors/', t.nav.flavors], ['/about/', t.nav.about], ['/contact/', t.nav.contact]];
+---
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href={localizePath('/', locale)}>Tropical Trance</a>
+    <nav class="primary-nav" aria-label={t.nav.primary}>
+      <ul>{nav.map(([href, label]) => { const target = localizePath(href, locale); return <li><a href={target} aria-current={pathname === target ? 'page' : href === '/flavors/' && currentPath.startsWith('/flavors/') ? 'location' : undefined}>{label}</a></li>; })}</ul>
+    </nav>
+    <div class="language-nav" role="group" aria-label={t.selectorLabel}>
+      <a data-language-choice="en" aria-label={t.englishLabel} aria-current={locale === 'en' ? 'true' : undefined} href={localizePath(pathname, 'en')}>EN</a>
+      <a data-language-choice="es" aria-label={t.spanishLabel} aria-current={locale === 'es-MX' ? 'true' : undefined} href={localizePath(pathname, 'es-MX')}>ES</a>
+    </div>
+  </div>
+</header>

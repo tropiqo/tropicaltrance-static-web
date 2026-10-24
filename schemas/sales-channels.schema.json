@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tropicaltrance.invalid/sales-channels/v1/schema.json",
+  "title": "Local website sales-channel configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "channels"],
+  "properties": {
+    "contractVersion": { "const": "1" },
+    "channels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "kind", "destinationUrl", "enabled"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "name": { "$ref": "publication/common.schema.json#/$defs/text" },
+          "kind": { "enum": ["website", "whatsapp"] },
+          "destinationUrl": {
+            "anyOf": [
+              { "type": "string", "pattern": "^https://[^\\s]+$" },
+              { "type": "null" }
+            ]
+          },
+          "enabled": { "type": "boolean" },
+          "flavors": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+          }
+        }
+      }
+    }
+  }
+}

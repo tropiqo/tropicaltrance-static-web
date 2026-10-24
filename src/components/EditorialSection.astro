@@ -1,0 +1,13 @@
+---
+import SectionHeading from './SectionHeading.astro';
+import TropicalAtmosphere from './TropicalAtmosphere.astro';
+interface Props { variant: 'text' | 'split' | 'band'; title: string; eyebrow?: string; atmosphere?: boolean; }
+const { variant, title, eyebrow, atmosphere = false } = Astro.props;
+---
+<section class:list={['editorial', `editorial--${variant}`, { 'editorial--tropical': atmosphere }]}>
+  {atmosphere && <TropicalAtmosphere />}
+  <div class="container editorial-inner">
+    {variant === 'split' ? <div class="editorial-body"><SectionHeading title={title} eyebrow={eyebrow} /><slot /></div> : <><SectionHeading title={title} eyebrow={eyebrow} /><div class="editorial-body"><slot /></div></>}
+    {variant === 'split' && Astro.slots.has('visual') && <div class="editorial-visual"><slot name="visual" /></div>}
+  </div>
+</section>

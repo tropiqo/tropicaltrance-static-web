@@ -1,0 +1,20 @@
+---
+import DecorativeBackground from './DecorativeBackground.astro';
+import TrancyMedia from './TrancyMedia.astro';
+import TropicalAtmosphere from './TropicalAtmosphere.astro';
+import type { BrandMediaView } from './public-view';
+interface Props { title: string; emphasis?: string; description: string | string[]; eyebrow: string; decoration?: 'orbit' | 'tide' | 'none'; media?: BrandMediaView; atmosphere?: boolean; }
+const { title, emphasis, description, eyebrow, decoration = 'none', media, atmosphere = false } = Astro.props;
+---
+<section class:list={['editorial-hero', { 'editorial-hero--tropical': atmosphere }]} aria-labelledby="page-title">
+  {atmosphere && <TropicalAtmosphere />}
+  <div class:list={['container hero-grid', { 'hero-grid--mascot': !!media, 'hero-grid--text': !media && decoration === 'none' && !Astro.slots.has('visual') }]}>
+    <div class="hero-copy">
+      <p class="eyebrow">{eyebrow}</p>
+      <h1 id="page-title">{title}{emphasis && <>{' '}<em>{emphasis}</em></>}</h1>
+      {Array.isArray(description) ? description.map(paragraph => <p class="lead">{paragraph}</p>) : <p class="lead">{description}</p>}
+      <slot />
+    </div>
+    {media ? <div class="hero-visual"><TrancyMedia media={media} loading="eager" /></div> : Astro.slots.has('visual') ? <div class="hero-visual"><slot name="visual" /></div> : decoration !== 'none' && <div class="hero-visual"><DecorativeBackground variation={decoration} /></div>}
+  </div>
+</section>

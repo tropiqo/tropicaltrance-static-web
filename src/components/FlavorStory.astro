@@ -1,0 +1,13 @@
+---
+import type { PublicEditorial } from './public-view';
+interface Props { editorial?: PublicEditorial; messages: any; }
+import SectionHeading from './SectionHeading.astro';
+const { editorial, messages } = Astro.props;
+---
+{editorial && <section class="flavor-story" aria-label={messages.flavors.storyLabel}>
+  <SectionHeading title={messages.flavors.storyTitle} eyebrow={messages.flavors.storyEyebrow} />
+  <div class="story-copy">
+    {editorial.title && <h3>{editorial.title}</h3>}
+    {editorial.paragraphs.map(text => <p>{text}</p>)}
+  </div>
+</section>}

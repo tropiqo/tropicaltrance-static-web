@@ -1,0 +1,25 @@
+---
+import type { PublicFlavor } from './public-view';
+interface Props { flavor: PublicFlavor; }
+import MediaFrame from './MediaFrame.astro';
+import FlavorStory from './FlavorStory.astro';
+import SalesChannels from './SalesChannels.astro';
+import { localizePath } from '../i18n/messages.mjs';
+import { env } from 'node:process';
+import { developmentSalesChannelPreviews } from '../lib/sales-channel-preview.mjs';
+const { flavor, locale = 'en', messages } = Astro.props;
+const previewChannels = developmentSalesChannelPreviews({ isDevelopment: import.meta.env.DEV, optIn: env.TROPICAL_CHANNEL_PREVIEW });
+---
+<div class="container flavor-detail">
+  <a class="detail-return" href={localizePath('/flavors/', locale)}>{messages.flavors.return}</a>
+  <div class="detail-grid">
+    <div class="detail-copy">
+      <p class="eyebrow">{messages.flavors.detailEyebrow}</p>
+      <h1>{flavor.name}</h1>
+      <p class="lead muted">{flavor.shortDescription}</p>
+    </div>
+    <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} loading="eager" />
+  </div>
+  <FlavorStory editorial={flavor.editorial} messages={messages} />
+  <SalesChannels flavor={flavor} locale={locale} messages={messages} previewChannels={previewChannels} />
+</div>

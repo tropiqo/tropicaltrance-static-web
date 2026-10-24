@@ -1,0 +1,18 @@
+{
+  "contractVersion": "1",
+  "slug": "cherry",
+  "revision": "1",
+  "name": "Cherry",
+  "shortDescription": "Explore the Cherry flavor from Tropical Trance.",
+  "alt": "Trancy relaxes in a cherry-shaped boat amid a cosmic cherry landscape with waterfalls and a swirling sky.",
+  "translations": {
+    "es-MX": {
+      "shortDescription": "Explora el sabor Cherry de Tropical Trance.",
+      "alt": "Trancy descansa en una lancha con forma de cereza, rodeado de un paisaje cósmico de cerezas, cascadas y un cielo en espiral."
+    }
+  },
+  "media": {
+    "path": "assets/cherry-web-r1.webp",
+    "contentId": "sha256:6c2cd419d46fd80ca94eeadddd4e817e754e78c374123c5378475283bef4b356"
+  }
+}

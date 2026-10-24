@@ -35,3 +35,19 @@ log/
 
 # Scratch / temporary files
 codex.md
+
+# Astro local build and cache
+/dist/
+/.astro/
+
+# Isolated internal synthetic review output/cache
+.review-build/
+.review-cache/
+
+# Real mascot local review delivery; excluded from normal content/publicDir
+/review-assets/
+
+# Playwright browser artifacts
+/test-results/
+/playwright-report/
+/blob-report/

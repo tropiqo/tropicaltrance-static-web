@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "kind",
+    "lang",
+    "title",
+    "description"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1"
+    },
+    "kind": {
+      "enum": [
+        "development-site",
+        "production-site"
+      ]
+    },
+    "lang": {
+      "const": "en"
+    },
+    "title": {
+      "$ref": "publication/common.schema.json#/$defs/text"
+    },
+    "description": {
+      "$ref": "publication/common.schema.json#/$defs/text"
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "businessEmail": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$" }
+          ]
+        },
+        "whatsappBusinessUrl": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^https://wa\\.me/[1-9][0-9]{7,14}$"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,97 @@
+---
+interface Props {
+  src: string;
+  poster: string;
+  description: string;
+  playLabel: string;
+  pauseLabel: string;
+}
+
+const { src, poster, description, playLabel, pauseLabel } = Astro.props;
+---
+<figure class="cinematic-hero" data-cinematic-hero>
+  <video
+    class="cinematic-hero__video"
+    id="emerald-gateway-video"
+    src={src}
+    poster={poster}
+    muted
+    loop
+    playsinline
+    preload="none"
+    aria-describedby="emerald-gateway-description"
+    tabindex="-1"
+  ></video>
+  <figcaption class="cinematic-hero__description" id="emerald-gateway-description">{description}</figcaption>
+  <div class="cinematic-hero__controls">
+    <button
+      class="cinematic-hero__toggle"
+      type="button"
+      aria-label={playLabel}
+      aria-pressed="false"
+      aria-controls="emerald-gateway-video"
+      data-video-toggle
+      hidden
+      data-play-label={playLabel}
+      data-pause-label={pauseLabel}
+    >{playLabel}</button>
+  </div>
+</figure>
+
+<style>
+  .cinematic-hero {
+    position: relative;
+    inline-size: 100%;
+    min-inline-size: 0;
+    margin: 0;
+  }
+
+  .cinematic-hero__video {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+    object-position: center;
+    border: var(--border-thin) solid var(--color-border);
+    border-radius: var(--radius-panel);
+    background: var(--color-ink);
+  }
+
+  .cinematic-hero__description {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+    border: 0;
+  }
+
+  .cinematic-hero__controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-block-start: var(--space-2);
+  }
+
+  .cinematic-hero__toggle {
+    min-inline-size: 2.75rem;
+    min-block-size: 2.75rem;
+    padding-inline: var(--space-3);
+    border: 1px solid var(--color-paper);
+    border-radius: var(--radius-pill);
+    background: rgb(5 30 24 / 92%);
+    color: var(--color-paper);
+    font: inherit;
+    font-size: var(--text-small);
+    cursor: pointer;
+  }
+
+  .cinematic-hero__toggle:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+</style>

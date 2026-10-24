@@ -1,0 +1,17 @@
+{
+  "contractVersion": "1",
+  "sourceRepository": "tropical-trance-studio",
+  "sourceRevision": "24d848f691dd99cbb844374fb2f992f4804183ca",
+  "files": [
+    {
+      "path": "publication/common.schema.json",
+      "origin": "contracts/website-flavor-publication/schemas/common.schema.json",
+      "contentId": "sha256:fb300d5bd64a2aa2a0adf94937fc646851c18872e62d62d23faf82993ca219fe"
+    },
+    {
+      "path": "publication/projection.schema.json",
+      "origin": "contracts/website-flavor-publication/schemas/projection.schema.json",
+      "contentId": "sha256:34e8ad7d455853162a4680253a44109d9409a93d35f522c9f76651d90efc71d8"
+    }
+  ]
+}

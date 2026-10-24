@@ -1,0 +1,9 @@
+---
+import LocalizedPage from '../../../components/LocalizedPage.astro';
+import release from '#public-release';
+export function getStaticPaths() {
+  return release.flavors.filter(flavor => release.review || flavor.translations?.['es-MX']).map(flavor => ({ params: { slug: flavor.slug }, props: { flavor } }));
+}
+const { flavor } = Astro.props;
+---
+<LocalizedPage page="detail" locale="es-MX" flavor={flavor} />

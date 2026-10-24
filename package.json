@@ -1,30 +1,37 @@
 {
-  "name": "minimal-mistakes",
+  "name": "tropical-trance-static-web",
+  "version": "0.0.0",
   "private": true,
-  "version": "4.26.2",
-  "description": "Minimal Mistakes 2 column Jekyll theme.",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/mmistakes/minimal-mistakes.git"
-  },
-  "keywords": [
-    "jekyll",
-    "theme",
-    "minimal"
-  ],
-  "author": "Michael Rose",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/mmistakes/minimal-mistakes/issues"
-  },
-  "homepage": "https://mmistakes.github.io/minimal-mistakes/",
+  "type": "module",
   "engines": {
-    "node": ">= 0.10.0"
+    "node": "24.21.0",
+    "npm": "11.19.0"
+  },
+  "packageManager": "npm@11.19.0",
+  "scripts": {
+    "dev": "node scripts/public-inputs.mjs && ASTRO_TELEMETRY_DISABLED=1 astro dev --host 127.0.0.1",
+    "build": "node scripts/public-inputs.mjs && node scripts/check-static.mjs --source && ASTRO_TELEMETRY_DISABLED=1 astro build && node scripts/write-seo-output.mjs && node scripts/check-static.mjs",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview --host 127.0.0.1",
+    "test": "node scripts/prepare-trancy-review.mjs && node --test tests/*.test.mjs",
+    "review:build": "node scripts/build-review.mjs",
+    "flavor:add": "node scripts/flavor-add.mjs",
+    "flavor:update": "node scripts/flavor-update.mjs",
+    "flavor:remove": "node scripts/flavor-remove.mjs",
+    "channel:add": "node scripts/sales-channel-workflow.mjs add",
+    "channel:update": "node scripts/sales-channel-workflow.mjs update",
+    "channel:disable": "node scripts/sales-channel-workflow.mjs disable",
+    "channel:remove": "node scripts/sales-channel-workflow.mjs remove",
+    "validate:inputs": "node scripts/validate.mjs inputs",
+    "validate:output": "node scripts/validate.mjs output",
+    "validate:review-output": "node scripts/validate.mjs review-output",
+    "verify:reproducible": "node scripts/validate.mjs reproducible",
+    "validate": "node scripts/validate.mjs all",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
   },
   "devDependencies": {
-    "uglify-js": "^3.17.4"
-  },
-  "dependencies": {
-    "@openai/codex": "^0.1.2504172351"
+    "@playwright/test": "^1.64.0",
+    "astro": "7.3.8"
   }
 }

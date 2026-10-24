@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tropicaltrance.invalid/flavor-content/v1/schema.json",
+  "title": "Local website Flavor content",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "slug", "revision", "name", "shortDescription", "alt", "translations", "media"],
+  "properties": {
+    "contractVersion": { "const": "1" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "not": { "enum": ["index", "404"] } },
+    "revision": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+    "name": { "$ref": "publication/common.schema.json#/$defs/text" },
+    "shortDescription": { "$ref": "publication/common.schema.json#/$defs/text" },
+    "alt": { "$ref": "publication/common.schema.json#/$defs/text" },
+    "translations": {
+      "type": "object", "additionalProperties": false, "required": ["es-MX"],
+      "properties": { "es-MX": {
+        "type": "object", "additionalProperties": false, "required": ["shortDescription", "alt"],
+        "properties": {
+          "shortDescription": { "$ref": "publication/common.schema.json#/$defs/text" },
+          "alt": { "$ref": "publication/common.schema.json#/$defs/text" }
+        }
+      } }
+    },
+    "media": {
+      "type": "object", "additionalProperties": false, "required": ["path", "contentId"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^assets/[a-z0-9]+(?:-[a-z0-9]+)*-web-r[1-9][0-9]*\\.webp$" },
+        "contentId": { "$ref": "publication/common.schema.json#/$defs/digest" }
+      }
+    }
+  }
+}

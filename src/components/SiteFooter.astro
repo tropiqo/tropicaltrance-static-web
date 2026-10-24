@@ -1,0 +1,20 @@
+---
+import { getMessages, localizePath } from '../i18n/messages.mjs';
+interface Props { locale?: 'en' | 'es-MX'; }
+const { locale = 'en' } = Astro.props;
+const t = getMessages(locale);
+const navigation = [['/', t.nav.home], ['/flavors/', t.nav.flavors], ['/about/', t.nav.about], ['/contact/', t.nav.contact]];
+---
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <a class="brand" href={localizePath('/', locale)}>Tropical Trance</a>
+      <p class="footer-brand-statement">{t.footer.tagline}</p>
+      <p class="footer-brand-statement">{t.footer.statement}</p>
+    </div>
+    <nav class="footer-nav" aria-label={t.nav.footer}>
+      <ul>{navigation.map(([href, label]) => <li><a href={localizePath(href, locale)}>{label}</a></li>)}</ul>
+    </nav>
+    <p class="footer-note">{t.footer.note}</p>
+  </div>
+</footer>

@@ -1,0 +1,37 @@
+{
+  "contractVersion": "1",
+  "kind": "website-release-set",
+  "eligibilitySnapshot": {
+    "id": "fixture-review",
+    "revision": "1",
+    "contentId": "sha256:527106106e03a55a7c1feea4dd565738519b1df5744a5dd7c6c4f282e3c58d29"
+  },
+  "members": [
+    {
+      "flavor": {
+        "id": "fixture-orchid",
+        "revision": "test-1"
+      },
+      "slug": "fixture-orchid",
+      "projection": {
+        "path": "tests/fixtures/public-inputs/flavors/fixture-orchid.json",
+        "contentId": "sha256:d0e722d224dd8b66222691cb78836df693244c4c5b27be4726ebc8458007d31d"
+      },
+      "editorial": {
+        "path": "tests/fixtures/public-inputs/editorial/fixture-orchid.json",
+        "contentId": "sha256:22d4ad03a8afd02a8592754829fdc8b18e5751d16263a05eb65e230657d7b54b"
+      }
+    },
+    {
+      "flavor": {
+        "id": "fixture-coral",
+        "revision": "test-1"
+      },
+      "slug": "fixture-coral",
+      "projection": {
+        "path": "tests/fixtures/public-inputs/flavors/fixture-coral.json",
+        "contentId": "sha256:8f4db4525abce7e9154dcfc89e2a529f2270ea25a52d51768a9fe16f2e96ffc3"
+      }
+    }
+  ]
+}
