@@ -9,6 +9,7 @@ Future jobs, triggers, credentials, or actions require explicit review here.
 import argparse
 import copy
 import json
+import re
 from pathlib import Path
 
 CHECKOUT = "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803"
@@ -19,12 +20,14 @@ COMMAND = "python3 -B .github/ci/check_policy.py --self-test"
 LOCKED_INSTALL = "npm ci --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org"
 PIN_NPM = 'npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test "$(npm --version)" = "11.19.0"'
 DEPLOY_SCRIPT_DIGESTS = {
-    "authorize": "c830a1f12c3b2ffc6a94de9f768bb24713ecf73dc3a11447c43e876eee1526d6",
+    "authorize": "5bc0beff093c5ce1e3723b3e1ca9d67270392c949b1b9b2c11ea1354ab0450fb",
     "build": "c3aab6b1a8a7a4a256166342656f1be1458c91850024198bfd37705b61456f49",
     "access": "44eea2c5128f6cd5b1a2238bb794267abca06a04af849844ee5aaa39a36754b2",
     "project-preflight": "434de15ae412706ff5a53206aa41ec5f5a6f94c3615a094304c7631dd3a3dbb6",
     "publish": "290545c87cedb7346dff06b1a2f2e2a647e1a03288bd84b1ab56af3860fa6588",
+    "wrangler-install": "49404a8b9bff235daab65fd0c4ad3823b5af7659972b859a6d74037aaa2c7005",
 }
+WRANGLER_VERSION_PATTERN = re.compile(r"(?<![0-9A-Za-z.+-])v?4\.152\.0(?![0-9A-Za-z.+-])")
 VALIDATION_STEPS = [
     ("Validate application and isolated review builds", "npm run validate"),
     ("Verify reproducible builds", "npm run verify:reproducible"),
@@ -98,13 +101,13 @@ def check_cloudflare_workflow(workflow):
     require(set(workflow) == {"name", "on", "permissions", "concurrency", "jobs"},
             "unexpected deployment workflow keys")
     require(workflow["on"] == {"workflow_dispatch": {"inputs": {
-        "confirmation": {"description": "Type DEPLOY_TO_PAGES to authorize this manual deployment",
+        "confirmation": {"description": "Type DEPLOY_TO_PAGES to confirm only a Cloudflare Access-protected private deployment; this does not authorize public publication, indexing, custom domains, DNS changes, or sales activation",
                          "required": True, "type": "string"},
         "access_protection_verified": {
             "description": "Confirm Cloudflare Access rejects anonymous requests to pages.dev",
             "required": True, "type": "boolean", "default": False},
-        "publication_approved": {
-            "description": "Confirm separate owner approval for public Pages deployment of this exact master commit",
+        "private_deployment_approved": {
+            "description": "Confirm this exact master commit is authorized only for a private Cloudflare Access-protected deployment; public publication, indexing, custom domains, DNS changes, and sales activation remain unauthorized",
             "required": True, "type": "boolean", "default": False},
     }}}, "manual dispatch with explicit confirmations is the only trigger")
     require(workflow["permissions"] == {"contents": "read"},
@@ -126,10 +129,10 @@ def check_cloudflare_workflow(workflow):
         "GITHUB_REF": "${{ github.ref }}",
         "CONFIRMATION": "${{ inputs.confirmation }}",
         "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}",
-        "PUBLICATION_APPROVED": "${{ inputs.publication_approved }}",
+        "PRIVATE_DEPLOYMENT_APPROVED": "${{ inputs.private_deployment_approved }}",
     }, "authorization may read only ref and explicit confirmations")
     require(script_digest(auth_steps[0]["run"]) == DEPLOY_SCRIPT_DIGESTS["authorize"],
-            "authorization must match the reviewed fail-closed script")
+            "authorization must match the reviewed fail-closed private-deployment script")
 
     build = jobs["build"]
     require(build.get("needs") == "authorize" and build.get("if") == "github.ref == 'refs/heads/master'",
@@ -172,8 +175,8 @@ def check_cloudflare_workflow(workflow):
             set(deploy) == {"needs", "if", "runs-on", "timeout-minutes", "environment", "steps"},
             "deployment must use only the production environment and reviewed settings")
     deploy_steps = deploy["steps"]
-    require(len(deploy_steps) == 5, "deployment must use the reviewed five-step sequence")
-    download, access, preflight, wrangler, publish = deploy_steps
+    require(len(deploy_steps) == 7, "deployment must use the reviewed seven-step sequence")
+    download, access, setup_wrangler_node, pin_wrangler_npm, install_wrangler, preflight, publish = deploy_steps
     require(download == {"name": "Download validated site artifact", "uses": DOWNLOAD_ARTIFACT,
                          "with": {"name": "cloudflare-pages-dist", "path": "dist"}},
             "deployment must consume the build artifact with the pinned download action")
@@ -183,6 +186,15 @@ def check_cloudflare_workflow(workflow):
     }, "Access and project checks must use environment variables only")
     require(script_digest(access["run"]) == DEPLOY_SCRIPT_DIGESTS["access"],
             "project/access readiness and artifact checks differ from reviewed script")
+    require(setup_wrangler_node == {"name": "Use pinned Node.js for Wrangler", "uses": SETUP_NODE,
+                                    "with": {"node-version": "24.21.0", "package-manager-cache": False}},
+            "Wrangler must use the repository's pinned Node.js")
+    require(pin_wrangler_npm == {"name": "Use repository-pinned npm for Wrangler", "run": PIN_NPM},
+            "Wrangler must use the repository's pinned npm")
+    require(set(install_wrangler) == {"name", "run"} and
+            install_wrangler["name"] == "Install pinned Wrangler with only reviewed dependency scripts" and
+            script_digest(install_wrangler["run"]) == DEPLOY_SCRIPT_DIGESTS["wrangler-install"],
+            "Wrangler install must use the pinned package and selective strict lifecycle-script policy")
     require(set(preflight) == {"name", "env", "run"} and preflight["env"] == {
         "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}",
         "CLOUDFLARE_ACCOUNT_ID": "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}",
@@ -190,9 +202,6 @@ def check_cloudflare_workflow(workflow):
     }, "Cloudflare credentials may be referenced only in dedicated deployment steps")
     require(script_digest(preflight["run"]) == DEPLOY_SCRIPT_DIGESTS["project-preflight"],
             "credentialed preflight differs from reviewed read-only project check")
-    require(wrangler == {"name": "Install pinned Wrangler CLI",
-                         "run": "npm install --global wrangler@4.152.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test \"$(wrangler --version | head -n 1)\" = '4.152.0'"},
-            "Wrangler must be installed and checked at the reviewed exact version")
     require(set(publish) == {"name", "env", "run"} and publish["env"] == preflight["env"],
             "only the final deploy step may receive Cloudflare credentials")
     require(script_digest(publish["run"]) == DEPLOY_SCRIPT_DIGESTS["publish"],
@@ -211,6 +220,13 @@ def script_digest(script):
     import hashlib
     require(isinstance(script, str), "workflow shell commands must be text")
     return hashlib.sha256(script.encode("utf-8")).hexdigest()
+
+
+def wrangler_version_matches(output):
+    """Recognize the pinned semver token in Wrangler's first version-output line."""
+    if not isinstance(output, str) or not output.splitlines():
+        return False
+    return WRANGLER_VERSION_PATTERN.search(output.splitlines()[0]) is not None
 
 
 def load_workflow(path):
@@ -262,20 +278,35 @@ def negative_checks(valid):
 
 def cloudflare_negative_checks(valid):
     check_cloudflare_workflow(valid)
+    for output in ("4.152.0", "Wrangler 4.152.0", "☁ Wrangler v4.152.0"):
+        if not wrangler_version_matches(output):
+            raise PolicyError("expected Wrangler version output fixture was rejected: " + output)
+    for output in ("4.152.1", "4.152.0-beta.1", "4.152.0.1", "Wrangler 4.151.3"):
+        if wrangler_version_matches(output):
+            raise PolicyError("incorrect Wrangler version output fixture was accepted: " + output)
+    print("REJECTED deployment negative case: mismatched Wrangler version output")
     mutations = {
         "automatic push trigger": lambda w: w["on"].update({"push": {"branches": ["master"]}}),
         "automatic PR trigger": lambda w: w["on"].update({"pull_request": {}}),
+        "legacy public publication input": lambda w: w["on"]["workflow_dispatch"]["inputs"].update({
+            "publication_approved": {"description": "Approve public publishing", "required": True,
+                                     "type": "boolean", "default": False}}),
+        "public-launch wording": lambda w: w["on"]["workflow_dispatch"]["inputs"]["confirmation"].update({
+            "description": "Type DEPLOY_TO_PAGES to approve public deployment"}),
         "writable workflow token": lambda w: w["permissions"].update({"contents": "write"}),
         "missing branch refusal": lambda w: w["jobs"]["authorize"]["steps"][0].update({
             "run": w["jobs"]["authorize"]["steps"][0]["run"].replace("refs/heads/master", "refs/heads/main")}),
         "missing Access confirmation": lambda w: w["jobs"]["authorize"]["steps"][0]["env"].pop("ACCESS_PROTECTION_VERIFIED"),
-        "missing public release approval": lambda w: w["jobs"]["authorize"]["steps"][0]["env"].pop("PUBLICATION_APPROVED"),
+        "missing private deployment approval": lambda w: w["jobs"]["authorize"]["steps"][0]["env"].pop("PRIVATE_DEPLOYMENT_APPROVED"),
         "unprotected build ref": lambda w: w["jobs"]["build"].update({"if": "always()"}),
         "production secret in build": lambda w: w["jobs"]["build"].update({"env": {"TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}"}}),
         "missing protected environment": lambda w: w["jobs"]["deploy"].pop("environment"),
-        "project creation": lambda w: w["jobs"]["deploy"]["steps"][2].update({"run": "wrangler pages project create bad"}),
-        "unpinned Wrangler": lambda w: w["jobs"]["deploy"]["steps"][3].update({"run": "npm install -g wrangler"}),
-        "wrong production project branch": lambda w: w["jobs"]["deploy"]["steps"][4].update({"run": "wrangler pages deploy dist --branch feat/test"}),
+        "project creation": lambda w: w["jobs"]["deploy"]["steps"][5].update({"run": "wrangler pages project create bad"}),
+        "unreviewed Wrangler install": lambda w: w["jobs"]["deploy"]["steps"][4].update({"run": "npm install -g wrangler"}),
+        "uninitialized Wrangler prefix": lambda w: w["jobs"]["deploy"]["steps"][4].update({
+            "run": w["jobs"]["deploy"]["steps"][4]["run"].replace(
+                'mkdir -p "$TMP_PREFIX/lib/node_modules" "$TMP_PREFIX/bin"\n', "")}),
+        "wrong production project branch": lambda w: w["jobs"]["deploy"]["steps"][6].update({"run": "wrangler pages deploy dist --branch feat/test"}),
         "additional Cloudflare action": lambda w: w["jobs"]["deploy"]["steps"][0].update({"uses": "cloudflare/wrangler-action@v4"}),
     }
     for name, mutate in mutations.items():
