@@ -34,7 +34,7 @@ RELEASE_SCRIPT_DIGESTS = {
     "authorize": "e50be684e910a9701279e4ede962ed24c9bf4ac002cf06f430c60ce3d200163e",
     "source": "78c297dd73e09277eb0d0518a96595bcf18e6408e42d041bf8183e44ba4ecebb",
     "ci": "d07a71cbe13547a8dbea001b9cb6c670737ec2965867cd9f79d6f6f1fbd2da03",
-    "version": "7ad2c28958e4d4215f19285ef881d0568466deaaab954052b29b8f4e6a2d7a71",
+    "version": "d0fd509c30a22dcde62199d18616643da0a9b5a90f4aa63d106959ca66a2dfd8",
     "tag": "5ba34960597199417ea510084d36c2dcb3306bba4eb27a210e393f5e6db5c668",
     "publish": "44b886f63af7176dae7ff00950244723a14d1c5895451d8783b5f822b4686aaf",
 }
@@ -281,6 +281,7 @@ def check_release_workflow(workflow):
         require(set(step) == expected_keys and
                 step["name"] == name and script_digest(step["run"]) == RELEASE_SCRIPT_DIGESTS[key],
                 "release prepare step differs from reviewed policy: " + name)
+    check_gh_api_flag_compatibility(version["run"])
     require(source["id"] == "source" and source["env"] == {"DISPATCH_SHA": "${{ github.sha }}"},
             "source SHA must be pinned to the dispatch commit")
     require(ci["env"] == {
@@ -331,8 +332,23 @@ def check_release_workflow(workflow):
             "release workflow must not contain deployment logic or external service credentials")
 
 
+def check_gh_api_flag_compatibility(script):
+    normalized = script.replace("\\\n", " ")
+    for command in re.split(r"[;\n]", normalized):
+        if re.search(r"\bgh\s+api\b", command):
+            require(not ("--slurp" in command and "--jq" in command),
+                    "gh api does not support combining --slurp with --jq")
+
+
 def release_negative_checks(valid):
     check_release_workflow(valid)
+    try:
+        check_gh_api_flag_compatibility(
+            "release_tags=$(gh api --paginate --slurp releases --jq 'flatten | .[].tag_name')")
+    except PolicyError:
+        print("REJECTED release negative case: incompatible gh api --slurp and --jq flags")
+    else:
+        raise PolicyError("incompatible gh api --slurp and --jq flags were accepted")
     require(next_version([], "patch") == "v0.1.1" and
             next_version(["v0.1.0"], "minor") == "v0.2.0" and
             next_version(["v0.1.0"], "major") == "v1.0.0" and
