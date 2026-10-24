@@ -1,0 +1,149 @@
+{
+  "name": "Manual Cloudflare Pages deployment",
+  "on": {
+    "workflow_dispatch": {
+      "inputs": {
+        "confirmation": {
+          "description": "Type DEPLOY_TO_PAGES to authorize this manual deployment",
+          "required": true,
+          "type": "string"
+        },
+        "access_protection_verified": {
+          "description": "Confirm Cloudflare Access rejects anonymous requests to pages.dev",
+          "required": true,
+          "type": "boolean",
+          "default": false
+        },
+        "publication_approved": {
+          "description": "Confirm separate owner approval for public Pages deployment of this exact master commit",
+          "required": true,
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "concurrency": {
+    "group": "cloudflare-production",
+    "cancel-in-progress": false
+  },
+  "jobs": {
+    "authorize": {
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 2,
+      "steps": [
+        {
+          "name": "Reject unauthorized ref or missing confirmation",
+          "env": {
+            "GITHUB_REF": "${{ github.ref }}",
+            "CONFIRMATION": "${{ inputs.confirmation }}",
+            "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}",
+            "PUBLICATION_APPROVED": "${{ inputs.publication_approved }}"
+          },
+          "run": "set -eu\nif [ \"$GITHUB_REF\" != 'refs/heads/master' ]; then\n  echo 'Refused: deployment is allowed only from protected master.' >&2\n  exit 1\nfi\nif [ \"$CONFIRMATION\" != 'DEPLOY_TO_PAGES' ]; then\n  echo 'Refused: type DEPLOY_TO_PAGES in the confirmation input.' >&2\n  exit 1\nfi\nif [ \"$ACCESS_PROTECTION_VERIFIED\" != 'true' ]; then\n  echo 'Refused: verify Cloudflare Access protection before deployment.' >&2\n  exit 1\nfi\nif [ \"$PUBLICATION_APPROVED\" != 'true' ]; then\n  echo 'Refused: public deployment needs separate owner publication approval.' >&2\n  exit 1\nfi"
+        }
+      ]
+    },
+    "build": {
+      "needs": "authorize",
+      "if": "github.ref == 'refs/heads/master'",
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 20,
+      "steps": [
+        {
+          "name": "Check out authorized source",
+          "uses": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "with": {
+            "persist-credentials": false,
+            "fetch-depth": 1,
+            "clean": false
+          }
+        },
+        {
+          "name": "Use pinned Node.js",
+          "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+          "with": {
+            "node-version": "24.21.0",
+            "package-manager-cache": false
+          }
+        },
+        {
+          "name": "Use repository-pinned npm",
+          "run": "npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test \"$(npm --version)\" = \"11.19.0\""
+        },
+        {
+          "name": "Install locked dependencies without lifecycle scripts",
+          "run": "npm ci --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org"
+        },
+        {
+          "name": "Build development-safe site and validate output",
+          "env": {
+            "TROPICAL_INDEXING_AUTHORIZATION": "",
+            "TROPICAL_SEO_ORIGIN": ""
+          },
+          "run": "set -eu\ntest \"$(node --version)\" = 'v24.21.0'\ntest \"$(npm --version)\" = '11.19.0'\nnpm run build\nnpm run validate:output\ntest -s dist/index.html\ntest -s dist/robots.txt\nif [ -e dist/sitemap.xml ]; then echo 'Unexpected sitemap in non-indexable deployment artifact.' >&2; exit 1; fi\ngrep -qi 'noindex, *nofollow' dist/index.html\ngrep -qE '^Disallow:[[:space:]]*/[[:space:]]*$' dist/robots.txt"
+        },
+        {
+          "name": "Upload validated site artifact",
+          "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "with": {
+            "name": "cloudflare-pages-dist",
+            "path": "dist/",
+            "if-no-files-found": "error",
+            "retention-days": 1
+          }
+        }
+      ]
+    },
+    "deploy": {
+      "needs": "build",
+      "if": "github.ref == 'refs/heads/master'",
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 10,
+      "environment": "cloudflare-production",
+      "steps": [
+        {
+          "name": "Download validated site artifact",
+          "uses": "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+          "with": {
+            "name": "cloudflare-pages-dist",
+            "path": "dist"
+          }
+        },
+        {
+          "name": "Require configured project and Access attestation",
+          "env": {
+            "CLOUDFLARE_PAGES_PROJECT": "${{ vars.CLOUDFLARE_PAGES_PROJECT }}",
+            "CLOUDFLARE_ACCESS_READY": "${{ vars.CLOUDFLARE_ACCESS_READY }}"
+          },
+          "run": "set -eu\ncase \"$CLOUDFLARE_PAGES_PROJECT\" in ''|*[!a-z0-9-]*) echo 'Set a valid existing Pages project name in the environment variable.' >&2; exit 1;; esac\nif [ \"$CLOUDFLARE_ACCESS_READY\" != 'true' ]; then echo 'Set CLOUDFLARE_ACCESS_READY=true only after anonymous Access rejection is verified.' >&2; exit 1; fi\ntest -s dist/index.html\ntest -s dist/robots.txt\nif [ -e dist/sitemap.xml ]; then echo 'Unexpected sitemap in deployment artifact.' >&2; exit 1; fi"
+        },
+        {
+          "name": "Verify existing Cloudflare Pages project",
+          "env": {
+            "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}",
+            "CLOUDFLARE_ACCOUNT_ID": "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}",
+            "CLOUDFLARE_PAGES_PROJECT": "${{ vars.CLOUDFLARE_PAGES_PROJECT }}"
+          },
+          "run": "set -eu\ntest -n \"$CLOUDFLARE_API_TOKEN\"\ncase \"$CLOUDFLARE_ACCOUNT_ID\" in ''|*[!a-f0-9]*) echo 'Cloudflare account ID must be a 32-character lowercase hex value.' >&2; exit 1;; esac\ntest \"${#CLOUDFLARE_ACCOUNT_ID}\" -eq 32\nresponse=$(curl --fail --silent --show-error --get \\\n  --header \"Authorization: Bearer $CLOUDFLARE_API_TOKEN\" \\\n  \"https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT\")\nprintf '%s' \"$response\" | jq -e --arg project \"$CLOUDFLARE_PAGES_PROJECT\" '.success == true and .result.name == $project' >/dev/null"
+        },
+        {
+          "name": "Install pinned Wrangler CLI",
+          "run": "npm install --global wrangler@4.152.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test \"$(wrangler --version | head -n 1)\" = '4.152.0'"
+        },
+        {
+          "name": "Upload to existing Pages project",
+          "env": {
+            "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}",
+            "CLOUDFLARE_ACCOUNT_ID": "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}",
+            "CLOUDFLARE_PAGES_PROJECT": "${{ vars.CLOUDFLARE_PAGES_PROJECT }}"
+          },
+          "run": "set -eu\nwrangler pages deploy dist --project-name \"$CLOUDFLARE_PAGES_PROJECT\" --branch master --commit-hash \"$GITHUB_SHA\" --commit-message \"$GITHUB_SHA\""
+        }
+      ]
+    }
+  }
+}
