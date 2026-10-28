@@ -71,9 +71,9 @@ def check_workflow(workflow):
             "unexpected workflow keys or missing policy fields")
     require(isinstance(workflow["name"], str), "workflow name must be text")
     require(workflow["on"] == {
-        "pull_request": {"branches": ["master"]},
+        "pull_request": {"branches": ["development", "master"]},
         "push": {"branches": ["master"]},
-    }, "validation may run only for pull requests and pushes to master")
+    }, "validation may run for pull requests to development/master and pushes to master only")
     require(workflow["permissions"] == {"contents": "read"},
             "only contents:read permissions are allowed")
     jobs = workflow["jobs"]
@@ -668,6 +668,10 @@ def load_workflow(path):
 def negative_checks(valid):
     check_workflow(valid)
     mutations = {
+        "missing development PR target": lambda w: w["on"]["pull_request"].update({"branches": ["master"]}),
+        "unexpected PR target": lambda w: w["on"]["pull_request"]["branches"].append("main"),
+        "development push trigger": lambda w: w["on"]["push"].update({"branches": ["development", "master"]}),
+        "unexpected validation event": lambda w: w["on"].update({"workflow_dispatch": {}}),
         "PR deployment job": lambda w: w["jobs"].update({"deploy": {"needs": "policy"}}),
         "pages write": lambda w: w["permissions"].update({"pages": "write"}),
         "OIDC write": lambda w: w["permissions"].update({"id-token": "write"}),
