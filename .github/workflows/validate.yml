@@ -54,6 +54,10 @@
           "run": "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v"
         },
         {
+          "name": "Test release and deployment metadata validation",
+          "run": "python3 -B -m unittest discover -s .github/ci -p 'test_*deployment.py' -v"
+        },
+        {
           "name": "Validate application and isolated review builds",
           "run": "npm run validate"
         },

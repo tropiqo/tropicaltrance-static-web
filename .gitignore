@@ -32,6 +32,7 @@ Thumbs.db
 # Temporary files
 tmp/
 log/
+/reports/
 
 # Scratch / temporary files
 codex.md
