@@ -10,6 +10,8 @@ import argparse
 import copy
 import json
 import re
+import subprocess
+import tempfile
 from pathlib import Path
 
 from release_version import latest_version, next_version
@@ -37,6 +39,13 @@ RELEASE_SCRIPT_DIGESTS = {
     "version": "d0fd509c30a22dcde62199d18616643da0a9b5a90f4aa63d106959ca66a2dfd8",
     "tag": "5ba34960597199417ea510084d36c2dcb3306bba4eb27a210e393f5e6db5c668",
     "publish": "44b886f63af7176dae7ff00950244723a14d1c5895451d8783b5f822b4686aaf",
+}
+DEVELOPMENT_SCRIPT_DIGESTS = {
+    "build": "b4ee3ddd832327904091f7fc7eebd520f361111ea92869c9cd7ee5ec2858c784",
+    "authorization": "87778cf63a0981506c60f5196b468e0875d0d83ba7355bb99a09fa23feb98920",
+    "wrangler-install": "49404a8b9bff235daab65fd0c4ad3823b5af7659972b859a6d74037aaa2c7005",
+    "project-preflight": "fa392c513b91eae01584adc20361c48f6abfd84d894cce672b1010b3023e1ef9",
+    "publish": "d97fbe107bf682cf365f6d4f66dc6f1784d953f0171ad2b5b28f07a782e4d450",
 }
 VALIDATION_STEPS = [
     ("Test release version calculation", "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v"),
@@ -219,6 +228,244 @@ def check_cloudflare_workflow(workflow):
             "only the final deploy step may receive Cloudflare credentials")
     require(script_digest(publish["run"]) == DEPLOY_SCRIPT_DIGESTS["publish"],
             "Direct Upload command differs from reviewed production command")
+
+
+def check_cloudflare_development_workflow(workflow):
+    require(isinstance(workflow, dict) and
+            set(workflow) == {"name", "on", "permissions", "concurrency", "jobs"},
+            "unexpected development deployment workflow shape")
+    require(workflow["name"] == "Cloudflare Pages development deployment" and
+            workflow["on"] == {"push": {"branches": ["development"]}},
+            "development workflow must run only on pushes to development")
+    require(workflow["permissions"] == {"contents": "read"},
+            "development workflow token must remain read-only")
+    require(workflow["concurrency"] == {
+        "group": "cloudflare-development", "cancel-in-progress": False},
+        "development deployments must be serialized")
+    jobs = workflow["jobs"]
+    require(isinstance(jobs, dict) and set(jobs) == {"build", "deploy"},
+            "unexpected development workflow jobs")
+
+    build = jobs["build"]
+    require(set(build) == {"runs-on", "timeout-minutes", "steps"} and
+            build["runs-on"] == "ubuntu-24.04" and build["timeout-minutes"] == 40,
+            "development build must use the reviewed unprivileged runner")
+    steps = build["steps"]
+    require(len(steps) == 12, "development build steps differ from the reviewed validation pipeline")
+    checkout, setup, pin_npm, install, policy, release_tests, validate, reproducible, chromium, e2e, artifact_build, upload = steps
+    require(checkout == {
+        "name": "Read development source", "uses": CHECKOUT,
+        "with": {"persist-credentials": False, "fetch-depth": 1, "clean": False},
+    }, "development checkout must be pinned and must not persist credentials")
+    require(set(setup) == {"name", "uses", "with"} and setup["uses"] == SETUP_NODE and
+            setup["with"] == {"node-version": "24.21.0", "package-manager-cache": False},
+            "development build must use the pinned Node release without cache")
+    require(pin_npm == {"name": "Use repository-pinned npm", "run": PIN_NPM},
+            "development build must use the repository-pinned npm release")
+    require(install == {"name": "Install locked dependencies without lifecycle scripts", "run": LOCKED_INSTALL},
+            "development build must install only the reviewed lockfile without lifecycle scripts")
+    require(policy == {"name": "Check all workflow security policies", "run": COMMAND},
+            "development workflow must execute the repository security policy self-tests")
+    require(release_tests == {
+        "name": "Test release version calculation",
+        "run": "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v",
+    }, "development workflow must retain release version tests")
+    require(validate == {"name": "Run website validation", "run": "npm run validate"},
+            "development pushes must run the full website validation")
+    require(reproducible == {"name": "Verify reproducible builds", "run": "npm run verify:reproducible"},
+            "development pushes must verify reproducible builds")
+    require(chromium == {
+        "name": "Install Chromium and required Linux dependencies",
+        "run": "npx playwright install --with-deps chromium",
+    } and e2e == {"name": "Run isolated Chromium browser checks", "run": "npm run test:e2e"},
+            "development pushes must run the reviewed browser validation")
+    require(artifact_build == {
+        "name": "Build and validate the development artifact",
+        "env": {"TROPICAL_INDEXING_AUTHORIZATION": "", "TROPICAL_SEO_ORIGIN": ""},
+        "run": artifact_build.get("run"),
+    } and script_digest(artifact_build["run"]) == DEVELOPMENT_SCRIPT_DIGESTS["build"],
+            "development artifact must be built with indexing inputs cleared and validated")
+    require(upload == {
+        "name": "Upload validated development artifact", "uses": UPLOAD_ARTIFACT,
+        "with": {"name": "cloudflare-development-dist", "path": "dist/",
+                 "if-no-files-found": "error", "retention-days": 1},
+    }, "development workflow must upload only the validated artifact with a short retention")
+    require("secrets." not in json.dumps(build).lower() and
+            "CLOUDFLARE_API_TOKEN" not in json.dumps(build),
+            "development build must not receive Cloudflare credentials")
+
+    deploy = jobs["deploy"]
+    require(set(deploy) == {"needs", "if", "runs-on", "timeout-minutes", "permissions", "environment", "steps"} and
+            deploy["needs"] == "build" and deploy["if"] == "github.ref == 'refs/heads/development'" and
+            deploy["runs-on"] == "ubuntu-24.04" and deploy["timeout-minutes"] == 15 and
+            deploy["permissions"] == {"contents": "read"} and
+            deploy["environment"] == "cloudflare-development",
+            "only the development branch may deploy using its dedicated environment and read-only GitHub token")
+    deploy_steps = deploy["steps"]
+    require(len(deploy_steps) == 7, "development deployment steps differ from the reviewed gated sequence")
+    download, authorization, setup_wrangler, pin_wrangler_npm, wrangler, preflight, publish = deploy_steps
+    require(download == {
+        "name": "Download validated development artifact", "uses": DOWNLOAD_ARTIFACT,
+        "with": {"name": "cloudflare-development-dist", "path": "dist"},
+    }, "development deploy must consume only its validated artifact")
+    require(authorization.get("name") == "Require explicit deployment and Access authorization" and
+            set(authorization) == {"name", "env", "run"} and authorization["env"] == {
+                "GITHUB_REF": "${{ github.ref }}",
+                "CLOUDFLARE_DEV_ACCESS_READY": "${{ vars.CLOUDFLARE_DEV_ACCESS_READY }}",
+                "CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED": "${{ vars.CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED }}",
+            } and script_digest(authorization["run"]) == DEVELOPMENT_SCRIPT_DIGESTS["authorization"],
+            "development deployment must fail closed unless branch, Access, and explicit enablement match")
+    require(set(setup_wrangler) == {"name", "uses", "with"} and
+            setup_wrangler["uses"] == SETUP_NODE and
+            setup_wrangler["with"] == {"node-version": "24.21.0", "package-manager-cache": False},
+            "Wrangler must use the pinned Node release")
+    require(pin_wrangler_npm == {"name": "Use repository-pinned npm for Wrangler", "run": PIN_NPM},
+            "Wrangler must use the repository-pinned npm release")
+    require(wrangler["name"] == "Install pinned Wrangler with only reviewed dependency scripts" and
+            set(wrangler) == {"name", "run"} and
+            script_digest(wrangler["run"]) == DEVELOPMENT_SCRIPT_DIGESTS["wrangler-install"],
+            "Wrangler install must retain the pinned version and reviewed script allowlist")
+    require(preflight["name"] == "Verify the existing Pages project and production branch" and
+            set(preflight) == {"name", "env", "run"} and preflight["env"] == {
+                "CLOUDFLARE_DEV_API_TOKEN": "${{ secrets.CLOUDFLARE_DEV_API_TOKEN }}",
+                "CLOUDFLARE_DEV_ACCOUNT_ID": "${{ secrets.CLOUDFLARE_DEV_ACCOUNT_ID }}",
+            } and script_digest(preflight["run"]) == DEVELOPMENT_SCRIPT_DIGESTS["project-preflight"],
+            "only the read-only existing-project check may receive deployment credentials before upload")
+    require(publish["name"] == "Upload development branch to existing Pages project" and
+            set(publish) == {"name", "env", "run"} and publish["env"] == {
+                "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_DEV_API_TOKEN }}",
+                "CLOUDFLARE_ACCOUNT_ID": "${{ secrets.CLOUDFLARE_DEV_ACCOUNT_ID }}",
+                "GH_TOKEN": "${{ github.token }}",
+                "GITHUB_REPOSITORY": "${{ github.repository }}",
+                "SOURCE_SHA": "${{ github.sha }}",
+            } and
+            script_digest(publish["run"]) == DEVELOPMENT_SCRIPT_DIGESTS["publish"],
+            "development credentials and read token must be confined to the final stale-checked upload")
+    serialized = json.dumps(workflow).lower()
+    require("cloudflare-production" not in serialized and "--branch master" not in serialized and
+            "project create" not in serialized and "vars.cloudflare_pages_project" not in serialized and
+            "secrets.cloudflare_api_token" not in serialized and "secrets.cloudflare_account_id" not in serialized and
+            "--project-name tropicaltrance-web" in publish["run"] and
+            '.result.production_branch == "master"' in preflight["run"],
+            "development workflow must preserve the production branch and never create projects")
+
+
+def cloudflare_development_negative_checks(valid):
+    check_cloudflare_development_workflow(valid)
+    mutations = {
+        "master push trigger": lambda w: w["on"]["push"].update({"branches": ["master"]}),
+        "automatic pull request trigger": lambda w: w["on"].update({"pull_request": {"branches": ["development"]}}),
+        "writable GitHub permissions": lambda w: w["permissions"].update({"contents": "write"}),
+        "production environment": lambda w: w["jobs"]["deploy"].update({"environment": "cloudflare-production"}),
+        "missing Access authorization": lambda w: w["jobs"]["deploy"]["steps"][1]["env"].pop("CLOUDFLARE_DEV_ACCESS_READY"),
+        "missing owner enablement": lambda w: w["jobs"]["deploy"]["steps"][1]["env"].pop("CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED"),
+        "malformed Access readiness accepted": lambda w: w["jobs"]["deploy"]["steps"][1].update({
+            "run": w["jobs"]["deploy"]["steps"][1]["run"].replace(
+                'CLOUDFLARE_DEV_ACCESS_READY" != \'true\'', 'CLOUDFLARE_DEV_ACCESS_READY" != \'false\'')}),
+        "disabled deployment accepted": lambda w: w["jobs"]["deploy"]["steps"][1].update({
+            "run": w["jobs"]["deploy"]["steps"][1]["run"].replace(
+                'CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED" != \'true\'',
+                'CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED" != \'false\'')}),
+        "fail-open deployment gate": lambda w: w["jobs"]["deploy"]["steps"][1].update({"run": "true"}),
+        "production-era readiness variable": lambda w: w["jobs"]["deploy"]["steps"][1]["env"].update({"CLOUDFLARE_ACCESS_READY": "${{ vars.CLOUDFLARE_ACCESS_READY }}"}),
+        "shared project variable": lambda w: w["jobs"]["deploy"]["steps"][1]["env"].update({"CLOUDFLARE_PAGES_PROJECT": "${{ vars.CLOUDFLARE_PAGES_PROJECT }}"}),
+        "production credential secret": lambda w: w["jobs"]["deploy"]["steps"][5]["env"].update({"CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}"}),
+        "Cloudflare secret in build job": lambda w: w["jobs"]["build"]["steps"][0].update({"env": {"CLOUDFLARE_DEV_API_TOKEN": "${{ secrets.CLOUDFLARE_DEV_API_TOKEN }}"}}),
+        "production deployment branch": lambda w: w["jobs"]["deploy"]["steps"][6].update({"run": "wrangler pages deploy dist --branch master"}),
+        "project creation command": lambda w: w["jobs"]["deploy"]["steps"][6].update({"run": "wrangler pages project create tropicaltrance-web"}),
+        "unreviewed Wrangler scripts": lambda w: w["jobs"]["deploy"]["steps"][4].update({"run": "npm install -g wrangler"}),
+        "missing noindex validation": lambda w: w["jobs"]["build"]["steps"][10].update({"run": "npm run build"}),
+        "missing production branch preflight": lambda w: w["jobs"]["deploy"]["steps"][5].update({"run": "curl"}),
+        "missing stale deployment check": lambda w: w["jobs"]["deploy"]["steps"][6].update({
+            "run": "wrangler pages deploy dist --project-name tropicaltrance-web --branch development"}),
+        "stale check does not pin development branch": lambda w: w["jobs"]["deploy"]["steps"][6].update({
+            "run": w["jobs"]["deploy"]["steps"][6]["run"].replace("/commits/development", "/commits/master")}),
+        "wrong hard-coded Pages project": lambda w: w["jobs"]["deploy"]["steps"][6].update({
+            "run": w["jobs"]["deploy"]["steps"][6]["run"].replace("tropicaltrance-web", "wrong-project")}),
+    }
+    for name, mutate in mutations.items():
+        specimen = copy.deepcopy(valid)
+        try:
+            mutate(specimen)
+            check_cloudflare_development_workflow(specimen)
+        except (PolicyError, KeyError, AttributeError, TypeError):
+            print("REJECTED development deployment negative case: " + name)
+        else:
+            raise PolicyError("development deployment negative case was incorrectly accepted: " + name)
+    cloudflare_development_execution_checks(valid)
+
+
+def cloudflare_development_execution_checks(workflow):
+    """Exercise the real auth/staleness scripts using only synthetic local tools."""
+    steps = workflow["jobs"]["deploy"]["steps"]
+    authorization = steps[1]["run"]
+    publish = steps[6]["run"]
+    with tempfile.TemporaryDirectory(prefix="tt-deploy-policy-") as directory:
+        root = Path(directory)
+        dist = root / "dist"
+        dist.mkdir()
+        (dist / "index.html").write_text('<meta name="robots" content="noindex, nofollow">')
+        (dist / "robots.txt").write_text("User-agent: *\nDisallow: /\n")
+        gate_values = {
+            "PATH": "/usr/bin:/bin",
+            "GITHUB_REF": "refs/heads/development",
+            "CLOUDFLARE_DEV_ACCESS_READY": "true",
+            "CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED": "true",
+        }
+        result = subprocess.run(["/bin/bash", "-c", authorization], cwd=root, env=gate_values,
+                                text=True, capture_output=True, check=False)
+        require(result.returncode == 0, "authorized development gate fixture did not pass")
+        for name, override in (
+            ("missing readiness", {"CLOUDFLARE_DEV_ACCESS_READY": None}),
+            ("missing enablement", {"CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED": None}),
+            ("malformed readiness", {"CLOUDFLARE_DEV_ACCESS_READY": "TRUE"}),
+            ("malformed enablement", {"CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED": "1"}),
+            ("disabled deployment", {"CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED": "false"}),
+            ("wrong branch", {"GITHUB_REF": "refs/heads/master"}),
+        ):
+            env = gate_values.copy()
+            for key, value in override.items():
+                if value is None:
+                    env.pop(key, None)
+                else:
+                    env[key] = value
+            result = subprocess.run(["/bin/bash", "-c", authorization], cwd=root, env=env,
+                                    text=True, capture_output=True, check=False)
+            require(result.returncode != 0, "development authorization accepted " + name)
+
+        fake_bin = root / "bin"
+        fake_bin.mkdir()
+        marker = root / "wrangler-ran"
+        gh = fake_bin / "gh"
+        gh.write_text("#!/bin/sh\n[ \"$FAKE_GH_FAIL\" != true ] || exit 1\nprintf '%s\\n' \"$FAKE_GH_SHA\"\n")
+        gh.chmod(0o700)
+        wrangler = fake_bin / "wrangler"
+        wrangler.write_text("#!/bin/sh\nprintf ran > \"$FAKE_WRANGLER_MARKER\"\n")
+        wrangler.chmod(0o700)
+        source_sha = "a" * 40
+        base = {
+            "PATH": str(fake_bin), "GH_TOKEN": "synthetic-test-token",
+            "GITHUB_REPOSITORY": "example/disposable-fixture", "SOURCE_SHA": source_sha,
+            "FAKE_GH_SHA": source_sha, "FAKE_GH_FAIL": "false",
+            "FAKE_WRANGLER_MARKER": str(marker),
+        }
+        result = subprocess.run(["/bin/bash", "-c", publish], cwd=root, env=base,
+                                text=True, capture_output=True, check=False)
+        require(result.returncode == 0 and marker.is_file(),
+                "current development HEAD did not reach the synthetic upload command")
+        marker.unlink()
+        for name, override in (
+            ("stale workflow SHA", {"FAKE_GH_SHA": "b" * 40}),
+            ("unverifiable remote SHA", {"FAKE_GH_FAIL": "true"}),
+            ("malformed remote SHA", {"FAKE_GH_SHA": "not-a-commit"}),
+            ("malformed workflow SHA", {"SOURCE_SHA": "not-a-commit"}),
+        ):
+            env = base.copy()
+            env.update(override)
+            result = subprocess.run(["/bin/bash", "-c", publish], cwd=root, env=env,
+                                    text=True, capture_output=True, check=False)
+            require(result.returncode != 0 and not marker.exists(),
+                    "staleness guard allowed upload for " + name)
 
 
 def check_release_workflow(workflow):
@@ -509,13 +756,16 @@ def main():
     directory = root / ".github/workflows"
     require(not directory.is_symlink(), "workflow directory must not be a symlink")
     active = sorted(p for p in directory.iterdir() if p.suffix.lower() in {".yml", ".yaml"})
-    require([p.name for p in active] == ["create-release.yml", "deploy-cloudflare.yml", "validate.yml"],
-            "only the reviewed validation, manual release, and manual Cloudflare workflows are allowed")
+    require([p.name for p in active] == ["create-release.yml", "deploy-cloudflare-development.yml",
+                                         "deploy-cloudflare.yml", "validate.yml"],
+            "only the reviewed validation, release, development deployment, and production deployment workflows are allowed")
     workflows = {path.name: load_workflow(path) for path in active}
     workflow = workflows["validate.yml"]
     check_workflow(workflow)
     cloudflare = workflows["deploy-cloudflare.yml"]
     check_cloudflare_workflow(cloudflare)
+    cloudflare_development = workflows["deploy-cloudflare-development.yml"]
+    check_cloudflare_development_workflow(cloudflare_development)
     release = workflows["create-release.yml"]
     check_release_workflow(release)
     require((root / ".github/ci/check_policy.py").is_file(), "policy command file is missing")
@@ -526,6 +776,7 @@ def main():
     if args.self_test:
         negative_checks(workflow)
         cloudflare_negative_checks(cloudflare)
+        cloudflare_development_negative_checks(cloudflare_development)
         release_negative_checks(release)
     print("LOCAL CI ISOLATION: PASS (bounded source policy; remote controls unverified)")
 
