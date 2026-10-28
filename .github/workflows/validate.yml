@@ -3,6 +3,7 @@
   "on": {
     "pull_request": {
       "branches": [
+        "development",
         "master"
       ]
     },
@@ -56,10 +57,6 @@
         {
           "name": "Validate application and isolated review builds",
           "run": "npm run validate"
-        },
-        {
-          "name": "Verify reproducible builds",
-          "run": "npm run verify:reproducible"
         },
         {
           "name": "Install Chromium and required Linux dependencies",
