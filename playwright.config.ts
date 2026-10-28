@@ -14,7 +14,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npm run dev -- --port 4332 --strictPort',
+    command: 'npm run dev -- --port 4332 --strictPort --ignore-lock',
     url: 'http://127.0.0.1:4332/',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
