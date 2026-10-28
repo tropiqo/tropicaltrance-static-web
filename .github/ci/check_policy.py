@@ -115,10 +115,8 @@ def check_cloudflare_workflow(workflow):
     dispatch = workflow["on"].get("workflow_dispatch", {})
     require(set(workflow["on"]) == {"workflow_dispatch"}, "deployment must remain manual only")
     inputs = dispatch.get("inputs", {})
-    require(set(inputs) == {"release_tag", "confirmation", "access_protection_verified", "private_deployment_approved"}, "required deployment and release approval inputs differ")
+    require(set(inputs) == {"release_tag", "access_protection_verified", "private_deployment_approved"}, "required deployment and release approval inputs differ")
     require(inputs["release_tag"].get("required") is True and inputs["release_tag"].get("type") == "string", "release tag must be explicitly selected")
-    require(inputs["confirmation"].get("required") is True and inputs["confirmation"].get("type") == "string" and "DEPLOY_TO_PAGES" in inputs["confirmation"].get("description", ""), "deployment confirmation gate changed")
-    require("public" not in inputs["confirmation"].get("description", "").lower(), "private deployment confirmation must not authorize public publication")
     for gate in ("access_protection_verified", "private_deployment_approved"):
         require(inputs[gate].get("required") is True and inputs[gate].get("type") == "boolean" and inputs[gate].get("default") is False, "approval gate must default to false")
     require(workflow["permissions"] == {"contents": "read"}, "workflow token must remain read-only")
@@ -131,8 +129,8 @@ def check_cloudflare_workflow(workflow):
     auth_steps = authorize["steps"]
     require(len(auth_steps) == 3 and set(auth_steps[0]) == {"name", "uses", "with"} and auth_steps[0]["uses"] == CHECKOUT and auth_steps[0]["with"] == {"ref": "${{ github.sha }}", "fetch-depth": 0, "persist-credentials": False, "clean": False}, "authorization must fetch full master/tag history without persisted credentials")
     auth_gate = auth_steps[1]
-    require(set(auth_gate) == {"name", "env", "run"} and auth_gate["env"] == {"GITHUB_REF": "${{ github.ref }}", "CONFIRMATION": "${{ inputs.confirmation }}", "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}", "PRIVATE_DEPLOYMENT_APPROVED": "${{ inputs.private_deployment_approved }}"}, "authorization input wiring changed")
-    for required in ("refs/heads/master", "DEPLOY_TO_PAGES", "ACCESS_PROTECTION_VERIFIED", "PRIVATE_DEPLOYMENT_APPROVED"):
+    require(set(auth_gate) == {"name", "env", "run"} and auth_gate["env"] == {"GITHUB_REF": "${{ github.ref }}", "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}", "PRIVATE_DEPLOYMENT_APPROVED": "${{ inputs.private_deployment_approved }}"}, "authorization input wiring changed")
+    for required in ("refs/heads/master", "ACCESS_PROTECTION_VERIFIED", "PRIVATE_DEPLOYMENT_APPROVED"):
         require(required in auth_gate["run"], "authorization gate missing " + required)
     release_step = auth_steps[2]
     require(set(release_step) == {"name", "id", "env", "run"} and release_step["id"] == "release" and release_step["run"] == "python3 -B .github/ci/release_deployment.py", "release validation command changed")
@@ -563,8 +561,8 @@ def cloudflare_negative_checks(valid):
         "legacy public publication input": lambda w: w["on"]["workflow_dispatch"]["inputs"].update({
             "publication_approved": {"description": "Approve public publishing", "required": True,
                                      "type": "boolean", "default": False}}),
-        "public-launch wording": lambda w: w["on"]["workflow_dispatch"]["inputs"]["confirmation"].update({
-            "description": "Type DEPLOY_TO_PAGES to approve public deployment"}),
+        "redundant deployment confirmation": lambda w: w["on"]["workflow_dispatch"]["inputs"].update({
+            "confirmation": {"description": "Type DEPLOY_TO_PAGES", "required": True, "type": "string"}}),
         "writable workflow token": lambda w: w["permissions"].update({"contents": "write"}),
         "missing release tag input": lambda w: w["on"]["workflow_dispatch"]["inputs"].pop("release_tag"),
         "missing branch restriction": lambda w: w["jobs"]["build"].update({"if": "always()"}),

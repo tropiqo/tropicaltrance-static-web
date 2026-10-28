@@ -2,7 +2,6 @@
   "name": "Manual Cloudflare Pages deployment",
   "on": {"workflow_dispatch": {"inputs": {
     "release_tag": {"description": "Published canonical GitHub Release tag to deploy (vMAJOR.MINOR.PATCH)", "required": true, "type": "string"},
-    "confirmation": {"description": "Type DEPLOY_TO_PAGES to confirm only an Access-protected private deployment", "required": true, "type": "string"},
     "access_protection_verified": {"description": "Confirm Cloudflare Access rejects anonymous requests to pages.dev", "required": true, "type": "boolean", "default": false},
     "private_deployment_approved": {"description": "Approve this exact selected release for private deployment only", "required": true, "type": "boolean", "default": false}
   }}},
@@ -14,7 +13,7 @@
       "outputs": {"source_sha": "${{ steps.release.outputs.source_sha }}", "release_id": "${{ steps.release.outputs.release_id }}", "release_url": "${{ steps.release.outputs.release_url }}", "tag_object_sha": "${{ steps.release.outputs.tag_object_sha }}"},
       "steps": [
         {"name": "Check out master history for release ancestry", "uses": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803", "with": {"ref": "${{ github.sha }}", "fetch-depth": 0, "persist-credentials": false, "clean": false}},
-        {"name": "Require explicit private deployment authorization", "env": {"GITHUB_REF": "${{ github.ref }}", "CONFIRMATION": "${{ inputs.confirmation }}", "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}", "PRIVATE_DEPLOYMENT_APPROVED": "${{ inputs.private_deployment_approved }}"}, "run": "set -eu\ntest \"$GITHUB_REF\" = refs/heads/master || { echo 'Refused: master only' >&2; exit 1; }\ntest \"$CONFIRMATION\" = DEPLOY_TO_PAGES || { echo 'Refused: missing deployment confirmation' >&2; exit 1; }\ntest \"$ACCESS_PROTECTION_VERIFIED\" = true || { echo 'Refused: Access readiness not attested' >&2; exit 1; }\ntest \"$PRIVATE_DEPLOYMENT_APPROVED\" = true || { echo 'Refused: private deployment approval missing' >&2; exit 1; }"},
+        {"name": "Require explicit private deployment authorization", "env": {"GITHUB_REF": "${{ github.ref }}", "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}", "PRIVATE_DEPLOYMENT_APPROVED": "${{ inputs.private_deployment_approved }}"}, "run": "set -eu\ntest \"$GITHUB_REF\" = refs/heads/master || { echo 'Refused: master only' >&2; exit 1; }\ntest \"$ACCESS_PROTECTION_VERIFIED\" = true || { echo 'Refused: Access readiness not attested' >&2; exit 1; }\ntest \"$PRIVATE_DEPLOYMENT_APPROVED\" = true || { echo 'Refused: private deployment approval missing' >&2; exit 1; }"},
         {"name": "Validate published release and pin source commit", "id": "release", "env": {"GITHUB_TOKEN": "${{ github.token }}", "GITHUB_REPOSITORY": "${{ github.repository }}", "GITHUB_REF": "${{ github.ref }}", "RELEASE_TAG": "${{ inputs.release_tag }}"}, "run": "python3 -B .github/ci/release_deployment.py"}
       ]
     },

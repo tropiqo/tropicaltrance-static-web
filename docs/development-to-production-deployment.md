@@ -21,7 +21,7 @@ There are two separate deployment paths. Feature work goes to the development pr
 
 1. In GitHub, open a PR from `development` into `master`. Wait for **Validate website** to pass, review, then merge. A master merge does not itself deploy production.
 2. In **Actions → Create GitHub Release**, select `master`, choose the version bump, enter `CREATE_RELEASE`, and run it. Review the resulting `vMAJOR.MINOR.PATCH` pre-release and source commit.
-3. In **Actions → Manual Cloudflare Pages deployment**, select `master`, enter that exact release tag, type `DEPLOY_TO_PAGES`, and confirm the private deployment and Access checks. Approve the existing `cloudflare-production` environment if GitHub prompts for its configured approval.
+3. In **Actions → Manual Cloudflare Pages deployment**, select `master`, enter that exact release tag, and confirm the private deployment and Access checks. Approve the existing `cloudflare-production` environment if GitHub prompts for its configured approval.
 4. Confirm the run summary shows the selected tag, source SHA, Cloudflare deployment ID, and URL. Verify Access on the production URL.
 
 ## Roll back and identify the deployed version
