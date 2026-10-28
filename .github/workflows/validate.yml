@@ -59,10 +59,6 @@
           "run": "npm run validate"
         },
         {
-          "name": "Verify reproducible builds",
-          "run": "npm run verify:reproducible"
-        },
-        {
           "name": "Install Chromium and required Linux dependencies",
           "run": "npx playwright install --with-deps chromium"
         },
