@@ -1,0 +1,156 @@
+{
+  "name": "Cloudflare Pages development deployment",
+  "on": {
+    "push": {
+      "branches": [
+        "development"
+      ]
+    }
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "concurrency": {
+    "group": "cloudflare-development",
+    "cancel-in-progress": false
+  },
+  "jobs": {
+    "build": {
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 40,
+      "steps": [
+        {
+          "name": "Read development source",
+          "uses": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "with": {
+            "persist-credentials": false,
+            "fetch-depth": 1,
+            "clean": false
+          }
+        },
+        {
+          "name": "Use pinned Node.js",
+          "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+          "with": {
+            "node-version": "24.21.0",
+            "package-manager-cache": false
+          }
+        },
+        {
+          "name": "Use repository-pinned npm",
+          "run": "npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test \"$(npm --version)\" = \"11.19.0\""
+        },
+        {
+          "name": "Install locked dependencies without lifecycle scripts",
+          "run": "npm ci --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org"
+        },
+        {
+          "name": "Check all workflow security policies",
+          "run": "python3 -B .github/ci/check_policy.py --self-test"
+        },
+        {
+          "name": "Test release version calculation",
+          "run": "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v"
+        },
+        {
+          "name": "Run website validation",
+          "run": "npm run validate"
+        },
+        {
+          "name": "Verify reproducible builds",
+          "run": "npm run verify:reproducible"
+        },
+        {
+          "name": "Install Chromium and required Linux dependencies",
+          "run": "npx playwright install --with-deps chromium"
+        },
+        {
+          "name": "Run isolated Chromium browser checks",
+          "run": "npm run test:e2e"
+        },
+        {
+          "name": "Build and validate the development artifact",
+          "env": {
+            "TROPICAL_INDEXING_AUTHORIZATION": "",
+            "TROPICAL_SEO_ORIGIN": ""
+          },
+          "run": "set -eu\ntest \"$(node --version)\" = 'v24.21.0'\ntest \"$(npm --version)\" = '11.19.0'\nnpm run build\nnpm run validate:output\ntest -s dist/index.html\ntest -s dist/robots.txt\nif [ -e dist/sitemap.xml ]; then echo 'Unexpected sitemap in development deployment artifact.' >&2; exit 1; fi\ngrep -qi 'noindex, *nofollow' dist/index.html\ngrep -qE '^Disallow:[[:space:]]*/[[:space:]]*$' dist/robots.txt"
+        },
+        {
+          "name": "Upload validated development artifact",
+          "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "with": {
+            "name": "cloudflare-development-dist",
+            "path": "dist/",
+            "if-no-files-found": "error",
+            "retention-days": 1
+          }
+        }
+      ]
+    },
+    "deploy": {
+      "needs": "build",
+      "if": "github.ref == 'refs/heads/development'",
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 15,
+      "permissions": {
+        "contents": "read"
+      },
+      "environment": "cloudflare-development",
+      "steps": [
+        {
+          "name": "Download validated development artifact",
+          "uses": "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+          "with": {
+            "name": "cloudflare-development-dist",
+            "path": "dist"
+          }
+        },
+        {
+          "name": "Require explicit deployment and Access authorization",
+          "env": {
+            "GITHUB_REF": "${{ github.ref }}",
+            "CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED": "${{ vars.CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED }}",
+            "CLOUDFLARE_DEV_ACCESS_READY": "${{ vars.CLOUDFLARE_DEV_ACCESS_READY }}"
+          },
+          "run": "set -eu\nif [ \"$GITHUB_REF\" != 'refs/heads/development' ]; then echo 'Refused: development deployment only accepts the development branch.' >&2; exit 1; fi\nif [ \"$CLOUDFLARE_DEV_ACCESS_READY\" != 'true' ]; then echo 'Refused: Cloudflare Access readiness is missing or not explicitly true.' >&2; exit 1; fi\nif [ \"$CLOUDFLARE_DEVELOPMENT_DEPLOYMENT_ENABLED\" != 'true' ]; then echo 'Refused: automatic development deployment is disabled.' >&2; exit 1; fi\ntest -s dist/index.html\ntest -s dist/robots.txt\nif [ -e dist/sitemap.xml ]; then echo 'Refused: development artifact contains an indexing sitemap.' >&2; exit 1; fi\ngrep -qi 'noindex, *nofollow' dist/index.html\ngrep -qE '^Disallow:[[:space:]]*/[[:space:]]*$' dist/robots.txt"
+        },
+        {
+          "name": "Use pinned Node.js for Wrangler",
+          "uses": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+          "with": {
+            "node-version": "24.21.0",
+            "package-manager-cache": false
+          }
+        },
+        {
+          "name": "Use repository-pinned npm for Wrangler",
+          "run": "npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org && test \"$(npm --version)\" = \"11.19.0\""
+        },
+        {
+          "name": "Install pinned Wrangler with only reviewed dependency scripts",
+          "run": "set -eu\ntest \"$(node --version)\" = 'v24.21.0'\ntest \"$(npm --version)\" = '11.19.0'\nTMP_PREFIX=\"$RUNNER_TEMP/wrangler-cli\"\nmkdir -p \"$TMP_PREFIX/lib/node_modules\" \"$TMP_PREFIX/bin\"\nnpm install --global --prefix \"$TMP_PREFIX\" wrangler@4.152.0 --ignore-scripts=false --allow-scripts=workerd,esbuild --strict-allow-scripts --no-audit --no-fund --registry=https://registry.npmjs.org\nversion_output=$(\"$TMP_PREFIX/bin/wrangler\" --version)\nprintf '%s\\n' \"$version_output\"\nversion_line=$(printf '%s\\n' \"$version_output\" | sed -n '1p')\nprintf '%s\\n' \"$version_line\" | grep -Eq '(^|[^0-9.])4\\.152\\.0([^0-9.]|$)'\necho \"$TMP_PREFIX/bin\" >> \"$GITHUB_PATH\""
+        },
+        {
+          "name": "Verify the existing Pages project and production branch",
+          "env": {
+            "CLOUDFLARE_DEV_API_TOKEN": "${{ secrets.CLOUDFLARE_DEV_API_TOKEN }}",
+            "CLOUDFLARE_DEV_ACCOUNT_ID": "${{ secrets.CLOUDFLARE_DEV_ACCOUNT_ID }}"
+          },
+          "run": "set -eu\ntest -n \"$CLOUDFLARE_DEV_API_TOKEN\"\ncase \"$CLOUDFLARE_DEV_ACCOUNT_ID\" in ''|*[!a-f0-9]*) echo 'Refused: invalid Cloudflare account ID.' >&2; exit 1;; esac\ntest \"${#CLOUDFLARE_DEV_ACCOUNT_ID}\" -eq 32\nresponse=$(curl --fail --silent --show-error --get \\\n  --header \"Authorization: Bearer $CLOUDFLARE_DEV_API_TOKEN\" \\\n  \"https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_DEV_ACCOUNT_ID/pages/projects/tropicaltrance-web\")\nprintf '%s' \"$response\" | jq -e '.success == true and .result.name == \"tropicaltrance-web\" and .result.production_branch == \"master\"' >/dev/null"
+        },
+        {
+          "name": "Upload development branch to existing Pages project",
+          "env": {
+            "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_DEV_API_TOKEN }}",
+            "CLOUDFLARE_ACCOUNT_ID": "${{ secrets.CLOUDFLARE_DEV_ACCOUNT_ID }}",
+            "GH_TOKEN": "${{ github.token }}",
+            "GITHUB_REPOSITORY": "${{ github.repository }}",
+            "SOURCE_SHA": "${{ github.sha }}"
+          },
+          "run": "set -eu\ncase \"$SOURCE_SHA\" in ''|*[!0-9a-f]*) echo 'Refused: workflow source SHA is malformed.' >&2; exit 1;; esac\ntest \"${#SOURCE_SHA}\" -eq 40\ncurrent_sha=$(gh api \"repos/$GITHUB_REPOSITORY/commits/development\" --jq .sha)\ncase \"$current_sha\" in ''|*[!0-9a-f]*) echo 'Refused: current development branch SHA could not be verified.' >&2; exit 1;; esac\ntest \"${#current_sha}\" -eq 40\nif [ \"$current_sha\" != \"$SOURCE_SHA\" ]; then echo 'Refused: this workflow commit is no longer the development branch HEAD.' >&2; exit 1; fi\nwrangler pages deploy dist --project-name tropicaltrance-web --branch development --commit-hash \"$SOURCE_SHA\" --commit-message \"$SOURCE_SHA\""
+        }
+      ]
+    }
+  }
+}

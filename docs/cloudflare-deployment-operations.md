@@ -10,7 +10,7 @@ Create a release using the repository's **Create GitHub Release** workflow. Revi
 
 1. Confirm the release is the intended build and that its content is approved for private deployment.
 2. Confirm Cloudflare Access currently blocks anonymous requests to both the base `pages.dev` hostname and the immutable deployment URL pattern, and permits the intended reviewers.
-3. In GitHub Actions, open **Manual Cloudflare Pages deployment**, choose `master`, provide the exact release tag, enter `DEPLOY_TO_PAGES`, and attest both Access readiness and private deployment approval.
+3. In GitHub Actions, open **Manual Cloudflare Pages deployment**, choose `master`, provide the exact release tag, and attest both Access readiness and private deployment approval.
 4. Review the workflow authorization and build jobs. The run resolves the release tag through the GitHub API, checks GitHub Release publication and exact tag equality, peels annotated or lightweight tags, verifies master ancestry, and checks the tag against the local fetched object. It carries the resulting full SHA through authorization, build, and deployment. The build checks out that SHA, not current master HEAD.
 5. Approve the `cloudflare-production` environment if an approval prompt is configured. Environment approval is an independent repository control; the workflow inputs do not replace it.
 6. Confirm the existing Pages project and production branch (`master`) in the credentialed preflight. The workflow does not create a project, alter Cloudflare configuration, or enable automatic deployments.
