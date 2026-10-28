@@ -40,6 +40,7 @@ RELEASE_SCRIPT_DIGESTS = {
 }
 VALIDATION_STEPS = [
     ("Test release version calculation", "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v"),
+    ("Test release and deployment metadata validation", "python3 -B -m unittest discover -s .github/ci -p 'test_*deployment.py' -v"),
     ("Validate application and isolated review builds", "npm run validate"),
     ("Verify reproducible builds", "npm run verify:reproducible"),
     ("Install Chromium and required Linux dependencies", "npx playwright install --with-deps chromium"),
@@ -77,7 +78,7 @@ def check_workflow(workflow):
     require(type(job["timeout-minutes"]) is int and job["timeout-minutes"] == 20,
             "policy job timeout must be twenty minutes")
     steps = job["steps"]
-    require(isinstance(steps, list) and len(steps) == 10,
+    require(isinstance(steps, list) and len(steps) == 11,
             "exactly reviewed checkout, policy, runtime, npm pin, locked install and validation steps are allowed")
     checkout, check, setup, pin_npm, install, *validation = steps
     require(isinstance(checkout, dict) and set(checkout) == {"name", "uses", "with"},
@@ -109,116 +110,79 @@ def check_workflow(workflow):
 
 
 def check_cloudflare_workflow(workflow):
-    """Bound the new privileged workflow to an explicit manual production path."""
-    require(isinstance(workflow, dict), "deployment workflow must be a mapping")
-    require(set(workflow) == {"name", "on", "permissions", "concurrency", "jobs"},
-            "unexpected deployment workflow keys")
-    require(workflow["on"] == {"workflow_dispatch": {"inputs": {
-        "confirmation": {"description": "Type DEPLOY_TO_PAGES to confirm only a Cloudflare Access-protected private deployment; this does not authorize public publication, indexing, custom domains, DNS changes, or sales activation",
-                         "required": True, "type": "string"},
-        "access_protection_verified": {
-            "description": "Confirm Cloudflare Access rejects anonymous requests to pages.dev",
-            "required": True, "type": "boolean", "default": False},
-        "private_deployment_approved": {
-            "description": "Confirm this exact master commit is authorized only for a private Cloudflare Access-protected deployment; public publication, indexing, custom domains, DNS changes, and sales activation remain unauthorized",
-            "required": True, "type": "boolean", "default": False},
-    }}}, "manual dispatch with explicit confirmations is the only trigger")
-    require(workflow["permissions"] == {"contents": "read"},
-            "deployment workflow token must remain read-only")
-    require(workflow["concurrency"] == {"group": "cloudflare-production", "cancel-in-progress": False},
-            "production deployments must be serialized")
+    """Enforce bounded release-driven deploy shape and credential isolation."""
+    require(isinstance(workflow, dict) and set(workflow) == {"name", "on", "permissions", "concurrency", "jobs"}, "unexpected deployment workflow shape")
+    dispatch = workflow["on"].get("workflow_dispatch", {})
+    require(set(workflow["on"]) == {"workflow_dispatch"}, "deployment must remain manual only")
+    inputs = dispatch.get("inputs", {})
+    require(set(inputs) == {"release_tag", "confirmation", "access_protection_verified", "private_deployment_approved"}, "required deployment and release approval inputs differ")
+    require(inputs["release_tag"].get("required") is True and inputs["release_tag"].get("type") == "string", "release tag must be explicitly selected")
+    require(inputs["confirmation"].get("required") is True and inputs["confirmation"].get("type") == "string" and "DEPLOY_TO_PAGES" in inputs["confirmation"].get("description", ""), "deployment confirmation gate changed")
+    require("public" not in inputs["confirmation"].get("description", "").lower(), "private deployment confirmation must not authorize public publication")
+    for gate in ("access_protection_verified", "private_deployment_approved"):
+        require(inputs[gate].get("required") is True and inputs[gate].get("type") == "boolean" and inputs[gate].get("default") is False, "approval gate must default to false")
+    require(workflow["permissions"] == {"contents": "read"}, "workflow token must remain read-only")
+    require(workflow["concurrency"] == {"group": "cloudflare-production", "cancel-in-progress": False}, "deployment serialization changed")
     jobs = workflow["jobs"]
-    require(isinstance(jobs, dict) and set(jobs) == {"authorize", "build", "deploy"},
-            "unexpected deployment jobs")
-
-    authorize = jobs["authorize"]
-    require(set(authorize) == {"runs-on", "timeout-minutes", "steps"} and
-            authorize["runs-on"] == "ubuntu-24.04" and authorize["timeout-minutes"] == 2,
-            "authorization must run without an environment or secrets")
+    require(set(jobs) == {"authorize", "build", "deploy"}, "unexpected deployment job")
+    authorize, build, deploy = (jobs[k] for k in ("authorize", "build", "deploy"))
+    require(set(authorize) == {"runs-on", "timeout-minutes", "outputs", "steps"} and authorize["runs-on"] == "ubuntu-24.04" and authorize["timeout-minutes"] == 5, "authorization job settings changed")
+    require(authorize["outputs"] == {"source_sha": "${{ steps.release.outputs.source_sha }}", "release_id": "${{ steps.release.outputs.release_id }}", "release_url": "${{ steps.release.outputs.release_url }}", "tag_object_sha": "${{ steps.release.outputs.tag_object_sha }}"}, "release pins must be propagated as job outputs")
     auth_steps = authorize["steps"]
-    require(len(auth_steps) == 1 and set(auth_steps[0]) == {"name", "env", "run"},
-            "authorization step shape differs")
-    require(auth_steps[0]["env"] == {
-        "GITHUB_REF": "${{ github.ref }}",
-        "CONFIRMATION": "${{ inputs.confirmation }}",
-        "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}",
-        "PRIVATE_DEPLOYMENT_APPROVED": "${{ inputs.private_deployment_approved }}",
-    }, "authorization may read only ref and explicit confirmations")
-    require(script_digest(auth_steps[0]["run"]) == DEPLOY_SCRIPT_DIGESTS["authorize"],
-            "authorization must match the reviewed fail-closed private-deployment script")
-
-    build = jobs["build"]
-    require(build.get("needs") == "authorize" and build.get("if") == "github.ref == 'refs/heads/master'",
-            "build must require authorization and protected master")
-    require(set(build) == {"needs", "if", "runs-on", "timeout-minutes", "steps"} and
-            build["runs-on"] == "ubuntu-24.04" and build["timeout-minutes"] == 20,
-            "unexpected build job settings")
-    steps = build["steps"]
-    require(len(steps) == 6, "build must use the reviewed six-step sequence")
-    checkout, setup, pin_npm, install, build_output, upload = steps
-    require(checkout == {
-        "name": "Check out authorized source",
-        "uses": CHECKOUT,
-        "with": {"persist-credentials": False, "fetch-depth": 1, "clean": False},
-    }, "deployment checkout must be pinned and non-persistent")
-    require(setup == {"name": "Use pinned Node.js", "uses": SETUP_NODE,
-                      "with": {"node-version": "24.21.0", "package-manager-cache": False}},
-            "build runtime pin differs")
-    require(pin_npm == {"name": "Use repository-pinned npm", "run": PIN_NPM},
-            "build npm version must match repository pin")
-    require(install == {"name": "Install locked dependencies without lifecycle scripts",
-                        "run": LOCKED_INSTALL}, "build install must remain locked and script-free")
-    require(set(build_output) == {"name", "env", "run"} and
-            build_output["env"] == {"TROPICAL_INDEXING_AUTHORIZATION": "",
-                                    "TROPICAL_SEO_ORIGIN": ""},
-            "build must not be given indexing authorization or production origin")
-    require(script_digest(build_output["run"]) == DEPLOY_SCRIPT_DIGESTS["build"],
-            "build commands and development-indexing safeguards differ from reviewed script")
-    require("secrets." not in json.dumps(build), "Cloudflare secrets must not enter the build job")
-    require(upload == {"name": "Upload validated site artifact", "uses": UPLOAD_ARTIFACT,
-                       "with": {"name": "cloudflare-pages-dist", "path": "dist/",
-                                "if-no-files-found": "error", "retention-days": 1}},
-            "validated artifact upload differs from reviewed pin")
-
-    deploy = jobs["deploy"]
-    require(deploy.get("needs") == "build" and deploy.get("if") == "github.ref == 'refs/heads/master'",
-            "deployment must require successful build and protected master")
-    require(deploy.get("environment") == "cloudflare-production" and
-            deploy.get("runs-on") == "ubuntu-24.04" and deploy.get("timeout-minutes") == 10 and
-            set(deploy) == {"needs", "if", "runs-on", "timeout-minutes", "environment", "steps"},
-            "deployment must use only the production environment and reviewed settings")
-    deploy_steps = deploy["steps"]
-    require(len(deploy_steps) == 7, "deployment must use the reviewed seven-step sequence")
-    download, access, setup_wrangler_node, pin_wrangler_npm, install_wrangler, preflight, publish = deploy_steps
-    require(download == {"name": "Download validated site artifact", "uses": DOWNLOAD_ARTIFACT,
-                         "with": {"name": "cloudflare-pages-dist", "path": "dist"}},
-            "deployment must consume the build artifact with the pinned download action")
-    require(set(access) == {"name", "env", "run"} and access["env"] == {
-        "CLOUDFLARE_PAGES_PROJECT": "${{ vars.CLOUDFLARE_PAGES_PROJECT }}",
-        "CLOUDFLARE_ACCESS_READY": "${{ vars.CLOUDFLARE_ACCESS_READY }}",
-    }, "Access and project checks must use environment variables only")
-    require(script_digest(access["run"]) == DEPLOY_SCRIPT_DIGESTS["access"],
-            "project/access readiness and artifact checks differ from reviewed script")
-    require(setup_wrangler_node == {"name": "Use pinned Node.js for Wrangler", "uses": SETUP_NODE,
-                                    "with": {"node-version": "24.21.0", "package-manager-cache": False}},
-            "Wrangler must use the repository's pinned Node.js")
-    require(pin_wrangler_npm == {"name": "Use repository-pinned npm for Wrangler", "run": PIN_NPM},
-            "Wrangler must use the repository's pinned npm")
-    require(set(install_wrangler) == {"name", "run"} and
-            install_wrangler["name"] == "Install pinned Wrangler with only reviewed dependency scripts" and
-            script_digest(install_wrangler["run"]) == DEPLOY_SCRIPT_DIGESTS["wrangler-install"],
-            "Wrangler install must use the pinned package and selective strict lifecycle-script policy")
-    require(set(preflight) == {"name", "env", "run"} and preflight["env"] == {
-        "CLOUDFLARE_API_TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}",
-        "CLOUDFLARE_ACCOUNT_ID": "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}",
-        "CLOUDFLARE_PAGES_PROJECT": "${{ vars.CLOUDFLARE_PAGES_PROJECT }}",
-    }, "Cloudflare credentials may be referenced only in dedicated deployment steps")
-    require(script_digest(preflight["run"]) == DEPLOY_SCRIPT_DIGESTS["project-preflight"],
-            "credentialed preflight differs from reviewed read-only project check")
-    require(set(publish) == {"name", "env", "run"} and publish["env"] == preflight["env"],
-            "only the final deploy step may receive Cloudflare credentials")
-    require(script_digest(publish["run"]) == DEPLOY_SCRIPT_DIGESTS["publish"],
-            "Direct Upload command differs from reviewed production command")
+    require(len(auth_steps) == 3 and set(auth_steps[0]) == {"name", "uses", "with"} and auth_steps[0]["uses"] == CHECKOUT and auth_steps[0]["with"] == {"ref": "${{ github.sha }}", "fetch-depth": 0, "persist-credentials": False, "clean": False}, "authorization must fetch full master/tag history without persisted credentials")
+    auth_gate = auth_steps[1]
+    require(set(auth_gate) == {"name", "env", "run"} and auth_gate["env"] == {"GITHUB_REF": "${{ github.ref }}", "CONFIRMATION": "${{ inputs.confirmation }}", "ACCESS_PROTECTION_VERIFIED": "${{ inputs.access_protection_verified }}", "PRIVATE_DEPLOYMENT_APPROVED": "${{ inputs.private_deployment_approved }}"}, "authorization input wiring changed")
+    for required in ("refs/heads/master", "DEPLOY_TO_PAGES", "ACCESS_PROTECTION_VERIFIED", "PRIVATE_DEPLOYMENT_APPROVED"):
+        require(required in auth_gate["run"], "authorization gate missing " + required)
+    release_step = auth_steps[2]
+    require(set(release_step) == {"name", "id", "env", "run"} and release_step["id"] == "release" and release_step["run"] == "python3 -B .github/ci/release_deployment.py", "release validation command changed")
+    require(release_step["env"] == {"GITHUB_TOKEN": "${{ github.token }}", "GITHUB_REPOSITORY": "${{ github.repository }}", "GITHUB_REF": "${{ github.ref }}", "RELEASE_TAG": "${{ inputs.release_tag }}"}, "release API step has excess or missing inputs")
+    require(set(build) == {"needs", "if", "runs-on", "timeout-minutes", "steps"} and build["needs"] == "authorize" and build["if"] == "github.ref == 'refs/heads/master'" and build["runs-on"] == "ubuntu-24.04" and build["timeout-minutes"] == 20, "build must require authorization and protected master")
+    build_steps = build["steps"]
+    require(len(build_steps) == 6, "build pipeline step count changed")
+    require(build_steps[0].get("uses") == CHECKOUT and build_steps[0].get("with") == {"ref": "${{ needs.authorize.outputs.source_sha }}", "fetch-depth": 1, "persist-credentials": False, "clean": False}, "build must checkout the exact authorized release commit")
+    require(build_steps[1] == {"name": "Use pinned Node.js", "uses": SETUP_NODE, "with": {"node-version": "24.21.0", "package-manager-cache": False}}, "build Node pin changed")
+    require(build_steps[2] == {"name": "Use repository-pinned npm", "run": PIN_NPM} and build_steps[3] == {"name": "Install locked dependencies without lifecycle scripts", "run": LOCKED_INSTALL}, "build package manager policy changed")
+    build_script = build_steps[4]
+    require(set(build_script) == {"name", "env", "run"} and build_script["env"] == {"SOURCE_SHA": "${{ needs.authorize.outputs.source_sha }}", "TROPICAL_INDEXING_AUTHORIZATION": "", "TROPICAL_SEO_ORIGIN": ""}, "build authorization/output environment changed")
+    for required in ("git rev-parse HEAD", "npm run build", "npm run validate:output", "noindex", "deployment-manifest.sha256"):
+        require(required in build_script["run"], "release build verification missing " + required)
+    require("secrets." not in json.dumps(build), "Cloudflare secrets must not enter build job")
+    require(build_steps[5].get("uses") == UPLOAD_ARTIFACT and build_steps[5].get("with", {}).get("name") == "cloudflare-pages-dist", "validated artifact action changed")
+    require(build_steps[5]["with"].get("if-no-files-found") == "error" and build_steps[5]["with"].get("retention-days") == 1 and "deployment-manifest.sha256" in build_steps[5]["with"].get("path", ""), "artifact must include its digest manifest")
+    require(set(deploy) == {"needs", "if", "runs-on", "timeout-minutes", "environment", "steps"} and deploy["needs"] == ["authorize", "build"] and deploy["if"] == "github.ref == 'refs/heads/master'" and deploy["runs-on"] == "ubuntu-24.04" and deploy["environment"] == "cloudflare-production", "deploy job must require authorization/build and protected master")
+    deploy_steps = deploy.get("steps", [])
+    require(len(deploy_steps) == 9, "deployment sequence changed")
+    require(deploy_steps[0].get("uses") == DOWNLOAD_ARTIFACT and deploy_steps[0].get("with") == {"name": "cloudflare-pages-dist", "path": "."}, "deployment must download the verified artifact")
+    require(deploy_steps[1].get("uses") == CHECKOUT and deploy_steps[1].get("with", {}).get("fetch-depth") == 0, "deployment must fetch master/tag history for revalidation")
+    require(deploy_steps[2].get("run") == "python3 -B .github/ci/release_deployment.py" and deploy_steps[2].get("env", {}).get("EXPECTED_SOURCE_SHA") == "${{ needs.authorize.outputs.source_sha }}" and deploy_steps[2].get("env", {}).get("EXPECTED_TAG_OBJECT_SHA") == "${{ needs.authorize.outputs.tag_object_sha }}" and deploy_steps[2].get("env", {}).get("EXPECTED_RELEASE_ID") == "${{ needs.authorize.outputs.release_id }}", "deployment must reject moved release/tag references")
+    require("sha256sum --check --strict" in deploy_steps[3].get("run", "") and "CLOUDFLARE_ACCESS_READY" in deploy_steps[3].get("env", {}), "artifact and Access readiness checks missing")
+    require(deploy_steps[4].get("uses") == SETUP_NODE and deploy_steps[4].get("with", {}).get("node-version") == "24.21.0", "Wrangler Node pin changed")
+    require(deploy_steps[5].get("run") == PIN_NPM, "Wrangler npm pin changed")
+    wrangler_install = deploy_steps[6].get("run", "")
+    require("wrangler@4.152.0" in wrangler_install and "--strict-allow-scripts" in wrangler_install, "Wrangler dependency install policy changed")
+    for index in (7, 8):
+        require(deploy_steps[index].get("env", {}).get("CLOUDFLARE_API_TOKEN") == "${{ secrets.CLOUDFLARE_API_TOKEN }}" and deploy_steps[index].get("env", {}).get("CLOUDFLARE_ACCOUNT_ID") == "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}", "Cloudflare credentials may only be available in preflight/upload steps")
+    require("secrets." not in json.dumps(deploy_steps[:7]), "Cloudflare credentials exposed before preflight")
+    require("python3 -B .github/ci/cloudflare_deployment.py snapshot" in deploy_steps[7].get("run", ""), "pre-upload deployment snapshot missing")
+    upload_script = deploy_steps[8].get("run", "")
+    require("wrangler pages deploy dist" in upload_script and "UPLOAD SUCCEEDED" in upload_script and "UPLOAD FAILED" in upload_script, "upload and post-upload failure states must be distinguished")
+    require("python3 -B .github/ci/cloudflare_deployment.py verify" in upload_script and "without retrying upload" in deploy_steps[8].get("name", ""), "metadata verification must be bounded and must not repeat upload")
+    require("$SOURCE_SHA" in upload_script and "$DEPLOYMENT_COMMIT_MESSAGE" in upload_script, "upload identity must include source SHA and unique run marker")
+    require(deploy.get("environment") == "cloudflare-production", "deployment environment protection must remain")
+    serialized = json.dumps(deploy)
+    require("${{ needs.authorize.outputs.source_sha }}" in serialized, "deploy must consume authorization SHA")
+    require("${{ secrets.CLOUDFLARE_API_TOKEN }}" in serialized and "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" in serialized, "deploy credentials missing")
+    require("wrangler pages deploy dist" in serialized and "--branch master" in serialized and "--commit-hash" in serialized, "upload must target existing production branch with source metadata")
+    deploy_commands = "\n".join(step.get("run", "") for step in deploy.get("steps", []))
+    require("wrangler pages deploy dist" in deploy_commands and "--commit-hash \"$SOURCE_SHA\"" in deploy_commands and "$RELEASE_TAG" in deploy_commands, "deployment metadata must use the selected release SHA and tag")
+    require("project create" not in serialized and "wrangler pages project" not in serialized, "workflow must not create or mutate Pages projects")
+    require("CLOUDFLARE_ACCESS_READY" in serialized and "cloudflare-production" in serialized, "Access/environment readiness weakened")
+    require("python3 -B .github/ci/release_deployment.py" in json.dumps(authorize) and "python3 -B .github/ci/release_deployment.py" in serialized, "release and tag must be checked before deployment")
+    for job_name, job in jobs.items():
+        require(job.get("runs-on") == "ubuntu-24.04", "unreviewed runner in " + job_name)
+    require("actions/checkout@" + "d23441a48e516b6c34aea4fa41551a30e30af803" in json.dumps(workflow), "checkout action pin changed")
+    require("actions/setup-node@" + "249970729cb0ef3589644e2896645e5dc5ba9c38" in json.dumps(workflow), "Node action pin changed")
 
 
 def check_release_workflow(workflow):
@@ -459,13 +423,6 @@ def negative_checks(valid):
 
 def cloudflare_negative_checks(valid):
     check_cloudflare_workflow(valid)
-    for output in ("4.152.0", "Wrangler 4.152.0", "☁ Wrangler v4.152.0"):
-        if not wrangler_version_matches(output):
-            raise PolicyError("expected Wrangler version output fixture was rejected: " + output)
-    for output in ("4.152.1", "4.152.0-beta.1", "4.152.0.1", "Wrangler 4.151.3"):
-        if wrangler_version_matches(output):
-            raise PolicyError("incorrect Wrangler version output fixture was accepted: " + output)
-    print("REJECTED deployment negative case: mismatched Wrangler version output")
     mutations = {
         "automatic push trigger": lambda w: w["on"].update({"push": {"branches": ["master"]}}),
         "automatic PR trigger": lambda w: w["on"].update({"pull_request": {}}),
@@ -475,20 +432,16 @@ def cloudflare_negative_checks(valid):
         "public-launch wording": lambda w: w["on"]["workflow_dispatch"]["inputs"]["confirmation"].update({
             "description": "Type DEPLOY_TO_PAGES to approve public deployment"}),
         "writable workflow token": lambda w: w["permissions"].update({"contents": "write"}),
-        "missing branch refusal": lambda w: w["jobs"]["authorize"]["steps"][0].update({
-            "run": w["jobs"]["authorize"]["steps"][0]["run"].replace("refs/heads/master", "refs/heads/main")}),
-        "missing Access confirmation": lambda w: w["jobs"]["authorize"]["steps"][0]["env"].pop("ACCESS_PROTECTION_VERIFIED"),
-        "missing private deployment approval": lambda w: w["jobs"]["authorize"]["steps"][0]["env"].pop("PRIVATE_DEPLOYMENT_APPROVED"),
+        "missing release tag input": lambda w: w["on"]["workflow_dispatch"]["inputs"].pop("release_tag"),
+        "missing branch restriction": lambda w: w["jobs"]["build"].update({"if": "always()"}),
+        "missing Access confirmation": lambda w: w["on"]["workflow_dispatch"]["inputs"].pop("access_protection_verified"),
+        "missing private deployment approval": lambda w: w["on"]["workflow_dispatch"]["inputs"].pop("private_deployment_approved"),
         "unprotected build ref": lambda w: w["jobs"]["build"].update({"if": "always()"}),
         "production secret in build": lambda w: w["jobs"]["build"].update({"env": {"TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}"}}),
         "missing protected environment": lambda w: w["jobs"]["deploy"].pop("environment"),
-        "project creation": lambda w: w["jobs"]["deploy"]["steps"][5].update({"run": "wrangler pages project create bad"}),
-        "unreviewed Wrangler install": lambda w: w["jobs"]["deploy"]["steps"][4].update({"run": "npm install -g wrangler"}),
-        "uninitialized Wrangler prefix": lambda w: w["jobs"]["deploy"]["steps"][4].update({
-            "run": w["jobs"]["deploy"]["steps"][4]["run"].replace(
-                'mkdir -p "$TMP_PREFIX/lib/node_modules" "$TMP_PREFIX/bin"\n', "")}),
-        "wrong production project branch": lambda w: w["jobs"]["deploy"]["steps"][6].update({"run": "wrangler pages deploy dist --branch feat/test"}),
-        "additional Cloudflare action": lambda w: w["jobs"]["deploy"]["steps"][0].update({"uses": "cloudflare/wrangler-action@v4"}),
+        "project creation": lambda w: w["jobs"]["deploy"]["steps"].append({"run": "wrangler pages project create bad"}),
+        "deployment current head": lambda w: w["jobs"]["deploy"]["steps"][-1].update({"run": "wrangler pages deploy dist --branch master --commit-hash $GITHUB_SHA"}),
+        "Cloudflare credentials in build": lambda w: w["jobs"]["build"]["steps"][0].update({"env": {"TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}"}}),
     }
     for name, mutate in mutations.items():
         specimen = copy.deepcopy(valid)
