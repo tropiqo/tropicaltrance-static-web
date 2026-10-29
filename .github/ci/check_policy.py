@@ -10,6 +10,7 @@ import argparse
 import copy
 import json
 import re
+import subprocess
 from pathlib import Path
 
 from release_version import latest_version, next_version
@@ -30,14 +31,6 @@ DEPLOY_SCRIPT_DIGESTS = {
     "wrangler-install": "49404a8b9bff235daab65fd0c4ad3823b5af7659972b859a6d74037aaa2c7005",
 }
 WRANGLER_VERSION_PATTERN = re.compile(r"(?<![0-9A-Za-z.+-])v?4\.152\.0(?![0-9A-Za-z.+-])")
-RELEASE_SCRIPT_DIGESTS = {
-    "authorize": "e50be684e910a9701279e4ede962ed24c9bf4ac002cf06f430c60ce3d200163e",
-    "source": "78c297dd73e09277eb0d0518a96595bcf18e6408e42d041bf8183e44ba4ecebb",
-    "ci": "d07a71cbe13547a8dbea001b9cb6c670737ec2965867cd9f79d6f6f1fbd2da03",
-    "version": "d0fd509c30a22dcde62199d18616643da0a9b5a90f4aa63d106959ca66a2dfd8",
-    "tag": "5ba34960597199417ea510084d36c2dcb3306bba4eb27a210e393f5e6db5c668",
-    "publish": "44b886f63af7176dae7ff00950244723a14d1c5895451d8783b5f822b4686aaf",
-}
 VALIDATION_STEPS = [
     ("Test release version calculation", "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v"),
     ("Test release and deployment metadata validation", "python3 -B -m unittest discover -s .github/ci -p 'test_*deployment.py' -v"),
@@ -151,8 +144,8 @@ def check_cloudflare_workflow(workflow):
     require(set(deploy) == {"needs", "if", "runs-on", "timeout-minutes", "environment", "steps"} and deploy["needs"] == ["authorize", "build"] and deploy["if"] == "github.ref == 'refs/heads/master'" and deploy["runs-on"] == "ubuntu-24.04" and deploy["environment"] == "cloudflare-production", "deploy job must require authorization/build and protected master")
     deploy_steps = deploy.get("steps", [])
     require(len(deploy_steps) == 9, "deployment sequence changed")
-    require(deploy_steps[0].get("uses") == DOWNLOAD_ARTIFACT and deploy_steps[0].get("with") == {"name": "cloudflare-pages-dist", "path": "."}, "deployment must download the verified artifact")
-    require(deploy_steps[1].get("uses") == CHECKOUT and deploy_steps[1].get("with", {}).get("fetch-depth") == 0, "deployment must fetch master/tag history for revalidation")
+    require(deploy_steps[0].get("uses") == CHECKOUT and deploy_steps[0].get("with") == {"ref": "${{ github.sha }}", "fetch-depth": 0, "persist-credentials": False, "clean": False}, "deployment must checkout master/tag history before downloading artifacts")
+    require(deploy_steps[1].get("uses") == DOWNLOAD_ARTIFACT and deploy_steps[1].get("with") == {"name": "cloudflare-pages-dist", "path": "."}, "deployment must download the verified artifact after checkout")
     require(deploy_steps[2].get("run") == "python3 -B .github/ci/release_deployment.py" and deploy_steps[2].get("env", {}).get("EXPECTED_SOURCE_SHA") == "${{ needs.authorize.outputs.source_sha }}" and deploy_steps[2].get("env", {}).get("EXPECTED_TAG_OBJECT_SHA") == "${{ needs.authorize.outputs.tag_object_sha }}" and deploy_steps[2].get("env", {}).get("EXPECTED_RELEASE_ID") == "${{ needs.authorize.outputs.release_id }}", "deployment must reject moved release/tag references")
     require("sha256sum --check --strict" in deploy_steps[3].get("run", "") and "CLOUDFLARE_ACCESS_READY" in deploy_steps[3].get("env", {}), "artifact and Access readiness checks missing")
     require(deploy_steps[4].get("uses") == SETUP_NODE and deploy_steps[4].get("with", {}).get("node-version") == "24.21.0", "Wrangler Node pin changed")
@@ -315,18 +308,29 @@ def cloudflare_development_negative_checks(valid):
             raise PolicyError("development deployment negative case was incorrectly accepted: " + name)
 
 
+def require_script_contains(script, required_fragments, message):
+    """Keep critical release safeguards readable instead of pinning opaque script hashes."""
+    require(isinstance(script, str), message + ": script must be text")
+    missing = [fragment for fragment in required_fragments if fragment not in script]
+    require(not missing, message + "; missing: " + ", ".join(missing))
+
+
 def check_release_workflow(workflow):
+    """Check release behavior by named safeguards instead of opaque script hashes."""
     require(isinstance(workflow, dict) and
             set(workflow) == {"name", "on", "permissions", "concurrency", "jobs"},
             "unexpected release workflow shape")
     require(workflow["name"] == "Create GitHub Release", "release workflow name differs")
-    require(workflow["on"] == {"workflow_dispatch": {"inputs": {
-        "version_bump": {"description": "Semantic version increment", "required": True,
-                          "type": "choice", "options": ["patch", "minor", "major"],
-                          "default": "patch"},
-        "confirmation": {"description": "Type CREATE_RELEASE to authorize an annotated tag and prerelease for this exact master commit",
-                         "required": True, "type": "string"},
-    }}}, "release creation must be manual only with the reviewed inputs")
+    require(workflow["on"] == {
+        "workflow_run": {"workflows": ["Validate website"], "branches": ["master"], "types": ["completed"]},
+        "workflow_dispatch": {"inputs": {
+            "version_bump": {"description": "Semantic version increment", "required": True,
+                              "type": "choice", "options": ["patch", "minor", "major"],
+                              "default": "patch"},
+            "confirmation": {"description": "Type CREATE_RELEASE to authorize an annotated tag and prerelease for this exact master commit",
+                             "required": True, "type": "string"},
+        }},
+    }, "release trigger must be a completed Validate website run on master plus the manual recovery path")
     require(workflow["permissions"] == {"contents": "read"},
             "release workflow defaults must be read-only")
     require(workflow["concurrency"] == {"group": "github-release-creation", "cancel-in-progress": False},
@@ -340,13 +344,32 @@ def check_release_workflow(workflow):
             "authorization must run without elevated token permissions")
     auth_steps = authorize["steps"]
     require(len(auth_steps) == 1 and set(auth_steps[0]) == {"name", "env", "run"} and
-            auth_steps[0]["name"] == "Require master and explicit release confirmation" and
+            auth_steps[0]["name"] == "Authorize validated master release or manual recovery" and
             auth_steps[0]["env"] == {
+                "EVENT_NAME": "${{ github.event_name }}",
                 "GITHUB_REF": "${{ github.ref }}",
-                "VERSION_BUMP": "${{ inputs.version_bump }}",
+                "WORKFLOW_RUN_CONCLUSION": "${{ github.event.workflow_run.conclusion }}",
+                "WORKFLOW_RUN_EVENT": "${{ github.event.workflow_run.event }}",
+                "WORKFLOW_RUN_BRANCH": "${{ github.event.workflow_run.head_branch }}",
+                "WORKFLOW_RUN_NAME": "${{ github.event.workflow_run.name }}",
+                "SOURCE_SHA": "${{ github.event.workflow_run.head_sha || github.sha }}",
+                "VERSION_BUMP": "${{ inputs.version_bump || 'patch' }}",
                 "CONFIRMATION": "${{ inputs.confirmation }}",
-            } and script_digest(auth_steps[0]["run"]) == RELEASE_SCRIPT_DIGESTS["authorize"],
-            "authorization must reject wrong refs, bumps, or missing confirmation")
+            },
+            "authorization environment must expose only the release trigger inputs")
+    require_script_contains(auth_steps[0]["run"], [
+        'case "$EVENT_NAME" in',
+        'workflow_run)',
+        "\"$WORKFLOW_RUN_CONCLUSION\" != 'success'",
+        "\"$WORKFLOW_RUN_EVENT\" != 'push'",
+        "\"$WORKFLOW_RUN_BRANCH\" != 'master'",
+        "\"$WORKFLOW_RUN_NAME\" != 'Validate website'",
+        'workflow_dispatch)',
+        "\"$GITHUB_REF\" != 'refs/heads/master'",
+        'patch|minor|major',
+        "\"$CONFIRMATION\" != 'CREATE_RELEASE'",
+        '${#SOURCE_SHA}',
+    ], "automatic release authorization must require a successful master validation; manual recovery must require master and confirmation")
 
     prepare = jobs["prepare"]
     require(set(prepare) == {"needs", "if", "runs-on", "timeout-minutes", "permissions", "outputs", "steps"} and
@@ -362,22 +385,48 @@ def check_release_workflow(workflow):
     require(len(prep_steps) == 4, "prepare job must use checkout, source, CI, and version steps")
     checkout, source, ci, version = prep_steps
     require(checkout == {
-        "name": "Check out the dispatched master commit",
+        "name": "Check out the validated master commit",
         "uses": CHECKOUT,
-        "with": {"ref": "${{ github.sha }}", "fetch-depth": 0, "persist-credentials": False},
-    }, "release source checkout must be pinned to the dispatch SHA without persisted credentials")
-    for step, key, name in ((source, "source", "Pin source commit and verify master ancestry"),
-                            (ci, "ci", "Require successful master validation for this commit"),
-                            (version, "version", "Calculate version and reject an existing release for this commit")):
+        "with": {"ref": "${{ github.event.workflow_run.head_sha || github.sha }}", "fetch-depth": 0, "persist-credentials": False},
+    }, "release source checkout must be pinned to the validated run SHA without persisted credentials")
+    for step, name, has_id in ((source, "Pin source commit and verify current master", True),
+                               (ci, "Require successful master validation for this commit", False),
+                               (version, "Calculate version and reject an existing release for this commit", True)):
         expected_keys = {"name", "run", "env"}
-        if key in {"source", "version"}:
+        if has_id:
             expected_keys.add("id")
-        require(set(step) == expected_keys and
-                step["name"] == name and script_digest(step["run"]) == RELEASE_SCRIPT_DIGESTS[key],
-                "release prepare step differs from reviewed policy: " + name)
+        require(set(step) == expected_keys and step["name"] == name,
+                "release prepare step shape differs from reviewed policy: " + name)
+    require_script_contains(source["run"], [
+        "git rev-parse HEAD",
+        '"$SOURCE_SHA" != "$SOURCE_SHA_INPUT"',
+        'git merge-base --is-ancestor "$SOURCE_SHA" refs/remotes/origin/master',
+        'git rev-parse refs/remotes/origin/master',
+        '"$SOURCE_SHA" != "$MASTER_SHA"',
+        "source_sha=%s\\n",
+    ], "release source must match the validated SHA, belong to master history, and still be master HEAD")
+    require_script_contains(ci["run"], [
+        "actions/workflows/validate.yml/runs",
+        "head_sha=\"$SOURCE_SHA\"",
+        "branch=master",
+    ], "release CI lookup must query validation for the exact master source")
+    require_script_contains(ci["run"], [
+        '.head_sha == $sha',
+        '.head_branch == "master"',
+        '.event == "push"',
+        '.conclusion == "success"',
+    ], "release CI lookup must accept only successful master push validation")
+    require_script_contains(version["run"], [
+        "git tag --list",
+        ".github/ci/release_version.py --bump \"$VERSION_BUMP\"",
+        '"$tagged_commit" = "$SOURCE_SHA"',
+        'version tag $existing_tag already points to this source commit',
+        "releases?per_page=100",
+    ], "release versioning must use SemVer tags and reject tags or releases already associated with the source")
     check_gh_api_flag_compatibility(version["run"])
-    require(source["id"] == "source" and source["env"] == {"DISPATCH_SHA": "${{ github.sha }}"},
-            "source SHA must be pinned to the dispatch commit")
+    require(source["id"] == "source" and source["env"] == {
+        "SOURCE_SHA_INPUT": "${{ github.event.workflow_run.head_sha || github.sha }}"
+    }, "source SHA must be pinned to the successful validation run or manual master dispatch")
     require(ci["env"] == {
         "GH_TOKEN": "${{ github.token }}",
         "GITHUB_REPOSITORY": "${{ github.repository }}",
@@ -387,8 +436,8 @@ def check_release_workflow(workflow):
         "GH_TOKEN": "${{ github.token }}",
         "GITHUB_REPOSITORY": "${{ github.repository }}",
         "SOURCE_SHA": "${{ steps.source.outputs.source_sha }}",
-        "VERSION_BUMP": "${{ inputs.version_bump }}",
-    }, "version check may use only read-scoped token and approved release inputs")
+        "VERSION_BUMP": "${{ inputs.version_bump || 'patch' }}",
+    }, "version check may use only read-scoped token and the chosen/manual-or-default automatic patch bump")
 
     create_tag = jobs["create_tag"]
     require(set(create_tag) == {"needs", "if", "runs-on", "timeout-minutes", "permissions", "steps"} and
@@ -399,13 +448,21 @@ def check_release_workflow(workflow):
     tag_steps = create_tag["steps"]
     require(len(tag_steps) == 1 and set(tag_steps[0]) == {"name", "run", "env"} and
             tag_steps[0]["name"] == "Create immutable annotated version tag" and
-            script_digest(tag_steps[0]["run"]) == RELEASE_SCRIPT_DIGESTS["tag"] and
             tag_steps[0]["env"] == {
                 "GH_TOKEN": "${{ github.token }}",
                 "GITHUB_REPOSITORY": "${{ github.repository }}",
                 "SOURCE_SHA": "${{ needs.prepare.outputs.source_sha }}",
                 "VERSION": "${{ needs.prepare.outputs.version }}",
             }, "tag creation must use only the exact validated source and version")
+    require_script_contains(tag_steps[0]["run"], [
+        "commits/master",
+        '"$current_master_sha" != "$SOURCE_SHA"',
+        "git/tags\" -f tag=\"$VERSION\"",
+        "git/refs\" -f ref=\"refs/tags/$VERSION\"",
+        "git/ref/tags/$VERSION",
+        '"$tag_target" != "$SOURCE_SHA"',
+        "\"$tag_type\" != 'commit'",
+    ], "tag creation must confirm current master and verify the annotated tag resolves to the selected source")
 
     publish = jobs["publish"]
     require(set(publish) == {"needs", "if", "runs-on", "timeout-minutes", "permissions", "steps"} and
@@ -417,9 +474,17 @@ def check_release_workflow(workflow):
     require(len(publish_steps) == 1 and set(publish_steps[0]) == {"name", "id", "run", "env"} and
             publish_steps[0]["name"] == "Publish prerelease with generated notes" and
             publish_steps[0]["id"] == "published" and
-            script_digest(publish_steps[0]["run"]) == RELEASE_SCRIPT_DIGESTS["publish"] and
             publish_steps[0]["env"] == tag_steps[0]["env"],
             "release publication must use the exact annotated tag and source SHA")
+    require_script_contains(publish_steps[0]["run"], [
+        'gh release create "$VERSION"',
+        '--target "$SOURCE_SHA"',
+        "--verify-tag",
+        "--generate-notes",
+        "--prerelease",
+        'isPrerelease == true',
+        '"$verified_target" != "$SOURCE_SHA"',
+    ], "publication must create a generated-note prerelease from and verify the exact annotated source tag")
     serialized = json.dumps(workflow).lower()
     require("cloudflare" not in serialized and "wrangler" not in serialized and
             "secrets." not in serialized and "deployment" not in serialized,
@@ -436,6 +501,48 @@ def check_gh_api_flag_compatibility(script):
 
 def release_negative_checks(valid):
     check_release_workflow(valid)
+    auth_script = valid["jobs"]["authorize"]["steps"][0]["run"]
+    automatic = {
+        "EVENT_NAME": "workflow_run",
+        "GITHUB_REF": "refs/heads/master",
+        "WORKFLOW_RUN_CONCLUSION": "success",
+        "WORKFLOW_RUN_EVENT": "push",
+        "WORKFLOW_RUN_BRANCH": "master",
+        "WORKFLOW_RUN_NAME": "Validate website",
+        "SOURCE_SHA": "a" * 40,
+        "VERSION_BUMP": "patch",
+        "CONFIRMATION": "",
+    }
+    manual = {
+        **automatic,
+        "EVENT_NAME": "workflow_dispatch",
+        "GITHUB_REF": "refs/heads/master",
+        "VERSION_BUMP": "minor",
+        "CONFIRMATION": "CREATE_RELEASE",
+    }
+    for name, context in (("automatic validated master push", automatic),
+                          ("confirmed manual recovery", manual)):
+        result = subprocess.run(["/bin/bash", "-c", auth_script], env=context,
+                                capture_output=True, text=True, check=False)
+        require(result.returncode == 0,
+                "release authorization rejected valid case: " + name + "; " + result.stderr)
+        print("ACCEPTED release trigger positive case: " + name)
+    for name, updates in (
+        ("failed validation", {"WORKFLOW_RUN_CONCLUSION": "failure"}),
+        ("development push", {"WORKFLOW_RUN_BRANCH": "development"}),
+        ("pull request validation", {"WORKFLOW_RUN_EVENT": "pull_request"}),
+        ("wrong validation workflow", {"WORKFLOW_RUN_NAME": "Unreviewed workflow"}),
+        ("malformed source SHA", {"SOURCE_SHA": "not-a-commit"}),
+        ("manual dispatch from development", {"EVENT_NAME": "workflow_dispatch", "GITHUB_REF": "refs/heads/development", "CONFIRMATION": "CREATE_RELEASE"}),
+        ("manual dispatch without confirmation", {"EVENT_NAME": "workflow_dispatch", "CONFIRMATION": ""}),
+        ("unsupported event", {"EVENT_NAME": "push"}),
+    ):
+        context = {**automatic, **updates}
+        result = subprocess.run(["/bin/bash", "-c", auth_script], env=context,
+                                capture_output=True, text=True, check=False)
+        require(result.returncode != 0,
+                "release authorization accepted forbidden case: " + name)
+        print("REJECTED release trigger negative case: " + name)
     try:
         check_gh_api_flag_compatibility(
             "release_tags=$(gh api --paginate --slurp releases --jq 'flatten | .[].tag_name')")
@@ -455,13 +562,23 @@ def release_negative_checks(valid):
             continue
         raise PolicyError("malformed or duplicate version tag was accepted: " + repr(fixture))
     mutations = {
-        "automatic release trigger": lambda w: w["on"].update({"push": {"branches": ["master"]}}),
+        "unexpected direct push release trigger": lambda w: w["on"].update({"push": {"branches": ["master"]}}),
+        "wrong upstream workflow": lambda w: w["on"]["workflow_run"].update({"workflows": ["Unreviewed workflow"]}),
+        "wrong upstream branch": lambda w: w["on"]["workflow_run"].update({"branches": ["development"]}),
+        "non-completion upstream activity": lambda w: w["on"]["workflow_run"].update({"types": ["requested"]}),
+        "pull request upstream event": lambda w: w["on"].update({"pull_request": {"branches": ["master"]}}),
+        "missing manual recovery": lambda w: w["on"].pop("workflow_dispatch"),
         "wrong default bump": lambda w: w["on"]["workflow_dispatch"]["inputs"]["version_bump"].update({"default": "major"}),
         "missing confirmation": lambda w: w["on"]["workflow_dispatch"]["inputs"].pop("confirmation"),
         "wrong ref authorization": lambda w: w["jobs"]["authorize"]["steps"][0].update({"run": "echo authorized"}),
+        "accept failed validation run": lambda w: w["jobs"]["authorize"]["steps"][0].update({"run": w["jobs"]["authorize"]["steps"][0]["run"].replace("$WORKFLOW_RUN_CONCLUSION\" != 'success'", "$WORKFLOW_RUN_CONCLUSION\" = 'success'")}),
+        "accept development validation run": lambda w: w["jobs"]["authorize"]["steps"][0].update({"run": w["jobs"]["authorize"]["steps"][0]["run"].replace("$WORKFLOW_RUN_BRANCH\" != 'master'", "$WORKFLOW_RUN_BRANCH\" = 'master'")}),
+        "accept pull request validation run": lambda w: w["jobs"]["authorize"]["steps"][0].update({"run": w["jobs"]["authorize"]["steps"][0]["run"].replace("$WORKFLOW_RUN_EVENT\" != 'push'", "$WORKFLOW_RUN_EVENT\" = 'push'")}),
         "missing source ancestry check": lambda w: w["jobs"]["prepare"]["steps"][1].update({"run": "echo source"}),
+        "release stale master commit": lambda w: w["jobs"]["prepare"]["steps"][1].update({"run": w["jobs"]["prepare"]["steps"][1]["run"].replace("if [ \"$SOURCE_SHA\" != \"$MASTER_SHA\" ]; then echo 'Refused: master advanced after validation; only its latest commit can be released automatically.' >&2; exit 1; fi\n", "")}),
         "missing CI verification": lambda w: w["jobs"]["prepare"]["steps"][2].update({"run": "true"}),
         "missing duplicate-release check": lambda w: w["jobs"]["prepare"]["steps"][3].update({"run": "echo version"}),
+        "allow duplicate source tag": lambda w: w["jobs"]["prepare"]["steps"][3].update({"run": w["jobs"]["prepare"]["steps"][3]["run"].replace("if [ \"$tagged_commit\" = \"$SOURCE_SHA\" ]; then echo \"Refused: version tag $existing_tag already points to this source commit.\" >&2; exit 1; fi\n", "")}),
         "lightweight tag instead of annotated tag": lambda w: w["jobs"]["create_tag"]["steps"][0].update({"run": "git tag $VERSION"}),
         "tag not bound to source commit": lambda w: w["jobs"]["create_tag"]["steps"][0].update({"run": "gh api git/tags"}),
         "broadened token permissions": lambda w: w["jobs"]["publish"]["permissions"].update({"administration": "write"}),
@@ -573,6 +690,7 @@ def cloudflare_negative_checks(valid):
         "missing protected environment": lambda w: w["jobs"]["deploy"].pop("environment"),
         "project creation": lambda w: w["jobs"]["deploy"]["steps"].append({"run": "wrangler pages project create bad"}),
         "deployment current head": lambda w: w["jobs"]["deploy"]["steps"][-1].update({"run": "wrangler pages deploy dist --branch master --commit-hash $GITHUB_SHA"}),
+        "checkout after artifact download": lambda w: w["jobs"]["deploy"]["steps"].__setitem__(slice(0, 2), reversed(w["jobs"]["deploy"]["steps"][:2])),
         "Cloudflare credentials in build": lambda w: w["jobs"]["build"]["steps"][0].update({"env": {"TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}"}}),
     }
     for name, mutate in mutations.items():

@@ -1,6 +1,17 @@
 {
   "name": "Create GitHub Release",
   "on": {
+    "workflow_run": {
+      "workflows": [
+        "Validate website"
+      ],
+      "branches": [
+        "master"
+      ],
+      "types": [
+        "completed"
+      ]
+    },
     "workflow_dispatch": {
       "inputs": {
         "version_bump": {
@@ -35,13 +46,19 @@
       "timeout-minutes": 2,
       "steps": [
         {
-          "name": "Require master and explicit release confirmation",
+          "name": "Authorize validated master release or manual recovery",
           "env": {
+            "EVENT_NAME": "${{ github.event_name }}",
             "GITHUB_REF": "${{ github.ref }}",
-            "VERSION_BUMP": "${{ inputs.version_bump }}",
+            "WORKFLOW_RUN_CONCLUSION": "${{ github.event.workflow_run.conclusion }}",
+            "WORKFLOW_RUN_EVENT": "${{ github.event.workflow_run.event }}",
+            "WORKFLOW_RUN_BRANCH": "${{ github.event.workflow_run.head_branch }}",
+            "WORKFLOW_RUN_NAME": "${{ github.event.workflow_run.name }}",
+            "SOURCE_SHA": "${{ github.event.workflow_run.head_sha || github.sha }}",
+            "VERSION_BUMP": "${{ inputs.version_bump || 'patch' }}",
             "CONFIRMATION": "${{ inputs.confirmation }}"
           },
-          "run": "set -eu\nif [ \"$GITHUB_REF\" != 'refs/heads/master' ]; then\n  echo 'Refused: releases may be created only from protected master.' >&2\n  exit 1\nfi\ncase \"$VERSION_BUMP\" in patch|minor|major) ;; *) echo 'Refused: choose patch, minor, or major.' >&2; exit 1;; esac\nif [ \"$CONFIRMATION\" != 'CREATE_RELEASE' ]; then\n  echo 'Refused: type CREATE_RELEASE to confirm.' >&2\n  exit 1\nfi"
+          "run": "set -eu\ncase \"$EVENT_NAME\" in\n  workflow_run)\n    if [ \"$WORKFLOW_RUN_CONCLUSION\" != 'success' ] || [ \"$WORKFLOW_RUN_EVENT\" != 'push' ] || [ \"$WORKFLOW_RUN_BRANCH\" != 'master' ] || [ \"$WORKFLOW_RUN_NAME\" != 'Validate website' ]; then\n      echo 'Refused: automatic releases require a successful Validate website push run on master.' >&2\n      exit 1\n    fi\n    ;;\n  workflow_dispatch)\n    if [ \"$GITHUB_REF\" != 'refs/heads/master' ]; then\n      echo 'Refused: manual recovery releases may run only from protected master.' >&2\n      exit 1\n    fi\n    case \"$VERSION_BUMP\" in patch|minor|major) ;; *) echo 'Refused: choose patch, minor, or major.' >&2; exit 1;; esac\n    if [ \"$CONFIRMATION\" != 'CREATE_RELEASE' ]; then\n      echo 'Refused: type CREATE_RELEASE to confirm manual recovery.' >&2\n      exit 1\n    fi\n    ;;\n  *)\n    echo 'Refused: unsupported release workflow event.' >&2\n    exit 1\n    ;;\nesac\ncase \"$SOURCE_SHA\" in\n  (*[!0123456789abcdef]*|'') echo 'Refused: source SHA is malformed.' >&2; exit 1 ;;\nesac\nif [ \"${#SOURCE_SHA}\" -ne 40 ]; then echo 'Refused: source SHA must be a full commit SHA.' >&2; exit 1; fi"
         }
       ]
     },
@@ -60,21 +77,21 @@
       },
       "steps": [
         {
-          "name": "Check out the dispatched master commit",
+          "name": "Check out the validated master commit",
           "uses": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
           "with": {
-            "ref": "${{ github.sha }}",
+            "ref": "${{ github.event.workflow_run.head_sha || github.sha }}",
             "fetch-depth": 0,
             "persist-credentials": false
           }
         },
         {
-          "name": "Pin source commit and verify master ancestry",
+          "name": "Pin source commit and verify current master",
           "id": "source",
           "env": {
-            "DISPATCH_SHA": "${{ github.sha }}"
+            "SOURCE_SHA_INPUT": "${{ github.event.workflow_run.head_sha || github.sha }}"
           },
-          "run": "set -eu\nSOURCE_SHA=$(git rev-parse HEAD)\nif [ \"$SOURCE_SHA\" != \"$DISPATCH_SHA\" ]; then echo 'Refused: checkout does not match dispatch commit.' >&2; exit 1; fi\nif ! git show-ref --verify --quiet refs/remotes/origin/master; then echo 'Refused: complete checkout did not include origin/master.' >&2; exit 1; fi\nif ! git merge-base --is-ancestor \"$SOURCE_SHA\" refs/remotes/origin/master; then echo 'Refused: source commit is not in master history.' >&2; exit 1; fi\nprintf 'source_sha=%s\\n' \"$SOURCE_SHA\" >> \"$GITHUB_OUTPUT\""
+          "run": "set -eu\nSOURCE_SHA=$(git rev-parse HEAD)\nif [ \"$SOURCE_SHA\" != \"$SOURCE_SHA_INPUT\" ]; then echo 'Refused: checkout does not match the validated source commit.' >&2; exit 1; fi\nif ! git show-ref --verify --quiet refs/remotes/origin/master; then echo 'Refused: complete checkout did not include origin/master.' >&2; exit 1; fi\nif ! git merge-base --is-ancestor \"$SOURCE_SHA\" refs/remotes/origin/master; then echo 'Refused: source commit is not in master history.' >&2; exit 1; fi\nMASTER_SHA=$(git rev-parse refs/remotes/origin/master)\nif [ \"$SOURCE_SHA\" != \"$MASTER_SHA\" ]; then echo 'Refused: master advanced after validation; only its latest commit can be released automatically.' >&2; exit 1; fi\nprintf 'source_sha=%s\\n' \"$SOURCE_SHA\" >> \"$GITHUB_OUTPUT\""
         },
         {
           "name": "Require successful master validation for this commit",
@@ -92,9 +109,9 @@
             "GH_TOKEN": "${{ github.token }}",
             "GITHUB_REPOSITORY": "${{ github.repository }}",
             "SOURCE_SHA": "${{ steps.source.outputs.source_sha }}",
-            "VERSION_BUMP": "${{ inputs.version_bump }}"
+            "VERSION_BUMP": "${{ inputs.version_bump || 'patch' }}"
           },
-          "run": "set -eu\ngit tag --list > \"$RUNNER_TEMP/release-tags.txt\"\nVERSION=$(python3 .github/ci/release_version.py --bump \"$VERSION_BUMP\" --tags-file \"$RUNNER_TEMP/release-tags.txt\")\nrelease_tags=$(gh api --paginate \"repos/$GITHUB_REPOSITORY/releases?per_page=100\" --jq '.[].tag_name')\nwhile IFS= read -r release_tag; do\n  [ -n \"$release_tag\" ] || continue\n  case \"$release_tag\" in v*) ;; *) continue ;; esac\n  if ! git show-ref --verify --quiet \"refs/tags/$release_tag\"; then echo \"Refused: release references missing local tag $release_tag.\" >&2; exit 1; fi\n  tagged_commit=$(git rev-parse --verify \"$release_tag^{commit}\")\n  if [ \"$tagged_commit\" = \"$SOURCE_SHA\" ]; then echo \"Refused: versioned release $release_tag already points to this source commit.\" >&2; exit 1; fi\ndone <<EOF\n$release_tags\nEOF\nprintf 'version=%s\\n' \"$VERSION\" >> \"$GITHUB_OUTPUT\""
+          "run": "set -eu\ngit tag --list > \"$RUNNER_TEMP/release-tags.txt\"\nVERSION=$(python3 .github/ci/release_version.py --bump \"$VERSION_BUMP\" --tags-file \"$RUNNER_TEMP/release-tags.txt\")\nwhile IFS= read -r existing_tag; do\n  case \"$existing_tag\" in v*) ;; *) continue ;; esac\n  tagged_commit=$(git rev-parse --verify \"$existing_tag^{commit}\")\n  if [ \"$tagged_commit\" = \"$SOURCE_SHA\" ]; then echo \"Refused: version tag $existing_tag already points to this source commit.\" >&2; exit 1; fi\ndone < \"$RUNNER_TEMP/release-tags.txt\"\nrelease_tags=$(gh api --paginate \"repos/$GITHUB_REPOSITORY/releases?per_page=100\" --jq '.[].tag_name')\nwhile IFS= read -r release_tag; do\n  [ -n \"$release_tag\" ] || continue\n  case \"$release_tag\" in v*) ;; *) continue ;; esac\n  if ! git show-ref --verify --quiet \"refs/tags/$release_tag\"; then echo \"Refused: release references missing local tag $release_tag.\" >&2; exit 1; fi\n  tagged_commit=$(git rev-parse --verify \"$release_tag^{commit}\")\n  if [ \"$tagged_commit\" = \"$SOURCE_SHA\" ]; then echo \"Refused: versioned release $release_tag already points to this source commit.\" >&2; exit 1; fi\ndone <<EOF\n$release_tags\nEOF\nprintf 'version=%s\\n' \"$VERSION\" >> \"$GITHUB_OUTPUT\""
         }
       ]
     },
@@ -115,7 +132,7 @@
             "SOURCE_SHA": "${{ needs.prepare.outputs.source_sha }}",
             "VERSION": "${{ needs.prepare.outputs.version }}"
           },
-          "run": "set -eu\ntag_object=$(gh api --method POST \"repos/$GITHUB_REPOSITORY/git/tags\" -f tag=\"$VERSION\" -f message=\"Release $VERSION\" -f object=\"$SOURCE_SHA\" -f type=commit)\ntag_object_sha=$(printf '%s' \"$tag_object\" | jq -er '.sha')\nif ! gh api --method POST \"repos/$GITHUB_REPOSITORY/git/refs\" -f ref=\"refs/tags/$VERSION\" -f sha=\"$tag_object_sha\" >/dev/null; then\n  echo \"::error::GitHub refused creation of annotated tag $VERSION. No release was published; repository tag protections remain unchanged. If the ruleset blocks the workflow token, configure a narrowly installed GitHub App with contents:write and an explicitly reviewed ruleset bypass, or create the release through the approved owner process.\"\n  exit 1\nfi\nif ! created_ref=$(gh api \"repos/$GITHUB_REPOSITORY/git/ref/tags/$VERSION\"); then echo \"::error::PARTIAL RELEASE: tag $VERSION was created but could not be verified; no Release was published. Do not delete the tag.\"; exit 1; fi\ncreated_object=$(printf '%s' \"$created_ref\" | jq -er '.object.sha')\nif [ \"$created_object\" != \"$tag_object_sha\" ]; then echo \"::error::PARTIAL RELEASE: tag $VERSION points to an unexpected tag object; no Release was published. Do not delete the tag.\"; exit 1; fi\nif ! created_tag=$(gh api \"repos/$GITHUB_REPOSITORY/git/tags/$created_object\"); then echo \"::error::PARTIAL RELEASE: tag $VERSION exists but its annotated target could not be verified; no Release was published. Do not delete the tag.\"; exit 1; fi\ntag_target=$(printf '%s' \"$created_tag\" | jq -er '.object.sha')\ntag_type=$(printf '%s' \"$created_tag\" | jq -er '.object.type')\nif [ \"$tag_target\" != \"$SOURCE_SHA\" ] || [ \"$tag_type\" != 'commit' ]; then echo \"::error::PARTIAL RELEASE: tag $VERSION was created but failed source verification; no GitHub Release was published. Do not delete the tag or bypass repository protection.\"; exit 1; fi\nprintf 'tag_created=true\\n' >> \"$GITHUB_OUTPUT\""
+          "run": "set -eu\ncurrent_master_sha=$(gh api \"repos/$GITHUB_REPOSITORY/commits/master\" --jq '.sha')\nif [ \"$current_master_sha\" != \"$SOURCE_SHA\" ]; then echo 'Refused: master advanced before tag creation; no release tag was created.' >&2; exit 1; fi\ntag_object=$(gh api --method POST \"repos/$GITHUB_REPOSITORY/git/tags\" -f tag=\"$VERSION\" -f message=\"Release $VERSION\" -f object=\"$SOURCE_SHA\" -f type=commit)\ntag_object_sha=$(printf '%s' \"$tag_object\" | jq -er '.sha')\nif ! gh api --method POST \"repos/$GITHUB_REPOSITORY/git/refs\" -f ref=\"refs/tags/$VERSION\" -f sha=\"$tag_object_sha\" >/dev/null; then\n  echo \"::error::GitHub refused creation of annotated tag $VERSION. No release was published; repository tag protections remain unchanged. If the ruleset blocks the workflow token, configure a narrowly installed GitHub App with contents:write and an explicitly reviewed ruleset bypass, or create the release through the approved owner process.\"\n  exit 1\nfi\nif ! created_ref=$(gh api \"repos/$GITHUB_REPOSITORY/git/ref/tags/$VERSION\"); then echo \"::error::PARTIAL RELEASE: tag $VERSION was created but could not be verified; no Release was published. Do not delete the tag.\"; exit 1; fi\ncreated_object=$(printf '%s' \"$created_ref\" | jq -er '.object.sha')\nif [ \"$created_object\" != \"$tag_object_sha\" ]; then echo \"::error::PARTIAL RELEASE: tag $VERSION points to an unexpected tag object; no Release was published. Do not delete the tag.\"; exit 1; fi\nif ! created_tag=$(gh api \"repos/$GITHUB_REPOSITORY/git/tags/$created_object\"); then echo \"::error::PARTIAL RELEASE: tag $VERSION exists but its annotated target could not be verified; no Release was published. Do not delete the tag.\"; exit 1; fi\ntag_target=$(printf '%s' \"$created_tag\" | jq -er '.object.sha')\ntag_type=$(printf '%s' \"$created_tag\" | jq -er '.object.type')\nif [ \"$tag_target\" != \"$SOURCE_SHA\" ] || [ \"$tag_type\" != 'commit' ]; then echo \"::error::PARTIAL RELEASE: tag $VERSION was created but failed source verification; no GitHub Release was published. Do not delete the tag or bypass repository protection.\"; exit 1; fi\nprintf 'tag_created=true\\n' >> \"$GITHUB_OUTPUT\""
         }
       ]
     },

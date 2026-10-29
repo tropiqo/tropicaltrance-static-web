@@ -19,9 +19,9 @@ There are two separate deployment paths. Feature work goes to the development pr
 
 ## Promote the tested change to production
 
-1. In GitHub, open a PR from `development` into `master`. Wait for **Validate website** to pass, review, then merge. A master merge does not itself deploy production.
-2. In **Actions → Create GitHub Release**, select `master`, choose the version bump, enter `CREATE_RELEASE`, and run it. Review the resulting `vMAJOR.MINOR.PATCH` pre-release and source commit.
-3. In **Actions → Manual Cloudflare Pages deployment**, select `master`, enter that exact release tag, and confirm the private deployment and Access checks. Approve the existing `cloudflare-production` environment if GitHub prompts for its configured approval.
+1. In GitHub, open a PR from `development` into `master`. Wait for **Validate website** to pass, review, then merge. The merge push runs validation again.
+2. After that master validation succeeds, **Create GitHub Release** automatically creates the next patch prerelease and generated release notes. Review its run summary and source commit. For recovery or a minor/major bump, the workflow can still be dispatched manually from `master` with the `CREATE_RELEASE` confirmation.
+3. In **Actions → Manual Cloudflare Pages deployment**, select `master`, enter the exact published release tag, and confirm the private deployment and Access checks. Approve the existing `cloudflare-production` environment if GitHub prompts for its configured approval.
 4. Confirm the run summary shows the selected tag, source SHA, Cloudflare deployment ID, and URL. Verify Access on the production URL.
 
 ## Roll back and identify the deployed version
@@ -32,7 +32,7 @@ There are two separate deployment paths. Feature work goes to the development pr
 ## Keep the two paths separate
 
 - Development pushes update only the Pages `development` preview branch, after the dev environment readiness gates pass.
-- Production never deploys automatically from a push, pull request, tag, or release event. It requires a separate manual run with a published release selected.
+- Production never deploys automatically from a push, pull request, tag, or release event. It requires a separate manual run with a published release selected. Release creation after successful master validation does not start a deployment.
 - The two workflows use separate GitHub environments and separate Cloudflare credentials. Development secrets are not passed to the production workflow, or vice versa.
 - A failed development deploy does not change production. A production release is not deployed just because it was created.
 - GitHub branch protection, rulesets, environment settings, Cloudflare Access, DNS, and account configuration are managed separately; these workflows do not change them.
