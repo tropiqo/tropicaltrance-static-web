@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.parse
 import unittest
 from io import BytesIO
 from unittest.mock import patch
@@ -73,6 +74,27 @@ class CloudflareDeploymentMetadataTests(unittest.TestCase):
                                         "HTTP 400: 10042: Invalid deployment list parameter") as raised:
                 cloudflare_request(1)
         self.assertNotIn(token, str(raised.exception))
+
+    def test_cloudflare_request_uses_default_page_size(self):
+        payload = json.dumps({"success": True, "result": [], "result_info": {"total_pages": 1}}).encode()
+        response = BytesIO(payload)
+        environment = {
+            "CLOUDFLARE_ACCOUNT_ID": "a" * 32,
+            "CLOUDFLARE_PAGES_PROJECT": "tropicaltrance-web",
+            "CLOUDFLARE_API_TOKEN": "test-token",
+        }
+        with patch.dict(os.environ, environment, clear=False), \
+                patch("urllib.request.urlopen", return_value=response) as urlopen:
+            cloudflare_request(2)
+        request = urlopen.call_args.args[0]
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(request.full_url).query)
+        self.assertEqual(query, {"page": ["2"]})
+        response = BytesIO(payload)
+        with patch.dict(os.environ, environment, clear=False), \
+                patch("urllib.request.urlopen", return_value=response) as urlopen:
+            cloudflare_request(1)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(urllib.parse.urlparse(request.full_url).query, "")
 
     def test_only_exact_branch_and_run_message_match(self):
         wrong_branch = self.deployment()

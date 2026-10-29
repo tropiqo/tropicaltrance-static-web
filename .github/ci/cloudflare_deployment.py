@@ -122,9 +122,12 @@ def cloudflare_request(page):
     token = os.environ.get("CLOUDFLARE_API_TOKEN", "")
     if len(account) != 32 or not project or not token:
         raise MetadataVerificationError("Cloudflare API credentials or project configuration are missing")
-    query = urllib.parse.urlencode({"per_page": 100, "page": page})
+    # Let Pages choose its default page size. Its list options are optional;
+    # omit the query on the first page and only request a page number when
+    # continuing pagination.
+    query = urllib.parse.urlencode({"page": page}) if page > 1 else ""
     url = ("https://api.cloudflare.com/client/v4/accounts/" + account + "/pages/projects/" +
-           urllib.parse.quote(project, safe="") + "/deployments?" + query)
+           urllib.parse.quote(project, safe="") + "/deployments" + ("?" + query if query else ""))
     request = urllib.request.Request(url, headers={"Authorization": "Bearer " + token,
         "Accept": "application/json", "User-Agent": "tropicaltrance-deployment-verifier"})
     try:
@@ -151,7 +154,7 @@ def list_deployments(max_pages=10, require_complete=False):
                 return deployments
             if page >= max_pages and not require_complete:
                 return deployments
-        elif len(result) < 100:
+        elif not result:
             return deployments
         page += 1
     if require_complete:
