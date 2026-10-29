@@ -2,16 +2,18 @@
    Responsive boundaries: 48rem (tablet), 72rem (desktop), 96rem (wide).
    Media queries use these literals: CSS variables cannot drive native queries. */
 :root {
-  --color-canvas: #102e2c;
-  --color-surface: #193b36;
+  --color-canvas: #080a09;
+  --color-surface: #111513;
+  --color-surface-raised: #1b201d;
   --color-paper: #f6f0de;
   --color-paper-muted: #e8e3d1;
   --color-text: #f6f0de;
   --color-muted: #b9cfc1;
-  --color-ink: #102e2c;
+  --color-ink: #080a09;
   --color-ink-muted: #46615b;
-  --accent-citrus: #d9eb81;
+  --accent-citrus: #b9e769;
   --accent-coral: #fa947b;
+  --color-overlay: rgb(8 10 9 / 92%);
   --color-border: #59746b;
   --color-border-paper: #a7b5a6;
   --focus-ring: var(--accent-citrus);
