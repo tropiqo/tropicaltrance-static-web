@@ -14,6 +14,12 @@ Tags must be exactly `vMAJOR.MINOR.PATCH`, with no leading zeroes, suffixes, or 
 
 Releases are always marked prerelease while the site is in private development. A GitHub prerelease is still visible wherever the repository is public; the prerelease marker does not provide access control. Publication/indexing and Cloudflare deployment remain separate owner-authorized decisions.
 
+## How the release policy is checked
+
+The release scripts no longer need opaque SHA-256 entries in `.github/ci/check_policy.py`. The policy names the safeguards it checks: successful `master` validation, the exact validated commit, duplicate-tag rejection, annotated-tag verification, generated notes, and prerelease status. Its self-tests run the authorization script with allowed and refused event examples, and mutate workflow settings to confirm unsafe changes are rejected. If a safeguard changes, update the named check and its test so the reason is visible in code review.
+
+The separate Cloudflare deployment script fingerprints remain in place; this change only replaces the release-specific fingerprints.
+
 ## Automatic release and manual recovery
 
 After a successful `Validate website` completion, the release workflow accepts only a `push` run whose branch and workflow name are exactly `master` and `Validate website`. It uses that run's head SHA, confirms it is still the current `master` head, and independently verifies the latest completed `validate.yml` push run for that exact SHA succeeded. Failed runs, pull request runs, development pushes, and stale commits cannot publish a release. The automatic version bump is patch; the existing SemVer helper rejects malformed or conflicting tags.
