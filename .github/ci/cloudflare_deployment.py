@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -95,6 +96,26 @@ def wait_for_deployment(fetch_deployments, known_ids, started_at, commit_message
     raise MetadataVerificationError("Cloudflare upload succeeded, but its deployment metadata did not become verifiable before timeout")
 
 
+def cloudflare_http_error_message(error, token):
+    """Report Cloudflare's structured error details without exposing credentials."""
+    details = []
+    try:
+        payload = json.loads(error.read().decode("utf-8"))
+    except (AttributeError, UnicodeDecodeError, json.JSONDecodeError):
+        payload = {}
+    errors = payload.get("errors", []) if isinstance(payload, dict) else []
+    for item in errors[:3] if isinstance(errors, list) else []:
+        if not isinstance(item, dict):
+            continue
+        code = item.get("code")
+        message = item.get("message")
+        if isinstance(message, str) and message:
+            message = message.replace(token, "[REDACTED]")[:240]
+            details.append((str(code) + ": " if code is not None else "") + message)
+    summary = "Cloudflare API returned HTTP " + str(error.code)
+    return summary + (": " + "; ".join(details) if details else "")
+
+
 def cloudflare_request(page):
     account = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
     project = os.environ.get("CLOUDFLARE_PAGES_PROJECT", "")
@@ -106,8 +127,11 @@ def cloudflare_request(page):
            urllib.parse.quote(project, safe="") + "/deployments?" + query)
     request = urllib.request.Request(url, headers={"Authorization": "Bearer " + token,
         "Accept": "application/json", "User-Agent": "tropicaltrance-deployment-verifier"})
-    with urllib.request.urlopen(request, timeout=8) as response:
-        payload = json.load(response)
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            payload = json.load(response)
+    except urllib.error.HTTPError as error:
+        raise MetadataVerificationError(cloudflare_http_error_message(error, token)) from None
     if not isinstance(payload, dict) or payload.get("success") is not True or not isinstance(payload.get("result"), list):
         raise MetadataVerificationError("Cloudflare returned an invalid deployments response")
     return payload
