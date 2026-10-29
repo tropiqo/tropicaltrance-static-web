@@ -151,8 +151,8 @@ def check_cloudflare_workflow(workflow):
     require(set(deploy) == {"needs", "if", "runs-on", "timeout-minutes", "environment", "steps"} and deploy["needs"] == ["authorize", "build"] and deploy["if"] == "github.ref == 'refs/heads/master'" and deploy["runs-on"] == "ubuntu-24.04" and deploy["environment"] == "cloudflare-production", "deploy job must require authorization/build and protected master")
     deploy_steps = deploy.get("steps", [])
     require(len(deploy_steps) == 9, "deployment sequence changed")
-    require(deploy_steps[0].get("uses") == DOWNLOAD_ARTIFACT and deploy_steps[0].get("with") == {"name": "cloudflare-pages-dist", "path": "."}, "deployment must download the verified artifact")
-    require(deploy_steps[1].get("uses") == CHECKOUT and deploy_steps[1].get("with", {}).get("fetch-depth") == 0, "deployment must fetch master/tag history for revalidation")
+    require(deploy_steps[0].get("uses") == CHECKOUT and deploy_steps[0].get("with") == {"ref": "${{ github.sha }}", "fetch-depth": 0, "persist-credentials": False, "clean": False}, "deployment must checkout master/tag history before downloading artifacts")
+    require(deploy_steps[1].get("uses") == DOWNLOAD_ARTIFACT and deploy_steps[1].get("with") == {"name": "cloudflare-pages-dist", "path": "."}, "deployment must download the verified artifact after checkout")
     require(deploy_steps[2].get("run") == "python3 -B .github/ci/release_deployment.py" and deploy_steps[2].get("env", {}).get("EXPECTED_SOURCE_SHA") == "${{ needs.authorize.outputs.source_sha }}" and deploy_steps[2].get("env", {}).get("EXPECTED_TAG_OBJECT_SHA") == "${{ needs.authorize.outputs.tag_object_sha }}" and deploy_steps[2].get("env", {}).get("EXPECTED_RELEASE_ID") == "${{ needs.authorize.outputs.release_id }}", "deployment must reject moved release/tag references")
     require("sha256sum --check --strict" in deploy_steps[3].get("run", "") and "CLOUDFLARE_ACCESS_READY" in deploy_steps[3].get("env", {}), "artifact and Access readiness checks missing")
     require(deploy_steps[4].get("uses") == SETUP_NODE and deploy_steps[4].get("with", {}).get("node-version") == "24.21.0", "Wrangler Node pin changed")
@@ -573,6 +573,7 @@ def cloudflare_negative_checks(valid):
         "missing protected environment": lambda w: w["jobs"]["deploy"].pop("environment"),
         "project creation": lambda w: w["jobs"]["deploy"]["steps"].append({"run": "wrangler pages project create bad"}),
         "deployment current head": lambda w: w["jobs"]["deploy"]["steps"][-1].update({"run": "wrangler pages deploy dist --branch master --commit-hash $GITHUB_SHA"}),
+        "checkout after artifact download": lambda w: w["jobs"]["deploy"]["steps"].__setitem__(slice(0, 2), reversed(w["jobs"]["deploy"]["steps"][:2])),
         "Cloudflare credentials in build": lambda w: w["jobs"]["build"]["steps"][0].update({"env": {"TOKEN": "${{ secrets.CLOUDFLARE_API_TOKEN }}"}}),
     }
     for name, mutate in mutations.items():
