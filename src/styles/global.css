@@ -51,7 +51,7 @@ a:hover { text-decoration-thickness: 0.14em; }
 .hero-copy h1 em { display: block; font-weight: 400; color: var(--accent-coral); }
 .hero-copy .lead { margin-block-start: var(--space-5); color: var(--color-muted); }
 .hero-visual { min-inline-size: 0; }
-.decorative-background { position: relative; isolation: isolate; overflow: hidden; block-size: clamp(16rem, 40vw, 34rem); border: var(--border-thin) solid var(--color-border); border-radius: 45% 45% 8% 8%; background: var(--color-surface); pointer-events: none; }
+.decorative-background { position: relative; isolation: isolate; overflow: hidden; block-size: clamp(16rem, 40vw, 34rem); border: var(--border-thin) solid var(--color-border); border-radius: 45% 45% 8% 8%; background: var(--color-surface-raised); pointer-events: none; }
 .decorative-background .shape { position: absolute; display: block; }
 .shape--sun { inline-size: 72%; aspect-ratio: 1; inset-inline-start: 14%; inset-block-start: 16%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--accent-coral), var(--accent-coral) 60%, var(--accent-citrus)); }
 .shape--orbit { inline-size: 118%; block-size: 40%; inset-inline-start: -9%; inset-block-start: 34%; border: 2px solid var(--color-canvas); border-radius: 50%; transform: rotate(-28deg); }
