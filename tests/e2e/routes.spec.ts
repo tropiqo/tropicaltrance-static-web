@@ -51,6 +51,26 @@ for (const pageCase of pages) {
   }
 }
 
+test('English and Spanish flavor details reserve each artwork’s intrinsic dimensions', async ({ page }) => {
+  for (const locale of ['', '/es']) {
+    for (const slug of ['cherry', 'grape', 'lime']) {
+      await page.goto(`${locale}/flavors/${slug}/`);
+      const image = page.locator('.flavor-detail .media-frame img');
+      await expect(image).toHaveAttribute('width', /^\d+$/);
+      await expect(image).toHaveAttribute('height', /^\d+$/);
+      await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
+      const dimensions = await image.evaluate((element: HTMLImageElement) => ({
+        width: Number(element.getAttribute('width')),
+        height: Number(element.getAttribute('height')),
+        naturalWidth: element.naturalWidth,
+        naturalHeight: element.naturalHeight,
+      }));
+      expect(dimensions.width).toBe(dimensions.naturalWidth);
+      expect(dimensions.height).toBe(dimensions.naturalHeight);
+    }
+  }
+});
+
 test('keyboard focus exposes the skip link and moves focus to main content', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('Tab');

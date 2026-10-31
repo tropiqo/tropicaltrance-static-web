@@ -12,6 +12,38 @@ import { channelsForFlavor, loadSalesChannels } from './sales-channels.mjs';
 export const digest = bytes => 'sha256:' + createHash('sha256').update(bytes).digest('hex');
 const requireThat = (ok, message) => { if (!ok) throw Error(message); };
 const same = (a,b,message) => requireThat(isDeepStrictEqual(a,b),message);
+
+function webpDimensions(bytes) {
+  if (bytes.length < 20 || bytes.toString('ascii', 0, 4) !== 'RIFF' ||
+      bytes.toString('ascii', 8, 12) !== 'WEBP') return undefined;
+  let offset = 12;
+  while (offset + 8 <= bytes.length) {
+    const type = bytes.toString('ascii', offset, offset + 4);
+    const size = bytes.readUInt32LE(offset + 4);
+    const start = offset + 8;
+    if (start + size > bytes.length) break;
+    if (type === 'VP8L' && size >= 5 && bytes[start] === 0x2f) {
+      const width = 1 + (((bytes[start + 2] & 0x3f) << 8) | bytes[start + 1]);
+      const height = 1 + (((bytes[start + 4] & 0x0f) << 10) |
+        (bytes[start + 3] << 2) | ((bytes[start + 2] & 0xc0) >> 6));
+      return { width, height };
+    }
+    if (type === 'VP8X' && size >= 10) {
+      const width = 1 + bytes.readUIntLE(start + 4, 3);
+      const height = 1 + bytes.readUIntLE(start + 7, 3);
+      return { width, height };
+    }
+    if (type === 'VP8 ' && size >= 10 && bytes[start + 3] === 0x9d &&
+        bytes[start + 4] === 0x01 && bytes[start + 5] === 0x2a) {
+      const width = bytes.readUInt16LE(start + 6) & 0x3fff;
+      const height = bytes.readUInt16LE(start + 8) & 0x3fff;
+      return { width, height };
+    }
+    offset = start + size + (size & 1);
+  }
+  return undefined;
+}
+
 export function safePath(base, path) {
   requireThat(typeof path === 'string' && /^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(path) && !/(?:^|\/)\.{1,2}(?:\/|$)/.test(path), 'Unsafe local path');
   const root = resolve(base);
@@ -148,7 +180,8 @@ function loadFlavorContent({base}) {
     rejectFixture(bytes);
     requireThat(bytes.length>=16 && bytes.toString('ascii',0,4)==='RIFF' && bytes.toString('ascii',8,12)==='WEBP','Flavor delivery is not a WebP image');
     same(digest(bytes),value.media.contentId,'Flavor media digest mismatch');
-    return {flavor:{id:slug,revision:value.revision},slug,name:value.name,shortDescription:value.shortDescription,alt:value.alt,translations:value.translations,mediaUrl:'/'+value.media.path,media:{contentId:value.media.contentId}};
+    const dimensions = webpDimensions(bytes);
+    return {flavor:{id:slug,revision:value.revision},slug,name:value.name,shortDescription:value.shortDescription,alt:value.alt,translations:value.translations,mediaUrl:'/'+value.media.path,media:{contentId:value.media.contentId,...dimensions}};
   }).sort((a,b)=>a.slug.localeCompare(b.slug));
   unique(flavors,x=>x.slug,'Duplicate Flavor slug');
   const channelConfig = loadSalesChannels({base,flavors:flavors.map(flavor=>flavor.slug)});

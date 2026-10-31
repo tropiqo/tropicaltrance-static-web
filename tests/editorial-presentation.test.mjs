@@ -70,7 +70,13 @@ test('normal collection/detail derive from all selected flavors and preserve app
  assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);assert(!html.includes('class="empty-collection"'));
  for(const f of release.flavors){
   const detail=normal(`flavors/${f.slug}/index.html`);
+  const spanishDetail=normal(`es/flavors/${f.slug}/index.html`);
+  assert.deepEqual({width:f.media.width,height:f.media.height},{width:1024,height:1536});
+  assert(html.includes(`src="${f.mediaUrl}" alt="${f.alt}" width="${f.media.width}" height="${f.media.height}"`));
+  assert(detail.includes(`src="${f.mediaUrl}" alt="${f.alt}" width="${f.media.width}" height="${f.media.height}"`));
+  assert(spanishDetail.includes(`src="${f.mediaUrl}" alt="${f.translations['es-MX'].alt}" width="${f.media.width}" height="${f.media.height}"`));
   for(const page of [html,detail]){assert(page.includes(f.shortDescription));assert(page.includes(`src="${f.mediaUrl}" alt="${f.alt}"`));assert(!/fixture-|review-media|Flavor story|Worlds/.test(page));}
+  assert(spanishDetail.includes(f.translations['es-MX'].shortDescription));
   assert.equal(headings(detail,1)[0],f.name);assert(detail.includes('Return to Flavors'));assert(detail.includes('loading="eager"'));assert(html.includes('loading="lazy"'));
  }
  const grape=release.flavors.find(f=>f.slug==='grape');assert(grape.name && grape.shortDescription && grape.alt);
