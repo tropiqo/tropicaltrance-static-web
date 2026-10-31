@@ -5,9 +5,10 @@ import MediaFrame from './MediaFrame.astro';
 import { localizePath } from '../i18n/messages.mjs';
 const { flavor } = Astro.props;
 const { locale = 'en' } = Astro.props;
+const dimensions = 'media' in flavor ? flavor.media : undefined;
 ---
 <article class="flavor-card" role="listitem">
-  <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} />
+  <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} width={dimensions?.width} height={dimensions?.height} />
   <h2><a href={localizePath(`/flavors/${flavor.slug}/`, locale)}>{flavor.name}</a></h2>
   <p>{flavor.shortDescription}</p>
 </article>
