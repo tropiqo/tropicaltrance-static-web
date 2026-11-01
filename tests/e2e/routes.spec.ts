@@ -71,6 +71,101 @@ test('English and Spanish flavor details reserve each artwork’s intrinsic dime
   }
 });
 
+test('flavor collection keeps its carousel behavior and compacts artwork only above the mobile breakpoint', async ({ page }) => {
+  const widths = [320, 375, 390, 768, 1024, 1280, 1440];
+  const expectedLinks = ['/flavors/cherry/', '/flavors/grape/', '/flavors/lime/'];
+
+  await page.goto('/flavors/');
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 900 });
+    const grid = page.locator('.collection-section .flavor-grid');
+    const cards = grid.locator('.flavor-card');
+    const links = await cards.locator('h2 a').evaluateAll(anchors => anchors.map(anchor => (anchor as HTMLAnchorElement).getAttribute('href')));
+    expect(links).toEqual(expectedLinks);
+    await expect(cards).toHaveCount(3);
+
+    const layout = await page.locator('.collection-section .flavor-card').first().evaluate(card => {
+      const grid = card.parentElement!;
+      const image = card.querySelector<HTMLImageElement>('.media-frame img')!;
+      const frame = image.closest<HTMLElement>('.media-frame')!;
+      const cardRect = card.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      return {
+        compact: frameRect.width / cardRect.width,
+        centered: Math.abs((frameRect.left + frameRect.right) / 2 - (cardRect.left + cardRect.right) / 2) < 1,
+        loading: image.loading,
+        decoding: image.decoding,
+        width: image.getAttribute('width'),
+        height: image.getAttribute('height'),
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+        gridFlow: getComputedStyle(grid).gridAutoFlow,
+        overflowX: getComputedStyle(grid).overflowX,
+        snapType: getComputedStyle(grid).scrollSnapType,
+        snapAlign: getComputedStyle(card).scrollSnapAlign,
+        snapStop: getComputedStyle(card).scrollSnapStop,
+        scrollWidth: grid.scrollWidth,
+        clientWidth: grid.clientWidth,
+      };
+    });
+    expect(layout.centered).toBe(true);
+    expect(Number(layout.width)).toBe(layout.naturalWidth);
+    expect(Number(layout.height)).toBe(layout.naturalHeight);
+    expect(layout.loading).toBe('lazy');
+    expect(layout.decoding).toBe('async');
+
+    if (width < 768) {
+      expect(layout.compact).toBeCloseTo(1, 1);
+      expect(layout.gridFlow).toBe('column');
+      expect(layout.overflowX).toBe('auto');
+      expect(layout.snapType).toContain('inline');
+      expect(layout.snapAlign).toBe('start');
+      expect(layout.snapStop).toBe('always');
+      expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
+      if (width === 375) {
+        await grid.evaluate(element => { element.scrollLeft = element.clientWidth; });
+        await page.waitForTimeout(350);
+        const scrollLeft = await grid.evaluate(element => element.scrollLeft);
+        expect(scrollLeft).toBeGreaterThan(0);
+        await cards.nth(0).getByRole('link').focus();
+        await expect(cards.nth(0).getByRole('link')).toBeFocused();
+      }
+    } else {
+      expect(layout.compact).toBeCloseTo(0.72, 2);
+      expect(layout.gridFlow).toBe('row');
+      expect(layout.overflowX).toBe('visible');
+      expect(layout.snapType).toBe('none');
+    }
+  }
+});
+
+test('a touch swipe still advances and snaps the flavor carousel', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  await page.goto('/flavors/');
+  const grid = page.locator('.collection-section .flavor-grid');
+  const bounds = await grid.boundingBox();
+  expect(bounds).not.toBeNull();
+  const session = await context.newCDPSession(page);
+  const x = bounds!.x + bounds!.width - 24;
+  const y = bounds!.y + 100;
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 0 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 85, y, id: 0 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 180, y, id: 0 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 250, y, id: 0 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForTimeout(500);
+  const snap = await grid.evaluate(element => {
+    const left = element.getBoundingClientRect().left;
+    const cardOffsets = Array.from(element.querySelectorAll('.flavor-card'), card => card.getBoundingClientRect().left - left);
+    return { scrollLeft: element.scrollLeft, nearestStart: Math.min(...cardOffsets.map(offset => Math.abs(offset))) };
+  });
+  expect(snap.scrollLeft).toBeGreaterThan(0);
+  expect(snap.nearestStart).toBeLessThan(2);
+  await expect(grid.locator('.flavor-card').nth(1)).toHaveCSS('scroll-snap-align', 'start');
+  await context.close();
+});
+
 test('keyboard focus exposes the skip link and moves focus to main content', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('Tab');

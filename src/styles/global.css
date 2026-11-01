@@ -134,6 +134,7 @@ a:hover { text-decoration-thickness: 0.14em; }
   .editorial--split .editorial-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
   .flavor-swipe-hint { display: none; }
   .flavor-grid { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; padding-block: 0; scroll-snap-type: none; scroll-behavior: auto; scrollbar-width: auto; }
+  .collection-section .flavor-card > .media-frame { inline-size: 72%; margin-inline: auto; }
   .detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .footer-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   .footer-note { grid-column: 1 / -1; }
