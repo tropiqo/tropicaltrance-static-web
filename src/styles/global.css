@@ -87,6 +87,11 @@ a:hover { text-decoration-thickness: 0.14em; }
 .flavor-card { min-inline-size: 0; border-block-start: 3px solid var(--flavor-accent); padding-block-start: var(--space-4); }
 .flavor-card h2 { margin-block: var(--space-4) var(--space-3); }
 .flavor-card p { color: var(--color-muted); }
+.collection-section .flavor-card > .media-frame { overflow: hidden; }
+@media (hover: hover) and (pointer: fine) {
+  .collection-section .flavor-card > figure.media-frame > img { transform-origin: center; transition: transform 450ms ease; }
+  .collection-section .flavor-card > figure.media-frame:hover > img { transform: scale(1.05); }
+}
 .media-frame { display: block; min-inline-size: 0; color: var(--color-text); }
 .media-frame img { display: block; max-inline-size: none; max-block-size: none; inline-size: 100%; block-size: auto; object-fit: contain; }
 .flavor-detail { padding-block: var(--space-6) var(--space-7); }
@@ -151,6 +156,7 @@ a:hover { text-decoration-thickness: 0.14em; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .flavor-grid--carousel { scroll-snap-type: none; }
+  .collection-section .flavor-card > figure.media-frame > img { transform: none !important; }
 }
 
 /* Intact shared mascot delivery: one image, natural proportions, no clipping or overlays. */
