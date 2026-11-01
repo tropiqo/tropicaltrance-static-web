@@ -34,7 +34,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
   for(const p of selectedPaths)rmSync(join(base,p));
   run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,17);
-  const baselineHashes={'index.html':'f07a3cc641ac234da4b91f78d1e7d499a65e82f060f2685312767b73a8b9fb08','about/index.html':'c2edb6324dc3dc5d8a0d1afffe30b5cfe1d191b869c7872724449358944e7dbe','flavors/index.html':'11982141937439ab317eb264c8fcd84a6d28849deb196fde6d90db2dcc65943f','es/flavors/index.html':'f5ef1d115146a9e966d4ded94b22fdfed5b2107d54bf9b6392e0b9d47cf893c8','es/index.html':'2baefbfa26338a3e4fbb78bbf157aa87b945bb31f0d1ed2f97197e6f8490a190'};
+  const baselineHashes={'index.html':'9460d69f48d090ec3a4ca9ed63744415cd3e55340b9072cdcebfe172fc35090f','about/index.html':'8a42c90c3b1c4d1a9ea3a51fd3a55b56856c817f5838bbad0aac586e59f4546a','flavors/index.html':'80a6f6cfc46e9d64625e89fbab3c422a8cd4ba4082cb7977b2a1a9f231d46b98','es/flavors/index.html':'096b4625cd7b72141cb0c451d594a5a14bd8e3eedf3bc52d24ced3867994e01e','es/index.html':'a8ac9e9abf61e9975afa7042fe9ab5a247fa7701373269cc5383d60bc16d80c4'};
   const baselineMismatches=[];
   for(const [p,h]of empty){if(p in baselineHashes){if(h!=='sha256:'+baselineHashes[p])baselineMismatches.push([p,h]);}else assert.equal(h,normal.find(([n])=>n===p)[1],p);}
   assert.deepEqual(baselineMismatches,[],'Empty-release pinned HTML outputs changed');

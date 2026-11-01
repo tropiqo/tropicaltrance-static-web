@@ -166,6 +166,83 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   await context.close();
 });
 
+test('fine-pointer hover zoom clips within the collection artwork frame without changing layout', async ({ page }) => {
+  for (const width of [1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/flavors/');
+    const card = page.locator('.collection-section .flavor-card').first();
+    const frame = card.locator('> .media-frame');
+    const image = frame.locator('img');
+    const before = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      pageWidth: document.documentElement.scrollWidth,
+      card: (() => { const rect = document.querySelector('.collection-section .flavor-card').getBoundingClientRect(); return { x: rect.x, y: rect.y + scrollY, width: rect.width, height: rect.height }; })(),
+      frame: (() => { const rect = document.querySelector('.collection-section .flavor-card > .media-frame').getBoundingClientRect(); return { x: rect.x, y: rect.y + scrollY, width: rect.width, height: rect.height }; })(),
+    }));
+    expect(before.pageWidth).toBeLessThanOrEqual(before.viewport);
+    await expect(frame).toHaveCSS('overflow', 'hidden');
+    await expect(image).toHaveCSS('object-fit', 'contain');
+    await expect(image).toHaveCSS('transition-duration', '0.45s');
+    await expect(image).toHaveCSS('transform', 'none');
+
+    await image.hover();
+    await expect.poll(() => image.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).a)).toBeCloseTo(1.05, 2);
+    const after = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      pageWidth: document.documentElement.scrollWidth,
+      card: (() => { const rect = document.querySelector('.collection-section .flavor-card').getBoundingClientRect(); return { x: rect.x, y: rect.y + scrollY, width: rect.width, height: rect.height }; })(),
+      frame: (() => { const rect = document.querySelector('.collection-section .flavor-card > .media-frame').getBoundingClientRect(); return { x: rect.x, y: rect.y + scrollY, width: rect.width, height: rect.height }; })(),
+      imageTransform: getComputedStyle(document.querySelector('.collection-section .flavor-card > .media-frame img')).transform,
+    }));
+    expect(after.pageWidth).toBeLessThanOrEqual(after.viewport);
+    expect(after.card.x).toBe(before.card.x);
+    expect(after.card.y).toBe(before.card.y);
+    expect(after.card.width).toBe(before.card.width);
+    expect(after.card.height).toBe(before.card.height);
+    expect(after.frame.x).toBe(before.frame.x);
+    expect(after.frame.y).toBe(before.frame.y);
+    expect(after.frame.width).toBe(before.frame.width);
+    expect(after.frame.height).toBe(before.frame.height);
+    expect(after.imageTransform).not.toBe('none');
+
+    if (width === 1440) {
+      await card.getByRole('link', { name: 'Cherry' }).click();
+      await expect(page).toHaveURL(/\/flavors\/cherry\/$/);
+    }
+  }
+});
+
+test('reduced motion disables the collection hover zoom', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/flavors/');
+  const image = page.locator('.collection-section .flavor-card img').first();
+  await image.hover();
+  await expect(image).toHaveCSS('transition-duration', '0s');
+  await expect(image).toHaveCSS('transform', 'none');
+});
+
+test('touch viewports keep the carousel and never activate artwork hover zoom', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  for (const width of [320, 375, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/flavors/');
+    const grid = page.locator('.collection-section .flavor-grid');
+    const frame = page.locator('.collection-section .flavor-card .media-frame').first();
+    const image = frame.locator('img');
+    expect(await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches)).toBe(false);
+    await expect(grid).toHaveCSS('overflow-x', 'auto');
+    await expect(grid).toHaveCSS('scroll-snap-type', 'inline mandatory');
+    await expect(frame).toHaveCSS('overflow', 'hidden');
+    await image.tap();
+    await expect(image).toHaveCSS('transform', 'none');
+    const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }));
+    expect(dimensions.page).toBeLessThanOrEqual(dimensions.viewport);
+  }
+  await context.close();
+});
+
 test('keyboard focus exposes the skip link and moves focus to main content', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('Tab');
