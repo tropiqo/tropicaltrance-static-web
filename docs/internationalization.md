@@ -4,6 +4,12 @@ The website builds two static locales from shared Astro presentation components.
 
 Flavor names and slugs remain product identifiers. Each normal flavor JSON record contains required `translations.es-MX.shortDescription` and `translations.es-MX.alt` fields. The build schema rejects a flavor without either value, preventing a Spanish flavor card or detail route from silently falling back to English. English copy remains in the existing top-level fields.
 
+## Flavor stories
+
+Optional detail-page stories live in separate Website-owned records at `content/editorial/<flavor-id>.json`. The `flavor` reference must match both the existing flavor ID and revision in `content/flavors/`. If a `story` is supplied, it must contain complete `en` and `es-MX` titles and ordered paragraphs. Unknown fields and locale keys are rejected. The normal page localization utility selects the story for the route locale and never substitutes English story text on `/es/` routes. A flavor without a story record continues to render without the story section.
+
+Story copy follows the ordinary Website feature-branch and PR workflow. There is no separate editorial manifest or approval stage. For the record shape, adding/revising/withdrawing instructions, and a non-production example, see [Flavor management](./flavor-management.md#website-editorial-stories).
+
 ## Add a flavor
 
 Run `npm run flavor:add -- <slug> --development-only --image <path>`. The explicit flag scopes this existing workflow to local development and owner review; it does not grant production approval. The interactive workflow asks for the existing English name, description, and alt text, then the Mexican Spanish description and alt text. You can provide the latter as `--es-description` and `--es-alt`; the content must be reviewed Spanish, not a machine translated placeholder. The preview includes the English and Spanish collection/detail routes. The CLI validates both locales before applying the new record. Flavor removal deletes the single flavor record and its translations together.

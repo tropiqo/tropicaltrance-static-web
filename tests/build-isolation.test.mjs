@@ -29,6 +29,26 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   writeFileSync(join(base,'normal-build.mjs'),"import {build} from 'astro';await build({root:process.cwd()});await import('./scripts/write-seo-output.mjs');\n");
   run(base,'normal-build.mjs');await checkOutput(base);const normal=snapshot(base,'dist');
   run(base,'normal-build.mjs');assert.deepEqual(snapshot(base,'dist'),normal);await checkOutput(base);
+  // Website editorial uses a bilingual synthetic record only inside this isolated build.
+  const grape=initial.flavors.find(flavor=>flavor.slug==='grape');
+  mkdirSync(join(base,'content/editorial'),{recursive:true});
+  writeFileSync(join(base,'content/editorial/grape.json'),JSON.stringify({contractVersion:'1',kind:'website-editorial',flavor:grape.flavor,story:{translations:{
+   en:{title:'A sample English story.',paragraphs:['First English sample paragraph.','Second English sample paragraph.']},
+   'es-MX':{title:'Un relato de ejemplo.',paragraphs:['Primer párrafo de ejemplo.','Segundo párrafo de ejemplo.']},
+  }}},null,2)+'\n');
+  run(base,'normal-build.mjs');await checkOutput(base);
+  const englishStory=readFileSync(join(base,'dist/flavors/grape/index.html'),'utf8');
+  const spanishStory=readFileSync(join(base,'dist/es/flavors/grape/index.html'),'utf8');
+  assert(englishStory.includes('A sample English story.')&&englishStory.includes('First English sample paragraph.')&&englishStory.includes('Second English sample paragraph.'));
+  assert(spanishStory.includes('Un relato de ejemplo.')&&spanishStory.includes('Primer párrafo de ejemplo.')&&spanishStory.includes('Segundo párrafo de ejemplo.'));
+  assert(!englishStory.includes('Un relato de ejemplo.')&&!englishStory.includes('Primer párrafo de ejemplo.'));
+  assert(!spanishStory.includes('A sample English story.')&&!spanishStory.includes('First English sample paragraph.'));
+  for(const path of ['flavors/cherry/index.html','flavors/lime/index.html','es/flavors/cherry/index.html','es/flavors/lime/index.html','index.html','es/index.html','flavors/index.html','es/flavors/index.html']) {
+   const html=readFileSync(join(base,'dist',path),'utf8');
+   assert(!html.includes('A sample English story.')&&!html.includes('Un relato de ejemplo.'),`Story leaked to ${path}`);
+  }
+  rmSync(join(base,'content/editorial'),{recursive:true,force:true});
+  run(base,'normal-build.mjs');await checkOutput(base);assert.deepEqual(snapshot(base,'dist'),normal,'Optional editorial withdrawal restores the no-story output');
   // Withdraw only in this isolated candidate; preserve all original repository inputs/history.
   const selectedPaths=initial.flavors.flatMap(f=>[`content/flavors/${f.slug}.json`,`public-astro/${f.mediaUrl.slice(1)}`]);
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));

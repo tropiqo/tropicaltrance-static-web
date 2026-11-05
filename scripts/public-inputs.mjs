@@ -167,7 +167,6 @@ function loadFlavorContent({base}) {
   const flavorFiles = inventory(base,flavorsPath,true);
   const rootEntries = readdirSync(safePath(base,'content'));
   requireThat(rootEntries.every(name=>['site.json','flavors','editorial','sales-channels.json'].includes(name)),'Unexpected normal content entry');
-  requireThat(inventory(base,'content/editorial',true).length===0,'Unsupported normal editorial content');
   unique(flavorFiles,x=>x,'Duplicate flavor content path');
   const flavors = flavorFiles.map(path=>{
     requireThat(/^content\/flavors\/[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(path),'Unexpected flavor content path');
@@ -184,6 +183,22 @@ function loadFlavorContent({base}) {
     return {flavor:{id:slug,revision:value.revision},slug,name:value.name,shortDescription:value.shortDescription,alt:value.alt,translations:value.translations,mediaUrl:'/'+value.media.path,media:{contentId:value.media.contentId,...dimensions}};
   }).sort((a,b)=>a.slug.localeCompare(b.slug));
   unique(flavors,x=>x.slug,'Duplicate Flavor slug');
+  const editorialSchema = resolve(base,'schemas/website-editorial.schema.json');
+  const editorialRecords = inventory(base,'content/editorial',true).map(path=>{
+    requireThat(/^content\/editorial\/[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(path),'Unexpected Website editorial path');
+    const value = validateSchema(parseJson(readContent(path)),editorialSchema);
+    return {path,value};
+  });
+  unique(editorialRecords,record=>record.value.flavor.id,'Duplicate editorial Flavor');
+  const flavorsById = new Map(flavors.map(flavor=>[flavor.flavor.id,flavor]));
+  for (const record of editorialRecords) {
+    const fileId = record.path.slice('content/editorial/'.length,-'.json'.length);
+    const flavor = flavorsById.get(record.value.flavor.id);
+    requireThat(flavor,'Editorial record references an unknown Flavor');
+    same(record.value.flavor.id,fileId,'Editorial Flavor ID/file name mismatch');
+    same(record.value.flavor,{id:flavor.flavor.id,revision:flavor.flavor.revision},'Editorial Flavor identity/revision mismatch');
+    if (record.value.story) flavor.editorial = record.value.story;
+  }
   const channelConfig = loadSalesChannels({base,flavors:flavors.map(flavor=>flavor.slug)});
   for (const flavor of flavors) flavor.salesChannels = channelsForFlavor(channelConfig,flavor);
   const deliveries=flavors.map(f=>({path:'public-astro/'+f.mediaUrl.slice(1),asset:{contentId:f.media.contentId}}));
