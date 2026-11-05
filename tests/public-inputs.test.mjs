@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSync, readdirSync } from 'node:fs';
+import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { digest, loadRelease } from '../scripts/public-inputs.mjs';
@@ -14,6 +14,7 @@ function sandbox(fn) {
   try {
     for(const path of ['schemas','content','public-astro','tests/fixtures']) cpSync(resolve(root,path),resolve(base,path),{recursive:true});
     for(const name of readdirSync(join(base,'content/flavors')))if(name!=='grape.json')rmSync(join(base,'content/flavors',name));
+    if(existsSync(join(base,'content/editorial')))for(const name of readdirSync(join(base,'content/editorial')))if(name!=='grape.json')rmSync(join(base,'content/editorial',name),{recursive:true,force:true});
     const grape=JSON.parse(readFileSync(join(base,'content/flavors/grape.json'),'utf8'));
     for(const name of readdirSync(join(base,'public-astro/assets')))if(/-web-r[0-9]+\.webp$/.test(name)&&![grape.media.path.slice('assets/'.length),'trancy-web-r1.webp'].includes(name))rmSync(join(base,'public-astro/assets',name));
     return fn(base);
@@ -45,9 +46,23 @@ test('current Grape maps through the simple local content record and exact deliv
 test('normal release derives multiple detail routes and deliveries from validated flavor records without eligibility or release manifests',()=>sandbox(base=>{
  addFlavor(base);const r=loadRelease({base});assert.deepEqual(r.flavors.map(f=>f.slug),['grape','mango']);assert.equal(r.deliveries.length,2);assert.equal(r.flavors[1].mediaUrl,'/assets/mango-web-r1.webp');
 }));
+test('normal loader accepts zero, one, and multiple associated editorial records',()=>sandbox(base=>{
+ rmSync(join(base,'content/editorial'),{recursive:true,force:true});
+ assert(loadRelease({base}).flavors.every(flavor=>flavor.editorial===undefined));
+ writeEditorial(base,'grape');
+ addFlavor(base,'lime');writeEditorial(base,'lime',sampleEditorial('lime'));
+ const release=loadRelease({base});
+ assert.deepEqual(release.flavors.map(flavor=>flavor.slug),['grape','lime']);
+ assert(release.flavors.every(flavor=>flavor.editorial?.translations.en.title==='A sample English title.'));
+}));
 test('empty flavor directory remains a valid normal release',()=>sandbox(base=>{
- const selectedMedia=selectedGrapeMedia(base);rmSync(join(base,'content/flavors/grape.json'));rmSync(selectedMedia);
+ const selectedMedia=selectedGrapeMedia(base);rmSync(join(base,'content/flavors/grape.json'));rmSync(selectedMedia);rmSync(join(base,'content/editorial'),{recursive:true,force:true});
  assert.deepEqual(loadRelease({base}).flavors,[]);
+}));
+test('normal input loading rejects an orphaned editorial record',()=>sandbox(base=>{
+ writeEditorial(base,'grape');
+ const selectedMedia=selectedGrapeMedia(base);rmSync(join(base,'content/flavors/grape.json'));rmSync(selectedMedia);
+ assert.throws(()=>loadRelease({base}),/unknown Flavor/);
 }));
 test('closed schema rejects missing fields, unknown fields, invalid and reserved slugs',()=>sandbox(base=>{
  for(const mutate of [v=>delete v.alt,v=>v.private='secret',v=>v.slug='../escape',v=>v.slug='404',v=>v.media.path='../../secret.webp']) {

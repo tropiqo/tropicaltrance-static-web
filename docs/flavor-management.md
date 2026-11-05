@@ -143,6 +143,8 @@ Flavor stories are optional Website-owned copy. They are separate from artwork a
 
 Create `content/editorial/<flavor-id>.json`, where the filename, `flavor.id`, and existing `content/flavors/<flavor-id>.json` slug all identify the same flavor. `flavor.revision` must match the flavor record's current revision. The schema is `schemas/website-editorial.schema.json`; it rejects unknown fields/locales and requires both locale versions whenever `story` is present.
 
+Editorial records are revision-pinned. Metadata-only flavor updates keep the revision and can retain the story. Image replacement creates a new revision, so `flavor:update --image` refuses while an editorial record for that flavor exists; it never silently changes the record's revision or copy. To replace the artwork, explicitly withdraw the editorial record first. Afterward, review whether the story still fits the revised flavor and, if so, re-add it with the new revision. Flavor removal previews the result without its associated story, identifies the story withdrawal in its confirmation prompt, and removes both records together only after confirmation. Validation failure restores the original flavor, story, and artwork bytes.
+
 This illustrative record is **non-production sample content**. Do not copy its placeholder prose into a real flavor story:
 
 ```json

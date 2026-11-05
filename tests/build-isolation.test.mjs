@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, cpSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync } from 'node:fs';
+import { mkdtempSync, cpSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -15,12 +15,14 @@ function run(base,script) {
 }
 function snapshot(base,path) { return inventory(base,path).map(p=>[p.slice(path.length+1),digest(readFileSync(join(base,p)))]); }
 test('isolated website-only builds: deterministic normal and fixture outputs, no Studio/network',async()=>{
- const base=mkdtempSync(join(tmpdir(),'tt-isolated-'));
+ const base=mkdtempSync(join(tmpdir(),'tt-isolated-')),editorialBackup=mkdtempSync(join(tmpdir(),'tt-editorial-baseline-'));
  try {
   for(const path of ['src','scripts','schemas','content','public-astro','astro.config.mjs','package.json','package-lock.json','.npmrc'])cpSync(join(root,path),join(base,path),{recursive:true});
   const configPath=join(base,'astro.config.mjs');writeFileSync(configPath,readFileSync(configPath,'utf8').replace('vite: { resolve:', `vite: { cacheDir: '${join(base,'.vite-cache')}', resolve:`));
   mkdirSync(join(base,'public-astro/assets'),{recursive:true});
   const initial=loadRelease({base});assert(initial.flavors.some(f=>f.slug==='grape'));
+  const editorialPath=join(base,'content/editorial'),hasEditorial=existsSync(editorialPath);
+  if(hasEditorial)cpSync(editorialPath,join(editorialBackup,'editorial'),{recursive:true});
   symlinkSync(join(root,'node_modules'),join(base,'node_modules'));
   // Dependencies are reused locally; content/source are isolated with no Studio/artwork/credentials.
   const blocker=join(base,'no-network.cjs');
@@ -47,11 +49,13 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
    const html=readFileSync(join(base,'dist',path),'utf8');
    assert(!html.includes('A sample English story.')&&!html.includes('Un relato de ejemplo.'),`Story leaked to ${path}`);
   }
-  rmSync(join(base,'content/editorial'),{recursive:true,force:true});
-  run(base,'normal-build.mjs');await checkOutput(base);assert.deepEqual(snapshot(base,'dist'),normal,'Optional editorial withdrawal restores the no-story output');
+  rmSync(editorialPath,{recursive:true,force:true});
+  if(hasEditorial)cpSync(join(editorialBackup,'editorial'),editorialPath,{recursive:true});
+  run(base,'normal-build.mjs');await checkOutput(base);assert.deepEqual(snapshot(base,'dist'),normal,'Restoring the initial editorial records restores the initial output');
   // Withdraw only in this isolated candidate; preserve all original repository inputs/history.
   const selectedPaths=initial.flavors.flatMap(f=>[`content/flavors/${f.slug}.json`,`public-astro/${f.mediaUrl.slice(1)}`]);
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
+  rmSync(editorialPath,{recursive:true,force:true});
   for(const p of selectedPaths)rmSync(join(base,p));
   run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,17);
   const baselineHashes={'index.html':'9460d69f48d090ec3a4ca9ed63744415cd3e55340b9072cdcebfe172fc35090f','about/index.html':'8a42c90c3b1c4d1a9ea3a51fd3a55b56856c817f5838bbad0aac586e59f4546a','flavors/index.html':'80a6f6cfc46e9d64625e89fbab3c422a8cd4ba4082cb7977b2a1a9f231d46b98','es/flavors/index.html':'096b4625cd7b72141cb0c451d594a5a14bd8e3eedf3bc52d24ced3867994e01e','es/index.html':'a8ac9e9abf61e9975afa7042fe9ab5a247fa7701373269cc5383d60bc16d80c4'};
@@ -62,6 +66,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const firstMedia=initial.flavors[0].mediaUrl.slice(1),strayPath=`public-astro/${firstMedia}`;
   writeFileSync(join(base,strayPath),selectedBytes[strayPath]);assert.throws(()=>loadRelease({base}),/Unlisted/);rmSync(join(base,strayPath));
   for(const [p,b]of Object.entries(selectedBytes))writeFileSync(join(base,p),b);
+  if(hasEditorial)cpSync(join(editorialBackup,'editorial'),editorialPath,{recursive:true});
   run(base,'normal-build.mjs');await checkOutput(base);assert.deepEqual(snapshot(base,'dist'),normal);
   // Demonstrate that the same filename/digest comparator detects nondeterminism and extra output.
   const homePath=join(base,'dist/index.html'),homeBytes=readFileSync(homePath);
@@ -84,7 +89,7 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   // A subsequent normal build remains fixture-free even with fixture inputs and review output present.
   run(base,'normal-build.mjs');assert.deepEqual(snapshot(base,'dist'),normal);await checkOutput(base);
   console.log(`Isolated determinism: ${normal.length} normal files, ${fixture.length} review files; content network blocked.`);
- } finally { delete env.NODE_OPTIONS;rmSync(base,{recursive:true,force:true}); }
+ } finally { delete env.NODE_OPTIONS;rmSync(base,{recursive:true,force:true});rmSync(editorialBackup,{recursive:true,force:true}); }
 });
 test('normal output rejects fixture bytes/markers and unexpected Flavor routes',async()=>{
  const base=mkdtempSync(join(tmpdir(),'tt-output-'));

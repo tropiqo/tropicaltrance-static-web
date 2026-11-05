@@ -154,12 +154,13 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 180, y, id: 0 }] });
   await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 250, y, id: 0 }] });
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await page.waitForTimeout(500);
-  const snap = await grid.evaluate(element => {
+  const snapState = () => grid.evaluate(element => {
     const left = element.getBoundingClientRect().left;
     const cardOffsets = Array.from(element.querySelectorAll('.flavor-card'), card => card.getBoundingClientRect().left - left);
     return { scrollLeft: element.scrollLeft, nearestStart: Math.min(...cardOffsets.map(offset => Math.abs(offset))) };
   });
+  await expect.poll(async () => (await snapState()).nearestStart, { timeout: 5000 }).toBeLessThan(2);
+  const snap = await snapState();
   expect(snap.scrollLeft).toBeGreaterThan(0);
   expect(snap.nearestStart).toBeLessThan(2);
   await expect(grid.locator('.flavor-card').nth(1)).toHaveCSS('scroll-snap-align', 'start');
