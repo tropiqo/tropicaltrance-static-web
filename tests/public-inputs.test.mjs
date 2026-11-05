@@ -106,6 +106,8 @@ test('Website editorial rejects missing locales, empty story fields, unsupported
  const invalid=[
   value=>delete value.story.translations.en,
   value=>delete value.story.translations['es-MX'],
+  value=>delete value.flavor.id,
+  value=>delete value.flavor.revision,
   value=>value.story.translations.fr={title:'Titre',paragraphs:['Texte']},
   value=>value.story.translations.en.title='',
   value=>value.story.translations['es-MX'].paragraphs=[],
