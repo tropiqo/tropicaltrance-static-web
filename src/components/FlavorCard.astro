@@ -1,6 +1,6 @@
 ---
-import type { PublicFlavor } from './public-view';
-interface Props { flavor: PublicFlavor; locale?: 'en' | 'es-MX'; }
+import type { LocalizedFlavor } from './public-view';
+interface Props { flavor: LocalizedFlavor; locale?: 'en' | 'es-MX'; }
 import MediaFrame from './MediaFrame.astro';
 import { localizePath } from '../i18n/messages.mjs';
 const { flavor } = Astro.props;
