@@ -147,19 +147,22 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   const bounds = await grid.boundingBox();
   expect(bounds).not.toBeNull();
   const session = await context.newCDPSession(page);
-  const x = bounds!.x + bounds!.width - 24;
-  const y = bounds!.y + 100;
-  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 0 }] });
-  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 85, y, id: 0 }] });
-  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 180, y, id: 0 }] });
-  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 250, y, id: 0 }] });
-  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await session.send('Input.synthesizeScrollGesture', {
+    x: bounds!.x + bounds!.width - 24,
+    y: bounds!.y + 100,
+    xDistance: -250,
+    gestureSourceType: 'touch',
+    preventFling: true,
+  });
   const snapState = () => grid.evaluate(element => {
     const left = element.getBoundingClientRect().left;
     const cardOffsets = Array.from(element.querySelectorAll('.flavor-card'), card => card.getBoundingClientRect().left - left);
     return { scrollLeft: element.scrollLeft, nearestStart: Math.min(...cardOffsets.map(offset => Math.abs(offset))) };
   });
-  await expect.poll(async () => (await snapState()).nearestStart, { timeout: 5000 }).toBeLessThan(2);
+  await expect.poll(async () => {
+    const { scrollLeft, nearestStart } = await snapState();
+    return { moved: scrollLeft > 0, snapped: nearestStart < 2 };
+  }, { timeout: 5000 }).toEqual({ moved: true, snapped: true });
   const snap = await snapState();
   expect(snap.scrollLeft).toBeGreaterThan(0);
   expect(snap.nearestStart).toBeLessThan(2);
