@@ -148,11 +148,12 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   expect(bounds).not.toBeNull();
   const session = await context.newCDPSession(page);
   await session.send('Input.synthesizeScrollGesture', {
-    x: bounds!.x + bounds!.width - 24,
+    x: bounds!.x + bounds!.width / 2,
     y: bounds!.y + 100,
     xDistance: -250,
     gestureSourceType: 'touch',
     preventFling: true,
+    speedInPixelsPerSecond: 600,
   });
   const snapState = () => grid.evaluate(element => {
     const left = element.getBoundingClientRect().left;
