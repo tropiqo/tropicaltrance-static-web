@@ -144,6 +144,7 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   const page = await context.newPage();
   await page.goto('/flavors/');
   const grid = page.locator('.collection-section .flavor-grid');
+  await grid.scrollIntoViewIfNeeded();
   const bounds = await grid.boundingBox();
   expect(bounds).not.toBeNull();
   const session = await context.newCDPSession(page);
