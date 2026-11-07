@@ -171,7 +171,7 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   });
   const session = await context.newCDPSession(page);
   await session.send('Input.synthesizeScrollGesture', {
-    x: bounds!.x + bounds!.width / 2,
+    x: bounds!.x + bounds!.width - 24,
     y: bounds!.y + 100,
     xDistance: -250,
     gestureSourceType: 'touch',
