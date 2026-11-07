@@ -147,28 +147,6 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   await grid.scrollIntoViewIfNeeded();
   const bounds = await grid.boundingBox();
   expect(bounds).not.toBeNull();
-  await page.evaluate(() => {
-    const target = document.querySelector('.collection-section .flavor-grid')!;
-    const events: Array<Record<string, unknown>> = [];
-    const record = (event: Event) => {
-      const input = event as PointerEvent & TouchEvent;
-      events.push({
-        type: event.type,
-        trusted: event.isTrusted,
-        targetInsideGrid: event.target instanceof Element && target.contains(event.target),
-        pointerType: input.pointerType,
-        touches: input.touches?.length,
-        clientX: input.clientX,
-        clientY: input.clientY,
-        scrollLeft: (target as HTMLElement).scrollLeft,
-      });
-    };
-    for (const type of ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove', 'pointerup']) {
-      window.addEventListener(type, record, true);
-    }
-    target.addEventListener('scroll', record);
-    (window as typeof window & { __touchSwipeDiagnostics?: { events: Array<Record<string, unknown>> } }).__touchSwipeDiagnostics = { events };
-  });
   const session = await context.newCDPSession(page);
   await session.send('Input.synthesizeScrollGesture', {
     x: bounds!.x + bounds!.width - 24,
@@ -178,23 +156,6 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
     preventFling: true,
     speedInPixelsPerSecond: 600,
   });
-  const diagnostics = await page.evaluate(() => {
-    const target = document.querySelector('.collection-section .flavor-grid') as HTMLElement;
-    return {
-      browser: navigator.userAgent,
-      viewport: { width: innerWidth, height: innerHeight, devicePixelRatio },
-      input: { maxTouchPoints: navigator.maxTouchPoints, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches },
-      grid: {
-        clientWidth: target.clientWidth,
-        scrollWidth: target.scrollWidth,
-        scrollLeft: target.scrollLeft,
-        snapType: getComputedStyle(target).scrollSnapType,
-        bounds: target.getBoundingClientRect().toJSON(),
-      },
-      events: (window as typeof window & { __touchSwipeDiagnostics?: { events: Array<Record<string, unknown>> } }).__touchSwipeDiagnostics?.events,
-    };
-  });
-  console.log(`[touch-swipe-diagnostics] ${JSON.stringify(diagnostics)}`);
   const snapState = () => grid.evaluate(element => {
     const left = element.getBoundingClientRect().left;
     const cardOffsets = Array.from(element.querySelectorAll('.flavor-card'), card => card.getBoundingClientRect().left - left);
