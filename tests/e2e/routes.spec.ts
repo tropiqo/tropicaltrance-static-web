@@ -144,28 +144,22 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   const page = await context.newPage();
   await page.goto('/flavors/');
   const grid = page.locator('.collection-section .flavor-grid');
-  await grid.scrollIntoViewIfNeeded();
   const bounds = await grid.boundingBox();
   expect(bounds).not.toBeNull();
   const session = await context.newCDPSession(page);
-  await session.send('Input.synthesizeScrollGesture', {
-    x: bounds!.x + bounds!.width - 24,
-    y: bounds!.y + 100,
-    xDistance: -250,
-    gestureSourceType: 'touch',
-    preventFling: true,
-    speedInPixelsPerSecond: 600,
-  });
-  const snapState = () => grid.evaluate(element => {
+  const x = bounds!.x + bounds!.width - 24;
+  const y = bounds!.y + 100;
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 0 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 85, y, id: 0 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 180, y, id: 0 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 250, y, id: 0 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForTimeout(500);
+  const snap = await grid.evaluate(element => {
     const left = element.getBoundingClientRect().left;
     const cardOffsets = Array.from(element.querySelectorAll('.flavor-card'), card => card.getBoundingClientRect().left - left);
     return { scrollLeft: element.scrollLeft, nearestStart: Math.min(...cardOffsets.map(offset => Math.abs(offset))) };
   });
-  await expect.poll(async () => {
-    const { scrollLeft, nearestStart } = await snapState();
-    return { moved: scrollLeft > 0, snapped: nearestStart < 2 };
-  }, { timeout: 5000 }).toEqual({ moved: true, snapped: true });
-  const snap = await snapState();
   expect(snap.scrollLeft).toBeGreaterThan(0);
   expect(snap.nearestStart).toBeLessThan(2);
   await expect(grid.locator('.flavor-card').nth(1)).toHaveCSS('scroll-snap-align', 'start');
