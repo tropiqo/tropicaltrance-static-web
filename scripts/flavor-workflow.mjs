@@ -56,6 +56,8 @@ export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name
   assert(safeSlug(chosen),`Invalid or reserved flavor slug: ${chosen}`);
   const existing=current.find(value=>value.slug===chosen);
   assert(mode==='add'?!existing:Boolean(existing),mode==='add'?`Flavor already exists: ${chosen}`:`Unknown flavor: ${chosen}`);
+  const editorialPath=`content/editorial/${chosen}.json`;
+  const hasEditorial=inventory(websiteRoot,'content/editorial',true).includes(editorialPath);
   const metadataFields={name,shortDescription,alt,esShortDescription,esAlt};
   const suppliedMetadata=Object.entries(metadataFields).filter(([,value])=>value!==undefined);
   if(mode==='update'&&!imagePath) {
@@ -83,6 +85,7 @@ export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name
       throw error;
     }
   }
+  if(mode==='update'&&hasEditorial) throw Error(`Cannot create a new ${chosen} revision while ${editorialPath} exists. Explicitly withdraw the Website editorial record before replacing the flavor image; re-add it with the new revision only after reviewing the story against the revised flavor.`);
   assert(imagePath,'Choose artwork with --image /path/to/image.png');
   const sourcePath=validateImagePath(imagePath);
   const sourceBytes=readFileSync(sourcePath), sourceHash=hash(sourceBytes);
@@ -202,13 +205,16 @@ export async function createRemovalCandidate({websiteRoot=root,slug}) {
   assert(slug && safeSlug(slug),`Invalid or reserved flavor slug: ${slug}`);
   const record=current.find(value=>value.slug===slug);
   assert(record,`Unknown flavor: ${slug}`);
+  const editorialRelative=`content/editorial/${slug}.json`;
+  const editorialPath=inventory(websiteRoot,'content/editorial',true).includes(editorialRelative)?editorialRelative:undefined;
   const shared=current.some(value=>value.slug!==slug && value.media.path===record.media.path);
   const candidateRoot=mkdtempSync(join(tmpdir(),'tropical-flavor-remove-'));
   try {
     copyCandidateTree(websiteRoot,candidateRoot);
+    if(editorialPath)rmSync(join(candidateRoot,editorialPath));
     run('npm',['run','build'],candidateRoot);
     assert.equal(snapshot(websiteRoot),baseline,'Website inputs changed while preparing the removal preview');
-    return {websiteRoot,candidateRoot,slug,record,shared,snapshot:baseline};
+    return {websiteRoot,candidateRoot,slug,record,shared,editorialPath,snapshot:baseline};
   } catch(error) {
     rmSync(candidateRoot,{recursive:true,force:true});
     throw error;
@@ -216,24 +222,28 @@ export async function createRemovalCandidate({websiteRoot=root,slug}) {
 }
 
 export function applyRemoval(candidate,{validate=true,runValidation=()=>run('npm',['run','validate'],candidate.websiteRoot,{inherit:true})}={}) {
-  const {websiteRoot,slug,record,snapshot:baseline}=candidate;
+  const {websiteRoot,slug,record,editorialPath,snapshot:baseline}=candidate;
   assert.equal(snapshot(websiteRoot),baseline,'Website inputs changed during removal preview; prepare again');
   const shared=records(websiteRoot).some(value=>value.slug!==slug && value.media.path===record.media.path);
   const contentPath=safePath(websiteRoot,`content/flavors/${slug}.json`);
   const contentBytes=readFileSync(contentPath);
+  const editorialAbsolute=editorialPath?safePath(websiteRoot,editorialPath):undefined;
+  const editorialBytes=editorialAbsolute?readFileSync(editorialAbsolute):undefined;
   const assetPath=shared?undefined:safePath(websiteRoot,`public-astro/${record.media.path}`);
   const assetBytes=assetPath?readFileSync(assetPath):undefined;
-  let removedContent=false,removedAsset=false;
+  let removedContent=false,removedAsset=false,removedEditorial=false;
   try {
     rmSync(contentPath);removedContent=true;
+    if(editorialAbsolute){rmSync(editorialAbsolute);removedEditorial=true;}
     if(assetPath){rmSync(assetPath);removedAsset=true;}
     if(validate)runValidation();
   } catch(error) {
     if(removedContent && !existsSync(contentPath))writeFileSync(contentPath,contentBytes,{flag:'wx'});
+    if(removedEditorial && editorialAbsolute && !existsSync(editorialAbsolute))writeFileSync(editorialAbsolute,editorialBytes,{flag:'wx'});
     if(removedAsset && assetPath && !existsSync(assetPath))writeFileSync(assetPath,assetBytes,{flag:'wx'});
     throw error;
   }
-  return {contentPath,assetPath:removedAsset?assetPath:undefined,shared};
+  return {contentPath,assetPath:removedAsset?assetPath:undefined,editorialPath:removedEditorial?editorialAbsolute:undefined,shared};
 }
 
 async function availablePort() {
@@ -332,10 +342,11 @@ export async function runRemove(args=process.argv.slice(2)) {
   try {
     const server=await startCandidatePreview(candidate);preview=server.child;const {port}=server;
     stdout.write(`\nSelected flavor: ${candidate.record.name} (${slug})\nArtwork: ${candidate.record.media.path}\nSHA-256: ${candidate.record.media.contentId}\n`);
+    if(candidate.editorialPath)stdout.write(`This removal also withdraws its Website editorial record: ${candidate.editorialPath}\n`);
     stdout.write(`Preview the current collection and detail: http://127.0.0.1:${port}/flavors/ and http://127.0.0.1:${port}/flavors/${slug}/\n`);
-    const answer=(await prompt.question(`Remove ${candidate.record.name} and its ${candidate.shared?'shared artwork will be kept':'unshared artwork'}? [y/N] `)).trim().toLowerCase();
+    const answer=(await prompt.question(`Remove ${candidate.record.name}${candidate.editorialPath?' and withdraw its Website editorial record':''}; ${candidate.shared?'shared artwork will be kept':'unshared artwork will be removed'}? [y/N] `)).trim().toLowerCase();
     if(answer!=='y' && answer!=='yes'){stdout.write('Cancelled; website files are unchanged.\n');return;}
     const changed=applyRemoval(candidate);
-    stdout.write(`Removed and validated ${slug}: ${changed.contentPath}${changed.assetPath?`, ${changed.assetPath}`:''}\n`);
+    stdout.write(`Removed and validated ${slug}: ${changed.contentPath}${changed.editorialPath?`, ${changed.editorialPath}`:''}${changed.assetPath?`, ${changed.assetPath}`:''}\n`);
   } finally {prompt.close();if(preview)await stopPreview(preview);cancelCandidate(candidate);}
 }

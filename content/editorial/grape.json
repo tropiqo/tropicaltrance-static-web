@@ -1,0 +1,28 @@
+{
+  "contractVersion": "1",
+  "kind": "website-editorial",
+  "flavor": {
+    "id": "grape",
+    "revision": "1"
+  },
+  "story": {
+    "translations": {
+      "en": {
+        "title": "Purple Frequency",
+        "paragraphs": [
+          "Deep in the tropical jungle, a mysterious rhythm begins to rise. Vines twist into waves of violet light, and the world starts moving to a different beat.",
+          "Trancy catches the frequency and rides into a surreal landscape where colors flow, gravity bends, and every turn reveals something unexpected.",
+          "This is Grape beyond the ordinary. Bold, vibrant, and impossible to ignore."
+        ]
+      },
+      "es-MX": {
+        "title": "Frecuencia Violeta",
+        "paragraphs": [
+          "En lo profundo de la selva tropical, comienza a surgir un ritmo misterioso. Las enredaderas se transforman en ondas de luz violeta y el mundo empieza a moverse a otro compás.",
+          "Trancy se conecta con esa frecuencia y surfea hacia un paisaje surrealista donde los colores fluyen, la gravedad se distorsiona y cada giro revela algo inesperado.",
+          "Así es Grape más allá de lo ordinario. Intenso, vibrante e imposible de ignorar."
+        ]
+      }
+    }
+  }
+}
