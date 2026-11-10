@@ -96,6 +96,7 @@ a:hover { text-decoration-thickness: 0.14em; }
 .media-frame img { display: block; max-inline-size: none; max-block-size: none; inline-size: 100%; block-size: auto; object-fit: contain; }
 .flavor-detail { padding-block: var(--space-6) var(--space-7); }
 .detail-grid { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
+.detail-grid > .media-frame { inline-size: 70%; margin-inline: auto; }
 .detail-copy { display: grid; align-content: start; gap: var(--space-5); }
 .detail-copy h1 { font-size: clamp(2.5rem, 1.4rem + 5vw, 6rem); }
 .detail-copy .eyebrow { color: var(--flavor-accent); }
