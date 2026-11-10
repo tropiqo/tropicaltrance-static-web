@@ -9,6 +9,7 @@
     },
     "push": {
       "branches": [
+        "development",
         "master"
       ]
     }
@@ -49,6 +50,10 @@
         {
           "name": "Install reviewed lockfile without lifecycle scripts",
           "run": "npm ci --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org"
+        },
+        {
+          "name": "Audit dependency vulnerabilities",
+          "run": "npm audit --audit-level=high"
         },
         {
           "name": "Test release version calculation",
