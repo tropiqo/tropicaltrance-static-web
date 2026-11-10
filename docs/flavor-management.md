@@ -137,6 +137,45 @@ npm run flavor:update -- grape --development-only \
 
 To replace artwork, use Workflow B and provide `--image`. Image replacement still generates the next WebP revision; combining `--image` with metadata flags updates both in the same candidate. A metadata-only update must include at least one actual metadata flag. Unknown flavor slugs and no-op update commands are rejected. Values must be non-empty and must not contain private paths or references. The interactive TTY, preview, and confirmation requirements still apply.
 
+## Website editorial stories
+
+Flavor stories are optional Website-owned copy. They are separate from artwork and flavor metadata and do not change Studio schemas or artwork approvals. Use the normal feature branch and pull request process targeting `development`; existing website validation and the private development site provide the normal review path. No separate editorial approval manifest or reviewer role is used.
+
+Create `content/editorial/<flavor-id>.json`, where the filename, `flavor.id`, and existing `content/flavors/<flavor-id>.json` slug all identify the same flavor. `flavor.revision` must match the flavor record's current revision. The schema is `schemas/website-editorial.schema.json`; it rejects unknown fields/locales and requires both locale versions whenever `story` is present.
+
+Editorial records are revision-pinned. Metadata-only flavor updates keep the revision and can retain the story. Image replacement creates a new revision, so `flavor:update --image` refuses while an editorial record for that flavor exists; it never silently changes the record's revision or copy. To replace the artwork, explicitly withdraw the editorial record first. Afterward, review whether the story still fits the revised flavor and, if so, re-add it with the new revision. Flavor removal previews the result without its associated story, identifies the story withdrawal in its confirmation prompt, and removes both records together only after confirmation. Validation failure restores the original flavor, story, and artwork bytes.
+
+This illustrative record is **non-production sample content**. Do not copy its placeholder prose into a real flavor story:
+
+```json
+{
+  "contractVersion": "1",
+  "kind": "website-editorial",
+  "flavor": {
+    "id": "sample-flavor",
+    "revision": "1"
+  },
+  "story": {
+    "translations": {
+      "en": {
+        "title": "SAMPLE ONLY — replace before use",
+        "paragraphs": ["Sample English paragraph one.", "Sample English paragraph two."]
+      },
+      "es-MX": {
+        "title": "SOLO EJEMPLO — reemplazar antes de usar",
+        "paragraphs": ["Párrafo de ejemplo uno.", "Párrafo de ejemplo dos."]
+      }
+    }
+  }
+}
+```
+
+To add a story, copy the structure to the real flavor ID and revision, then replace all sample text with reviewed English and Mexican Spanish prose. Include both locales and at least one non-empty paragraph in each. Do not add product effects, health, cannabinoid, legal, or availability claims. Add the record in the feature branch and run `npm run validate`, `npm run verify:reproducible`, and `npm run test:e2e` before using the existing PR flow.
+
+To revise a story, edit both locale versions in the same record and keep the flavor ID/revision aligned with `content/flavors/`. To withdraw it, delete `content/editorial/<flavor-id>.json` (or omit the optional `story` property); the detail page then renders without a story. The loader reads only flat JSON records in the fixed editorial directory and rejects nested, non-JSON, malformed, duplicate, unknown-flavor, wrong-revision, fixture-marked, or schema-invalid inputs.
+
+Editorial JSON contains only Website prose and an association to a Website flavor ID/revision. It does not register, modify, or approve original artwork or its derivatives. Artwork source, provenance, approvals, WebP generation, and SHA-256 validation continue through their existing independent workflow.
+
 ## Validation checklist
 
 From the Website root, using Node 24.21.0:

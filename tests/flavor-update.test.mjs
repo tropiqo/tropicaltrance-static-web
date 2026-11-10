@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync, symlinkSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync, symlinkSync, readdirSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -15,11 +15,18 @@ test('interactive flavor changes require an explicit development-only scope',asy
  await assert.rejects(()=>runAddUpdate('add',['cherry','--development-only']),/Choose artwork with --image/);
 });
 
-function sandbox(){
+function sandbox({withoutEditorial=false,withSyntheticEditorial=false}={}){
  const base=mkdtempSync(join(tmpdir(),'tt-flavor-update-'));
  for(const path of ['src','scripts','schemas','content','public-astro','astro.config.mjs','package.json','package-lock.json'])if(existsSync(join(root,path)))cpSync(join(root,path),join(base,path),{recursive:true});
+ if(withoutEditorial)rmSync(join(base,'content/editorial'),{recursive:true,force:true});
  for(const name of readdirSync(join(base,'content/flavors')))if(name!=='grape.json')rmSync(join(base,'content/flavors',name));
+ if(existsSync(join(base,'content/editorial')))for(const name of readdirSync(join(base,'content/editorial')))if(name!=='grape.json')rmSync(join(base,'content/editorial',name),{recursive:true,force:true});
  const grape=JSON.parse(readFileSync(join(base,'content/flavors/grape.json'),'utf8'));
+ if(withSyntheticEditorial){
+  rmSync(join(base,'content/editorial'),{recursive:true,force:true});mkdirSync(join(base,'content/editorial'),{recursive:true});
+  const editorial={contractVersion:'1',kind:'website-editorial',flavor:{id:'grape',revision:grape.revision},story:{translations:{en:{title:'Synthetic test title.',paragraphs:['Synthetic test paragraph.']},'es-MX':{title:'Título sintético de prueba.',paragraphs:['Párrafo sintético de prueba.']}}}};
+  writeFileSync(join(base,'content/editorial/grape.json'),JSON.stringify(editorial,null,2)+'\n');
+ }
  for(const name of readdirSync(join(base,'public-astro/assets')))if(/-web-r[0-9]+\.webp$/.test(name)&&![grape.media.path.slice('assets/'.length),'trancy-web-r1.webp'].includes(name))rmSync(join(base,'public-astro/assets',name));
  symlinkSync(join(root,'node_modules'),join(base,'node_modules'),'dir');return base;
 }
@@ -49,7 +56,7 @@ test('new flavor can be prepared and rendered in an isolated Astro preview build
 });
 
 test('confirmed replacement applies one new revision and safely withdraws old unshared bytes',async()=>{
- const base=sandbox(),image=join(base,'replace.png');await sample(image,{color:{r:190,g:50,b:110,alpha:1}});
+ const base=sandbox({withoutEditorial:true}),image=join(base,'replace.png');await sample(image,{color:{r:190,g:50,b:110,alpha:1}});
  const prior=JSON.parse(readFileSync(join(base,'content/flavors/grape.json'),'utf8'));
  const revision=String(Number(prior.revision)+1),oldAsset=`public-astro/${prior.media.path}`;
  const candidate=await createCandidate({mode:'update',websiteRoot:base,slug:'grape',imagePath:image});
@@ -59,6 +66,23 @@ test('confirmed replacement applies one new revision and safely withdraws old un
   const release=loadRelease({base});const grape=release.flavors.find(f=>f.slug==='grape');assert.equal(grape.flavor.revision,revision);assert.equal(grape.mediaUrl,`/assets/grape-web-r${revision}.webp`);
   assert.equal(grape.media.contentId,digest(readFileSync(join(base,'public-astro',grape.mediaUrl.slice(1)))));
  } finally {cancelCandidate(candidate);rmSync(base,{recursive:true,force:true});}
+});
+
+test('image revision refuses an attached Website editorial record without changing either file',async()=>{
+ const base=sandbox({withoutEditorial:true}),image=join(base,'blocked-revision.png');await sample(image);
+ const grape=JSON.parse(readFileSync(join(base,'content/flavors/grape.json'),'utf8'));
+ const editorial={contractVersion:'1',kind:'website-editorial',flavor:{id:'grape',revision:grape.revision},story:{translations:{
+  en:{title:'Synthetic test title.',paragraphs:['Synthetic test paragraph.']},
+  'es-MX':{title:'Título sintético de prueba.',paragraphs:['Párrafo sintético de prueba.']},
+ }}};
+ const editorialPath=join(base,'content/editorial/grape.json');mkdirSync(join(base,'content/editorial'),{recursive:true});writeFileSync(editorialPath,JSON.stringify(editorial,null,2)+'\n');
+ const flavorBefore=readFileSync(join(base,'content/flavors/grape.json')),editorialBefore=readFileSync(editorialPath);
+ try {
+  await assert.rejects(()=>createCandidate({mode:'update',websiteRoot:base,slug:'grape',imagePath:image}),/Explicitly withdraw the Website editorial record before replacing the flavor image/);
+  assert.deepEqual(readFileSync(join(base,'content/flavors/grape.json')),flavorBefore);
+  assert.deepEqual(readFileSync(editorialPath),editorialBefore);
+  assert.equal(loadRelease({base}).flavors.find(flavor=>flavor.slug==='grape').flavor.revision,grape.revision);
+ } finally {rmSync(base,{recursive:true,force:true});}
 });
 
 test('new sample flavor can be confirmed without touching the accepted Grape record',async()=>{
@@ -74,7 +98,7 @@ test('new sample flavor can be confirmed without touching the accepted Grape rec
 });
 
 test('failed post-apply validation restores prior content and image bytes',async()=>{
- const base=sandbox(),image=join(base,'failed-validation.png');await sample(image);
+ const base=sandbox({withoutEditorial:true}),image=join(base,'failed-validation.png');await sample(image);
  const priorContent=readFileSync(join(base,'content/flavors/grape.json'));
  const prior=JSON.parse(priorContent),priorImage=readFileSync(join(base,'public-astro',prior.media.path));
  const candidate=await createCandidate({mode:'update',websiteRoot:base,slug:'grape',imagePath:image});
@@ -243,7 +267,7 @@ test('interactive metadata-only preview reports unchanged image and applies only
 });
 
 test('image replacement can combine image and metadata changes',async()=>{
- const base=sandbox(),image=join(base,'combined-update.png');await sample(image);
+ const base=sandbox({withoutEditorial:true}),image=join(base,'combined-update.png');await sample(image);
  const before=JSON.parse(readFileSync(join(base,'content/flavors/grape.json')));
  const candidate=await createCandidate({mode:'update',websiteRoot:base,slug:'grape',imagePath:image,shortDescription:'Combined update description.',esAlt:'Texto alternativo combinado.'});
  try {
@@ -257,32 +281,38 @@ test('image replacement can combine image and metadata changes',async()=>{
 });
 
 test('flavor removal preview can be cancelled without changing record or artwork',async()=>{
- const base=sandbox();
+ const base=sandbox({withSyntheticEditorial:true});
  const content=readFileSync(join(base,'content/flavors/grape.json'));
+ const editorialPath=join(base,'content/editorial/grape.json'),editorial=readFileSync(editorialPath);
  const media=readFileSync(join(base,'public-astro/assets/grape-web-r1.webp'));
  const candidate=await createRemovalCandidate({websiteRoot:base,slug:'grape'});
  try {
   assert.equal(candidate.record.name,'Grape');
   assert(readFileSync(join(candidate.candidateRoot,'dist/flavors/grape/index.html'),'utf8').includes(candidate.record.alt));
+  assert.equal(candidate.editorialPath,'content/editorial/grape.json');
+  assert(!readFileSync(join(candidate.candidateRoot,'dist/flavors/grape/index.html'),'utf8').includes('class="flavor-story"'));
   cancelCandidate(candidate);
   assert.deepEqual(readFileSync(join(base,'content/flavors/grape.json')),content);
+  assert.deepEqual(readFileSync(editorialPath),editorial);
   assert.deepEqual(readFileSync(join(base,'public-astro/assets/grape-web-r1.webp')),media);
  } finally {cancelCandidate(candidate);rmSync(base,{recursive:true,force:true});}
 });
 
 test('confirmed flavor removal deletes its record and unshared artwork',async()=>{
- const base=sandbox(),candidate=await createRemovalCandidate({websiteRoot:base,slug:'grape'});
+ const base=sandbox({withSyntheticEditorial:true}),candidate=await createRemovalCandidate({websiteRoot:base,slug:'grape'});
  try {
   const changed=applyRemoval(candidate,{validate:false});
   assert.equal(changed.shared,false);assert.equal(changed.assetPath,join(base,'public-astro/assets/grape-web-r1.webp'));
+  assert.equal(changed.editorialPath,join(base,'content/editorial/grape.json'));
   assert.equal(existsSync(join(base,'content/flavors/grape.json')),false);
+  assert.equal(existsSync(join(base,'content/editorial/grape.json')),false);
   assert.equal(existsSync(join(base,'public-astro/assets/grape-web-r1.webp')),false);
   assert.deepEqual(loadRelease({base}).flavors,[]);
  } finally {cancelCandidate(candidate);rmSync(base,{recursive:true,force:true});}
 });
 
 test('flavor removal never deletes bytes referenced by another flavor',async()=>{
- const base=sandbox();await addFlavorRecord(base,'lime');
+ const base=sandbox({withSyntheticEditorial:true});await addFlavorRecord(base,'lime');
  const candidate=await createRemovalCandidate({websiteRoot:base,slug:'grape'});
  try {
   candidate.record.media.path='assets/lime-web-r1.webp';
@@ -294,12 +324,14 @@ test('flavor removal never deletes bytes referenced by another flavor',async()=>
 });
 
 test('failed removal validation restores exact content and artwork bytes',async()=>{
- const base=sandbox(),candidate=await createRemovalCandidate({websiteRoot:base,slug:'grape'});
+ const base=sandbox({withSyntheticEditorial:true}),candidate=await createRemovalCandidate({websiteRoot:base,slug:'grape'});
  const content=readFileSync(join(base,'content/flavors/grape.json'));
+ const editorialPath=join(base,'content/editorial/grape.json'),editorial=readFileSync(editorialPath);
  const media=readFileSync(join(base,'public-astro/assets/grape-web-r1.webp'));
  try {
   assert.throws(()=>applyRemoval(candidate,{runValidation:()=>{throw Error('fixture removal validation failure');}}),/fixture removal validation failure/);
   assert.deepEqual(readFileSync(join(base,'content/flavors/grape.json')),content);
+  assert.deepEqual(readFileSync(editorialPath),editorial);
   assert.deepEqual(readFileSync(join(base,'public-astro/assets/grape-web-r1.webp')),media);
   assert.deepEqual(loadRelease({base}).flavors.map(flavor=>flavor.slug),['grape']);
  } finally {cancelCandidate(candidate);rmSync(base,{recursive:true,force:true});}

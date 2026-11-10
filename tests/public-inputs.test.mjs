@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSync, readdirSync } from 'node:fs';
+import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { digest, loadRelease } from '../scripts/public-inputs.mjs';
 import { checkFlavorMedia } from '../scripts/check-static.mjs';
 import { parseJson, validateSchema } from '../scripts/closed-json.mjs';
+import { localizeFlavor } from '../src/i18n/localize.mjs';
 
 const root=process.cwd();
 function sandbox(fn) {
@@ -13,6 +14,7 @@ function sandbox(fn) {
   try {
     for(const path of ['schemas','content','public-astro','tests/fixtures']) cpSync(resolve(root,path),resolve(base,path),{recursive:true});
     for(const name of readdirSync(join(base,'content/flavors')))if(name!=='grape.json')rmSync(join(base,'content/flavors',name));
+    if(existsSync(join(base,'content/editorial')))for(const name of readdirSync(join(base,'content/editorial')))if(name!=='grape.json')rmSync(join(base,'content/editorial',name),{recursive:true,force:true});
     const grape=JSON.parse(readFileSync(join(base,'content/flavors/grape.json'),'utf8'));
     for(const name of readdirSync(join(base,'public-astro/assets')))if(/-web-r[0-9]+\.webp$/.test(name)&&![grape.media.path.slice('assets/'.length),'trancy-web-r1.webp'].includes(name))rmSync(join(base,'public-astro/assets',name));
     return fn(base);
@@ -28,6 +30,15 @@ function addFlavor(base,slug='mango',bytes=webp()) {
   writeFileSync(join(base,'public-astro',path),bytes);
   writeFileSync(join(base,`content/flavors/${slug}.json`),JSON.stringify({contractVersion:'1',slug,revision:'1',name:slug[0].toUpperCase()+slug.slice(1),shortDescription:`Explore ${slug}.`,alt:`${slug} flavor artwork.`,translations:{'es-MX':{shortDescription:`Explora ${slug}.`,alt:`Ilustración de ${slug}.`}},media:{path,contentId:digest(bytes)}},null,2)+'\n');
 }
+function sampleEditorial(flavor='grape',revision='1') {
+ return {contractVersion:'1',kind:'website-editorial',flavor:{id:flavor,revision},story:{translations:{
+  en:{title:'A sample English title.',paragraphs:['First English paragraph.','Second English paragraph.']},
+  'es-MX':{title:'Un título de ejemplo.',paragraphs:['Primer párrafo de ejemplo.','Segundo párrafo de ejemplo.']},
+ }}};
+}
+function writeEditorial(base,name='grape',value=sampleEditorial(name)) {
+ const dir=join(base,'content/editorial');mkdirSync(dir,{recursive:true});write(base,`content/editorial/${name}.json`,value);
+}
 test('current Grape maps through the simple local content record and exact delivery',()=>{
  const r=loadRelease();const grape=r.flavors.find(f=>f.slug==='grape');assert(grape);
  assert.equal(grape.slug,'grape');assert.equal(grape.media.contentId,r.deliveries.find(d=>d.path.endsWith(grape.mediaUrl.slice(1))).asset.contentId);
@@ -35,9 +46,23 @@ test('current Grape maps through the simple local content record and exact deliv
 test('normal release derives multiple detail routes and deliveries from validated flavor records without eligibility or release manifests',()=>sandbox(base=>{
  addFlavor(base);const r=loadRelease({base});assert.deepEqual(r.flavors.map(f=>f.slug),['grape','mango']);assert.equal(r.deliveries.length,2);assert.equal(r.flavors[1].mediaUrl,'/assets/mango-web-r1.webp');
 }));
+test('normal loader accepts zero, one, and multiple associated editorial records',()=>sandbox(base=>{
+ rmSync(join(base,'content/editorial'),{recursive:true,force:true});
+ assert(loadRelease({base}).flavors.every(flavor=>flavor.editorial===undefined));
+ writeEditorial(base,'grape');
+ addFlavor(base,'lime');writeEditorial(base,'lime',sampleEditorial('lime'));
+ const release=loadRelease({base});
+ assert.deepEqual(release.flavors.map(flavor=>flavor.slug),['grape','lime']);
+ assert(release.flavors.every(flavor=>flavor.editorial?.translations.en.title==='A sample English title.'));
+}));
 test('empty flavor directory remains a valid normal release',()=>sandbox(base=>{
- const selectedMedia=selectedGrapeMedia(base);rmSync(join(base,'content/flavors/grape.json'));rmSync(selectedMedia);
+ const selectedMedia=selectedGrapeMedia(base);rmSync(join(base,'content/flavors/grape.json'));rmSync(selectedMedia);rmSync(join(base,'content/editorial'),{recursive:true,force:true});
  assert.deepEqual(loadRelease({base}).flavors,[]);
+}));
+test('normal input loading rejects an orphaned editorial record',()=>sandbox(base=>{
+ writeEditorial(base,'grape');
+ const selectedMedia=selectedGrapeMedia(base);rmSync(join(base,'content/flavors/grape.json'));rmSync(selectedMedia);
+ assert.throws(()=>loadRelease({base}),/unknown Flavor/);
 }));
 test('closed schema rejects missing fields, unknown fields, invalid and reserved slugs',()=>sandbox(base=>{
  for(const mutate of [v=>delete v.alt,v=>v.private='secret',v=>v.slug='../escape',v=>v.slug='404',v=>v.media.path='../../secret.webp']) {
@@ -76,6 +101,69 @@ test('legacy eligibility/media/release files are rejected rather than silently r
 test('normal mapper never activates review fixtures from environment variables',()=>{
  const r=loadRelease();assert.equal(r.review,false);assert(r.flavors.some(f=>f.slug==='grape'));assert(r.flavors.every(f=>!f.slug.startsWith('fixture-')));
 });
+test('optional Website editorial maps to one existing Flavor and localizes ordered bilingual story content',()=>sandbox(base=>{
+ addFlavor(base,'cherry');writeEditorial(base);
+ const release=loadRelease({base}),raw=release.flavors.find(flavor=>flavor.slug==='grape');
+ assert.deepEqual(raw.editorial,sampleEditorial().story);
+ assert.equal(release.flavors.find(flavor=>flavor.slug==='cherry').editorial,undefined);
+ const english=localizeFlavor(raw,'en'),spanish=localizeFlavor(raw,'es-MX');
+ assert.deepEqual(english.editorial,{title:'A sample English title.',paragraphs:['First English paragraph.','Second English paragraph.']});
+ assert.deepEqual(spanish.editorial,{title:'Un título de ejemplo.',paragraphs:['Primer párrafo de ejemplo.','Segundo párrafo de ejemplo.']});
+ assert.equal(localizeFlavor(release.flavors.find(flavor=>flavor.slug==='cherry'),'es-MX').editorial,undefined);
+}));
+test('Website editorial record and story are both optional',()=>sandbox(base=>{
+ writeEditorial(base,'grape',{contractVersion:'1',kind:'website-editorial',flavor:{id:'grape',revision:'1'}});
+ const release=loadRelease({base}),grape=release.flavors.find(flavor=>flavor.slug==='grape');
+ assert.equal(grape.editorial,undefined);assert.equal(localizeFlavor(grape,'en').editorial,undefined);assert.equal(localizeFlavor(grape,'es-MX').editorial,undefined);
+}));
+test('Website editorial rejects missing locales, empty story fields, unsupported locales and unknown fields',()=>sandbox(base=>{
+ const path=join(base,'content/editorial/grape.json');writeEditorial(base);const valid=sampleEditorial();
+ const invalid=[
+  value=>delete value.story.translations.en,
+  value=>delete value.story.translations['es-MX'],
+  value=>delete value.flavor.id,
+  value=>delete value.flavor.revision,
+  value=>value.story.translations.fr={title:'Titre',paragraphs:['Texte']},
+  value=>value.story.translations.en.title='',
+  value=>value.story.translations['es-MX'].paragraphs=[],
+  value=>value.story.translations.en.paragraphs[0]='  ',
+  value=>value.private='unexpected',
+  value=>value.story.translations.en.private='unexpected',
+ ];
+ for(const mutate of invalid){const candidate=structuredClone(valid);mutate(candidate);write(base,'content/editorial/grape.json',candidate);assert.throws(()=>loadRelease({base}));}
+ writeFileSync(path,'{ malformed');assert.throws(()=>loadRelease({base}));
+}));
+test('Website editorial rejects duplicate associations, unknown Flavors and mismatched identities',()=>sandbox(base=>{
+ addFlavor(base,'lime');
+ writeEditorial(base);writeEditorial(base,'lime',sampleEditorial('grape'));
+ assert.throws(()=>loadRelease({base}),/Duplicate editorial Flavor/);
+ rmSync(join(base,'content/editorial/lime.json'));
+ writeEditorial(base,'grape',sampleEditorial('lime'));
+ assert.throws(()=>loadRelease({base}),/file name mismatch/);
+ writeEditorial(base);
+ writeEditorial(base,'mango',sampleEditorial('mango'));
+ assert.throws(()=>loadRelease({base}),/unknown Flavor/);
+ rmSync(join(base,'content/editorial/mango.json'));
+ const changed=sampleEditorial('grape','99');write(base,'content/editorial/grape.json',changed);
+ assert.throws(()=>loadRelease({base}),/identity\/revision mismatch/);
+}));
+test('Website editorial rejects nested, unlisted, and synthetic review fixture inputs',()=>sandbox(base=>{
+ mkdirSync(join(base,'content/editorial/nested'),{recursive:true});writeFileSync(join(base,'content/editorial/nested/grape.json'),JSON.stringify(sampleEditorial()));
+ assert.throws(()=>loadRelease({base}),/Unexpected Website editorial path/);
+ rmSync(join(base,'content/editorial'),{recursive:true,force:true});
+ writeFileSync(join(base,'content/editorial.txt'),'not an allowed Website editorial path');
+ assert.throws(()=>loadRelease({base}),/Unexpected normal content/);
+ rmSync(join(base,'content/editorial.txt'));
+ writeFileSync(join(base,'content/editorial.json'),'{}');
+ assert.throws(()=>loadRelease({base}),/Unexpected normal content/);
+ rmSync(join(base,'content/editorial.json'));
+ writeFileSync(join(base,'content/editorial'),'');
+ assert.throws(()=>loadRelease({base}),/Expected input directory/);
+ rmSync(join(base,'content/editorial'));
+ writeEditorial(base);
+ cpSync(join(root,'tests/fixtures/public-inputs/editorial/fixture-orchid.json'),join(base,'content/editorial/grape.json'));
+ assert.throws(()=>loadRelease({base}),/Fixture/);
+}));
 test('review mapper remains on the isolated synthetic Flavor v1 fixture contract',()=>{
  const r=loadRelease({review:true});assert.equal(r.review,true);assert.deepEqual(r.flavors.map(f=>f.slug),['fixture-coral','fixture-orchid']);
 });
