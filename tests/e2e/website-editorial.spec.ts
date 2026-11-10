@@ -73,24 +73,67 @@ test.afterAll(async () => {
 });
 
 test('bilingual Website editorial renders only on the associated Flavor detail in each locale', async ({ page }) => {
-  await page.goto(`${origin}/flavors/grape/`);
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  const englishStory = page.locator('.flavor-story');
-  await expect(englishStory.getByRole('heading', { level: 3, name: 'A sample English story.' })).toBeVisible();
-  await expect(englishStory.locator('.story-copy p')).toHaveText(['First English sample paragraph.', 'Second English sample paragraph.']);
-  await expect(page.getByText('Un relato de ejemplo.')).toHaveCount(0);
+  const stories = {
+    grapeEn: { title: 'A sample English story.', paragraphs: ['First English sample paragraph.', 'Second English sample paragraph.'] },
+    grapeEs: { title: 'Un relato de ejemplo.', paragraphs: ['Primer párrafo de ejemplo.', 'Segundo párrafo de ejemplo.'] },
+    cherryEn: {
+      title: 'Crimson Rush',
+      paragraphs: [
+        'Beyond the last bend of the tropical jungle, a crimson road appears. Twisting cherry stems rise above the canopy, forming impossible curves beneath a sky glowing deep red.',
+        'Trancy takes the wheel and races through the night, passing luminous cherries and sweeping around gravity-defying turns as the jungle unfolds in a blur of color.',
+        'This is Cherry at full speed. Bold, electric, and always one turn away from the unexpected.',
+      ],
+    },
+    cherryEs: {
+      title: 'Impulso Carmesí',
+      paragraphs: [
+        'Más allá de la última curva de la selva tropical, aparece un camino carmesí. Tallos de cereza se elevan sobre las copas de los árboles, formando curvas imposibles bajo un cielo teñido de rojo intenso.',
+        'Trancy toma el volante y acelera por la noche, pasando junto a cerezas luminosas y recorriendo curvas que desafían la gravedad, mientras la selva se convierte en un torbellino de color.',
+        'Así es Cherry a toda velocidad. Audaz, electrizante y siempre a una curva de lo inesperado.',
+      ],
+    },
+    limeEn: {
+      title: 'Citrus Labyrinth',
+      paragraphs: [
+        'Hidden beneath the tropical canopy lies a labyrinth unlike any other. Towering lime slices form luminous walls, while winding vines and shifting pathways lead deeper into an emerald world.',
+        'Trancy follows a trail of glowing citrus light, discovering secret passages and impossible patterns as the maze transforms with every step.',
+        'This is Lime beyond the familiar. Bright, intriguing, and full of unexpected discoveries.',
+      ],
+    },
+    limeEs: {
+      title: 'Laberinto Cítrico',
+      paragraphs: [
+        'Oculto bajo el follaje tropical se encuentra un laberinto como ningún otro. Enormes rodajas de limón forman muros luminosos, mientras enredaderas y senderos cambiantes conducen hacia un mundo esmeralda.',
+        'Trancy sigue un rastro de luz cítrica y descubre pasadizos secretos y patrones imposibles, mientras el laberinto se transforma a cada paso.',
+        'Así es Lime más allá de lo conocido. Brillante, intrigante y lleno de descubrimientos inesperados.',
+      ],
+    },
+  };
+  const allStoryText = Object.values(stories).flatMap(story => [story.title, ...story.paragraphs]);
+  const routes = [
+    { path: '/flavors/grape/', locale: 'en', story: stories.grapeEn },
+    { path: '/es/flavors/grape/', locale: 'es-MX', story: stories.grapeEs },
+    { path: '/flavors/cherry/', locale: 'en', story: stories.cherryEn },
+    { path: '/es/flavors/cherry/', locale: 'es-MX', story: stories.cherryEs },
+    { path: '/flavors/lime/', locale: 'en', story: stories.limeEn },
+    { path: '/es/flavors/lime/', locale: 'es-MX', story: stories.limeEs },
+  ];
 
-  await page.goto(`${origin}/es/flavors/grape/`);
-  await expect(page.locator('html')).toHaveAttribute('lang', 'es-MX');
-  const spanishStory = page.locator('.flavor-story');
-  await expect(spanishStory.getByRole('heading', { level: 3, name: 'Un relato de ejemplo.' })).toBeVisible();
-  await expect(spanishStory.locator('.story-copy p')).toHaveText(['Primer párrafo de ejemplo.', 'Segundo párrafo de ejemplo.']);
-  await expect(page.getByText('A sample English story.')).toHaveCount(0);
+  for (const route of routes) {
+    await page.goto(`${origin}${route.path}`);
+    await expect(page.locator('html')).toHaveAttribute('lang', route.locale);
+    const story = page.locator('.flavor-story');
+    await expect(story).toHaveCount(1);
+    await expect(story.getByRole('heading', { level: 3, name: route.story.title })).toBeVisible();
+    await expect(story.locator('.story-copy p')).toHaveText(route.story.paragraphs);
+    for (const otherStoryText of allStoryText.filter(text => ![route.story.title, ...route.story.paragraphs].includes(text))) {
+      await expect(page.getByText(otherStoryText, { exact: true })).toHaveCount(0);
+    }
+  }
 
-  for (const path of ['/flavors/cherry/', '/flavors/lime/', '/es/flavors/cherry/', '/es/flavors/lime/']) {
+  for (const path of ['/', '/es/', '/flavors/', '/es/flavors/']) {
     await page.goto(`${origin}${path}`);
     await expect(page.locator('.flavor-story')).toHaveCount(0);
-    await expect(page.getByText('A sample English story.')).toHaveCount(0);
-    await expect(page.getByText('Un relato de ejemplo.')).toHaveCount(0);
+    for (const storyText of allStoryText) await expect(page.getByText(storyText, { exact: true })).toHaveCount(0);
   }
 });

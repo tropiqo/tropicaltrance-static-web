@@ -71,6 +71,44 @@ test('English and Spanish flavor details reserve each artwork’s intrinsic dime
   }
 });
 
+test('flavor detail artwork is centered and proportionally reduced on each flavor page', async ({ page }) => {
+  for (const width of [390, 768, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const slug of ['cherry', 'grape', 'lime']) {
+      await page.goto(`/flavors/${slug}/`);
+      const frame = page.locator('.flavor-detail .detail-grid > .media-frame');
+      const image = frame.locator('img');
+      await expect(image).toBeVisible();
+      const layout = await frame.evaluate(element => {
+        const parent = element.parentElement!;
+        const rect = element.getBoundingClientRect();
+        const parentRect = parent.getBoundingClientRect();
+        const styles = getComputedStyle(parent);
+        const columns = styles.gridTemplateColumns.split(' ').map(Number.parseFloat);
+        const gap = Number.parseFloat(styles.columnGap);
+        const cellWidth = columns.at(-1)!;
+        const cellCenter = columns.length === 1
+          ? (parentRect.left + parentRect.right) / 2
+          : parentRect.left + columns[0] + gap + cellWidth / 2;
+        const image = element.querySelector('img')!;
+        return {
+          ratio: rect.width / cellWidth,
+          centered: Math.abs((rect.left + rect.right) / 2 - cellCenter) < 1,
+          objectFit: getComputedStyle(image).objectFit,
+          width: image.getBoundingClientRect().width,
+          height: image.getBoundingClientRect().height,
+          naturalWidth: (image as HTMLImageElement).naturalWidth,
+          naturalHeight: (image as HTMLImageElement).naturalHeight,
+        };
+      });
+      expect(layout.ratio).toBeCloseTo(0.7, 2);
+      expect(layout.centered).toBe(true);
+      expect(layout.objectFit).toBe('contain');
+      expect(layout.width / layout.height).toBeCloseTo(layout.naturalWidth / layout.naturalHeight, 2);
+    }
+  }
+});
+
 test('flavor collection keeps its carousel behavior and compacts artwork only above the mobile breakpoint', async ({ page }) => {
   const widths = [320, 375, 390, 768, 1024, 1280, 1440];
   const expectedLinks = ['/flavors/cherry/', '/flavors/grape/', '/flavors/lime/'];
