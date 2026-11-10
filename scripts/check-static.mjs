@@ -98,7 +98,9 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
     assert(!image[1].replace(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g,'').trim().replace(/^\/$/,''),'Unapproved image syntax');
     const expected = media[index];
     const wanted = {src:expected.mediaUrl,alt:expected.alt};
-    if (expected.width!==undefined) { wanted.width=String(expected.width); wanted.height=String(expected.height); }
+    const width=expected.width??expected.media?.width;
+    const height=expected.height??expected.media?.height;
+    if (width!==undefined && height!==undefined) { wanted.width=String(width); wanted.height=String(height); }
     else assert(!attrs.has('width') && !attrs.has('height'),'Unexpected Flavor image dimensions');
     for (const [name,value] of Object.entries(wanted)) assert.equal(attrs.get(name),value,'Role image '+name+' mismatch');
     assert(['eager','lazy'].includes(attrs.get('loading')) && attrs.get('decoding')==='async','Unexpected image loading behavior');
@@ -135,6 +137,8 @@ export async function checkFlavorMedia(base,release=loadRelease({base})) {
     const metadata=await sharp(resolve(base,'public-astro',flavor.mediaUrl.slice(1))).metadata();
     assert.equal(metadata.format,'webp','Flavor media must decode as WebP');
     assert(metadata.width>0 && metadata.height>0 && metadata.width<=1024 && metadata.height<=1536,'Flavor media dimensions exceed the web profile');
+    assert.equal(flavor.media?.width,metadata.width,'Flavor intrinsic width must match decoded media');
+    assert.equal(flavor.media?.height,metadata.height,'Flavor intrinsic height must match decoded media');
     assert(!metadata.pages || metadata.pages===1,'Animated Flavor media is not supported');
   }
   const poster=emeraldGatewayAssets.find(asset=>asset.format==='webp');

@@ -1,7 +1,7 @@
 ---
-import type { PublicFlavor } from './public-view';
+import type { LocalizedFlavor } from './public-view';
 import FlavorCard from './FlavorCard.astro';
-interface Props { flavors: PublicFlavor[]; locale?: 'en' | 'es-MX'; messages: any; }
+interface Props { flavors: LocalizedFlavor[]; locale?: 'en' | 'es-MX'; messages: any; }
 const { flavors, locale = 'en', messages } = Astro.props;
 const hasMultipleFlavors = flavors.length > 1;
 ---

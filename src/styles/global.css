@@ -87,10 +87,16 @@ a:hover { text-decoration-thickness: 0.14em; }
 .flavor-card { min-inline-size: 0; border-block-start: 3px solid var(--flavor-accent); padding-block-start: var(--space-4); }
 .flavor-card h2 { margin-block: var(--space-4) var(--space-3); }
 .flavor-card p { color: var(--color-muted); }
+.collection-section .flavor-card > .media-frame { overflow: hidden; }
+@media (hover: hover) and (pointer: fine) {
+  .collection-section .flavor-card > figure.media-frame > img { transform-origin: center; transition: transform 450ms ease; }
+  .collection-section .flavor-card > figure.media-frame:hover > img { transform: scale(1.05); }
+}
 .media-frame { display: block; min-inline-size: 0; color: var(--color-text); }
 .media-frame img { display: block; max-inline-size: none; max-block-size: none; inline-size: 100%; block-size: auto; object-fit: contain; }
 .flavor-detail { padding-block: var(--space-6) var(--space-7); }
 .detail-grid { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
+.detail-grid > .media-frame { inline-size: 70%; margin-inline: auto; }
 .detail-copy { display: grid; align-content: start; gap: var(--space-5); }
 .detail-copy h1 { font-size: clamp(2.5rem, 1.4rem + 5vw, 6rem); }
 .detail-copy .eyebrow { color: var(--flavor-accent); }
@@ -134,6 +140,7 @@ a:hover { text-decoration-thickness: 0.14em; }
   .editorial--split .editorial-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
   .flavor-swipe-hint { display: none; }
   .flavor-grid { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; padding-block: 0; scroll-snap-type: none; scroll-behavior: auto; scrollbar-width: auto; }
+  .collection-section .flavor-card > .media-frame { inline-size: 72%; margin-inline: auto; }
   .detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .footer-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   .footer-note { grid-column: 1 / -1; }
@@ -150,6 +157,7 @@ a:hover { text-decoration-thickness: 0.14em; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .flavor-grid--carousel { scroll-snap-type: none; }
+  .collection-section .flavor-card > figure.media-frame > img { transform: none !important; }
 }
 
 /* Intact shared mascot delivery: one image, natural proportions, no clipping or overlays. */

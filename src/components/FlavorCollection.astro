@@ -1,6 +1,6 @@
 ---
-import type { PublicFlavor } from './public-view';
-interface Props { flavors: PublicFlavor[]; locale?: 'en' | 'es-MX'; messages: any; }
+import type { LocalizedFlavor } from './public-view';
+interface Props { flavors: LocalizedFlavor[]; locale?: 'en' | 'es-MX'; messages: any; }
 import FlavorDiscovery from './FlavorDiscovery.astro';
 import EmptyCollectionState from './EmptyCollectionState.astro';
 const { flavors, locale = 'en', messages } = Astro.props;
