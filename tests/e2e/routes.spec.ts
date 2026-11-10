@@ -131,7 +131,7 @@ test('flavor collection keeps its carousel behavior and compacts artwork only ab
         await expect(cards.nth(0).getByRole('link')).toBeFocused();
       }
     } else {
-      expect(layout.compact).toBeCloseTo(0.72, 2);
+      expect(layout.compact).toBeCloseTo(width >= 1152 ? 0.5 : 0.72, 2);
       expect(layout.gridFlow).toBe('row');
       expect(layout.overflowX).toBe('visible');
       expect(layout.snapType).toBe('none');

@@ -10,3 +10,9 @@ const { flavors, locale = 'en', messages } = Astro.props;
     {flavors.length === 0 ? <EmptyCollectionState locale={locale} messages={messages} /> : <FlavorDiscovery flavors={flavors} locale={locale} messages={messages} />}
   </div>
 </section>
+
+<style>
+  @media (min-width: 72rem) {
+    .collection-section :global(.flavor-card > .media-frame) { inline-size: 50%; }
+  }
+</style>
