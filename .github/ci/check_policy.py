@@ -48,6 +48,7 @@ DEVELOPMENT_SCRIPT_DIGESTS = {
     "publish": "d97fbe107bf682cf365f6d4f66dc6f1784d953f0171ad2b5b28f07a782e4d450",
 }
 VALIDATION_STEPS = [
+    ("Audit dependency vulnerabilities", "npm audit --audit-level=high"),
     ("Test release version calculation", "python3 -B -m unittest discover -s .github/ci -p 'test_release_version.py' -v"),
     ("Validate application and isolated review builds", "npm run validate"),
     ("Install Chromium and required Linux dependencies", "npx playwright install --with-deps chromium"),
@@ -71,8 +72,8 @@ def check_workflow(workflow):
     require(isinstance(workflow["name"], str), "workflow name must be text")
     require(workflow["on"] == {
         "pull_request": {"branches": ["development", "master"]},
-        "push": {"branches": ["master"]},
-    }, "validation may run for pull requests to development/master and pushes to master only")
+        "push": {"branches": ["development", "master"]},
+    }, "validation may run for pull requests and pushes to development/master only")
     require(workflow["permissions"] == {"contents": "read"},
             "only contents:read permissions are allowed")
     jobs = workflow["jobs"]
@@ -85,8 +86,8 @@ def check_workflow(workflow):
     require(type(job["timeout-minutes"]) is int and job["timeout-minutes"] == 20,
             "policy job timeout must be twenty minutes")
     steps = job["steps"]
-    require(isinstance(steps, list) and len(steps) == 9,
-            "exactly reviewed checkout, policy, runtime, npm pin, locked install, website validation, and browser steps are allowed")
+    require(isinstance(steps, list) and len(steps) == 10,
+            "exactly reviewed checkout, policy, runtime, npm pin, locked install, mandatory dependency audit, website validation, and browser steps are allowed")
     checkout, check, setup, pin_npm, install, *validation = steps
     require(isinstance(checkout, dict) and set(checkout) == {"name", "uses", "with"},
             "unexpected checkout step fields")
@@ -667,9 +668,17 @@ def load_workflow(path):
 def negative_checks(valid):
     check_workflow(valid)
     mutations = {
+        "missing mandatory dependency audit": lambda w: w["jobs"]["policy"]["steps"].pop(5),
+        "audit threshold excludes high findings": lambda w: w["jobs"]["policy"]["steps"][5].update({"run": "npm audit --audit-level=critical"}),
+        "audit threshold makes moderate findings blocking": lambda w: w["jobs"]["policy"]["steps"][5].update({"run": "npm audit --audit-level=low"}),
+        "audit omits development dependencies": lambda w: w["jobs"]["policy"]["steps"][5].update({"run": "npm audit --audit-level=high --omit=dev"}),
+        "audit failure suppressed": lambda w: w["jobs"]["policy"]["steps"][5].update({"run": "npm audit --audit-level=high || true"}),
+        "audit combined with application test": lambda w: w["jobs"]["policy"]["steps"][5].update({"run": "npm audit --audit-level=high && npm run validate"}),
+        "audit moved after application validation": lambda w: w["jobs"]["policy"]["steps"].__setitem__(slice(5, 8), [w["jobs"]["policy"]["steps"][7], w["jobs"]["policy"]["steps"][6], w["jobs"]["policy"]["steps"][5]]),
         "missing development PR target": lambda w: w["on"]["pull_request"].update({"branches": ["master"]}),
         "unexpected PR target": lambda w: w["on"]["pull_request"]["branches"].append("main"),
-        "development push trigger": lambda w: w["on"]["push"].update({"branches": ["development", "master"]}),
+        "missing development push validation": lambda w: w["on"]["push"].update({"branches": ["master"]}),
+        "unexpected push target": lambda w: w["on"]["push"]["branches"].append("main"),
         "unexpected validation event": lambda w: w["on"].update({"workflow_dispatch": {}}),
         "PR deployment job": lambda w: w["jobs"].update({"deploy": {"needs": "policy"}}),
         "pages write": lambda w: w["permissions"].update({"pages": "write"}),
@@ -684,10 +693,10 @@ def negative_checks(valid):
         "persisted credentials": lambda w: w["jobs"]["policy"]["steps"][0]["with"].update({"persist-credentials": True}),
         "production secret": lambda w: w["jobs"]["policy"].update({"env": {"TOKEN": "${{ secrets.PRODUCTION_TOKEN }}"}}),
         "reusable release workflow": lambda w: w["jobs"]["policy"].update({"uses": "./.github/workflows/release.yml"}),
-        "nonexistent Astro command": lambda w: w["jobs"]["policy"]["steps"][6].update({"run": "npm run build"}),
-        "dependency installation": lambda w: w["jobs"]["policy"]["steps"][6].update({"run": "npm ci"}),
-        "all-browser installation": lambda w: w["jobs"]["policy"]["steps"][7].update({"run": "npx playwright install --with-deps"}),
-        "external browser test target": lambda w: w["jobs"]["policy"]["steps"][8].update({"run": "npm run test:e2e -- --config=https://example.invalid"}),
+        "nonexistent Astro command": lambda w: w["jobs"]["policy"]["steps"][7].update({"run": "npm run build"}),
+        "dependency installation": lambda w: w["jobs"]["policy"]["steps"][7].update({"run": "npm ci"}),
+        "all-browser installation": lambda w: w["jobs"]["policy"]["steps"][8].update({"run": "npx playwright install --with-deps"}),
+        "external browser test target": lambda w: w["jobs"]["policy"]["steps"][9].update({"run": "npm run test:e2e -- --config=https://example.invalid"}),
         "extra command": lambda w: w["jobs"]["policy"]["steps"][1].update({"run": COMMAND + "\ncurl https://example.invalid"}),
     }
     for name, mutate in mutations.items():
