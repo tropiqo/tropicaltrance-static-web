@@ -1,0 +1,28 @@
+{
+  "contractVersion": "1",
+  "kind": "website-editorial",
+  "flavor": {
+    "id": "lime",
+    "revision": "1"
+  },
+  "story": {
+    "translations": {
+      "en": {
+        "title": "Citrus Labyrinth",
+        "paragraphs": [
+          "Hidden beneath the tropical canopy lies a labyrinth unlike any other. Towering lime slices form luminous walls, while winding vines and shifting pathways lead deeper into an emerald world.",
+          "Trancy follows a trail of glowing citrus light, discovering secret passages and impossible patterns as the maze transforms with every step.",
+          "This is Lime beyond the familiar. Bright, intriguing, and full of unexpected discoveries."
+        ]
+      },
+      "es-MX": {
+        "title": "Laberinto Cítrico",
+        "paragraphs": [
+          "Oculto bajo el follaje tropical se encuentra un laberinto como ningún otro. Enormes rodajas de limón forman muros luminosos, mientras enredaderas y senderos cambiantes conducen hacia un mundo esmeralda.",
+          "Trancy sigue un rastro de luz cítrica y descubre pasadizos secretos y patrones imposibles, mientras el laberinto se transforma a cada paso.",
+          "Así es Lime más allá de lo conocido. Brillante, intrigante y lleno de descubrimientos inesperados."
+        ]
+      }
+    }
+  }
+}
