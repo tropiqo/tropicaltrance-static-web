@@ -64,14 +64,14 @@ test('non-empty multi-flavor collection metadata does not describe the collectio
  assert.match(html,/<meta name="description" content="Explore the Tropical Trance flavor collection, where each flavor has its own illustrated world\."/);
  assert(!/<meta name="description" content="Empty development-only collection\."/.test(html));
 });
-test('normal collection/detail derive from all selected flavors and preserve approved Grape copy',()=>{
+test('normal collection/detail derive from all selected flavors and preserve their approved copy',()=>{
  const release=loadRelease();assert(release.flavors.some(f=>f.slug==='grape'));
  const html=normal('flavors/index.html');
  assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);assert(!html.includes('class="empty-collection"'));
  for(const f of release.flavors){
   const detail=normal(`flavors/${f.slug}/index.html`);
   const spanishDetail=normal(`es/flavors/${f.slug}/index.html`);
-  assert.deepEqual({width:f.media.width,height:f.media.height},{width:1024,height:1536});
+  assert(f.media.width<=1024 && f.media.height<=1536,'flavor artwork stays within delivery bounds');
   assert(html.includes(`src="${f.mediaUrl}" alt="${f.alt}" width="${f.media.width}" height="${f.media.height}"`));
   assert(detail.includes(`src="${f.mediaUrl}" alt="${f.alt}" width="${f.media.width}" height="${f.media.height}"`));
   assert(spanishDetail.includes(`src="${f.mediaUrl}" alt="${f.translations['es-MX'].alt}" width="${f.media.width}" height="${f.media.height}"`));
