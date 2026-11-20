@@ -87,7 +87,7 @@ test('current development site stays noindex with origin and auth flags and omit
         assert(html(base,`${prefix}flavors/${slug}/index.html`).includes(`href="${localePath}flavors/"`),`${prefix}${slug} detail returns to collection`);
       }
     }
-    for(const [path,alt] of [['flavors/cherry/index.html','Trancy relaxes in a cherry-shaped boat'],['es/flavors/cherry/index.html','Trancy descansa en una lancha con forma de cereza'],['flavors/grape/index.html','Grape artwork featuring Trancy'],['es/flavors/lime/index.html','Trancy surfea por un paisaje surrealista de lima y cosmos']]) assert(html(base,path).includes(`alt="${alt}`),`${path} descriptive alt`);
+    for(const [path,alt] of [['flavors/cherry/index.html','Black Tropical Trance pouch labeled Cherry Club'],['es/flavors/cherry/index.html','Bolsa negra de Tropical Trance con la etiqueta Cherry Club'],['flavors/grape/index.html','Black Tropical Trance pouch labeled Grape Paradise'],['es/flavors/lime/index.html','Bolsa negra de Tropical Trance con la etiqueta Lemon Spice']]) assert(html(base,path).includes(`alt="${alt}`),`${path} descriptive alt`);
   } finally { rmSync(base,{recursive:true,force:true}); }
 });
 
