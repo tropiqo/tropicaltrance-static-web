@@ -35,9 +35,14 @@ const { messages, locale } = Astro.props;
                       decoding="async"
                     />
                   </button>
-                  <dialog class="apparel-image-dialog" id={dialogId} aria-label={image.alt[locale]}>
+                  <dialog class="apparel-image-dialog" id={dialogId} data-apparel-image-dialog data-image-index={index} aria-label={image.alt[locale]}>
                     <img src={`/${image.path}`} alt={image.alt[locale]} width={image.width} height={image.height} loading="lazy" decoding="async" />
-                    <button class="apparel-image-dialog__close" type="button" command="close" commandfor={dialogId} aria-label={messages.closeImage}>×</button>
+                    <div class="apparel-image-dialog__controls" role="group" aria-label={messages.imageControlsLabel}>
+                      <button class="apparel-image-dialog__nav" type="button" data-carousel-step="-1" aria-label={messages.previousImage} hidden>←</button>
+                      <p class="apparel-image-dialog__position" aria-live="polite">{messages.imagePosition.replace('{current}', String(index + 1)).replace('{total}', String(product.artwork.images.length))}</p>
+                      <button class="apparel-image-dialog__nav" type="button" data-carousel-step="1" aria-label={messages.nextImage} hidden>→</button>
+                      <button class="apparel-image-dialog__close" type="button" command="close" commandfor={dialogId} aria-label={messages.closeImage}>×</button>
+                    </div>
                   </dialog>
                 </div>;
               })}

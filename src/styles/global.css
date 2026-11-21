@@ -221,8 +221,14 @@ a:hover { text-decoration-thickness: 0.14em; }
 .apparel-image-dialog { position: fixed; inset: 0; inline-size: fit-content; max-inline-size: min(94vw, 76rem); max-block-size: 92vh; margin: auto; padding: 0; overflow: visible; border: 1px solid color-mix(in srgb, var(--accent-citrus) 35%, transparent); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 55%); }
 .apparel-image-dialog::backdrop { background: rgb(8 10 14 / 82%); }
 .apparel-image-dialog > img { display: block; inline-size: auto; max-inline-size: min(92vw, 74rem); block-size: auto; max-block-size: 88vh; margin: auto; object-fit: contain; border-radius: inherit; }
-.apparel-image-dialog__close { position: absolute; inset-block-start: var(--space-2); inset-inline-end: var(--space-2); display: grid; inline-size: 2.75rem; block-size: 2.75rem; place-items: center; border: 1px solid var(--color-text); border-radius: 50%; background: var(--color-surface); color: var(--color-text); font-size: 1.5rem; line-height: 1; cursor: pointer; }
-.apparel-image-dialog__close:focus-visible { outline: 3px solid var(--accent-citrus); outline-offset: 3px; }
+.apparel-image-dialog__controls { position: absolute; inset: 0; pointer-events: none; }
+.apparel-image-dialog__nav, .apparel-image-dialog__close { position: absolute; display: grid; place-items: center; border: 1px solid var(--color-text); border-radius: 50%; background: var(--color-surface); color: var(--color-text); cursor: pointer; pointer-events: auto; }
+.apparel-image-dialog__nav { inset-block-start: 50%; inline-size: 3rem; block-size: 3rem; transform: translateY(-50%); font-size: 1.5rem; }
+.apparel-image-dialog__nav[data-carousel-step="-1"] { inset-inline-start: var(--space-3); }
+.apparel-image-dialog__nav[data-carousel-step="1"] { inset-inline-end: var(--space-3); }
+.apparel-image-dialog__close { inset-block-start: var(--space-2); inset-inline-end: var(--space-2); inline-size: 2.75rem; block-size: 2.75rem; font-size: 1.5rem; line-height: 1; }
+.apparel-image-dialog__position { position: absolute; inset-block-end: var(--space-2); inset-inline-start: 50%; margin: 0; padding: 0.4rem 0.75rem; transform: translateX(-50%); border-radius: 999px; background: var(--color-surface); color: var(--color-text); font-size: var(--text-small); pointer-events: auto; }
+.apparel-image-dialog__nav:focus-visible, .apparel-image-dialog__close:focus-visible { outline: 3px solid var(--accent-citrus); outline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) {
   .apparel-photo-grid__item:hover .apparel-photo-grid__trigger img { transform: scale(1.14); }
 }

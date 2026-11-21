@@ -35,7 +35,7 @@ test('shared shell, semantic heading and working static primary/footer navigatio
     for (const part of nav) { assert.deepEqual([...part.matchAll(/href="([^"]+)"/g)].map(m=>m[1]),['/','/flavors/','/about/','/apparel/','/contact/']); assert(!/world|Trancy/i.test(part)); }
     assert.match(html,/<a[^>]*class="skip-link"[^>]*href="#main"/);assert.match(html,/<main id="main" tabindex="-1"/);
     assert(!/<(?:iframe|form|input|astro-island)\b/i.test(html));
-    assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?2:1);
+    assert.equal((html.match(/<script\b/g)||[]).length,1+Number(route==='about/index.html')+Number(route==='apparel/index.html'));
   }
 });
 test('Home uses approved copy and renders release-derived flavor previews',()=>{
@@ -155,7 +155,7 @@ test('decoration is hidden, static and separate from approved media; no remote C
     assert.equal((html.match(/<svg\b/gi)||[]).length,route==='apparel/index.html'?1:0);
     assert(!/<(?:canvas|audio|iframe)\b/i.test(html));
     assert.equal((html.match(/<video\b/g)||[]).length,route==='about/index.html'?1:0);
-    assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?2:1);
+    assert.equal((html.match(/<script\b/g)||[]).length,1+Number(route==='about/index.html')+Number(route==='apparel/index.html'));
     const expectedFlavorImages=['index.html','flavors/index.html'].includes(route)?release.flavors.length:0;
     const expectedTrancyImages=['index.html','about/index.html'].includes(route)?1:0;
     assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages+(route==='apparel/index.html'?apparelMedia.length*2:0));
@@ -200,7 +200,7 @@ test('presentation reads validated props only; contracts, fixture roots and publ
     const source=text(`src/components/${name}.astro`);assert(!/readFile|loadRelease|fetch\s*\(|fixture-|grape|cherry|lime|JSON\.parse|content\//.test(source));
   }
   const release=loadRelease();
-  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/mascot/trancy-web-r1.webp','public-astro/assets/scripts/cinematic-hero-video.js','public-astro/assets/video/emerald-gateway-poster.webp','public-astro/assets/video/emerald-gateway-web.mp4','public-astro/assets/scripts/language-preference.js',...apparelMedia.map(asset=>'public-astro/'+asset.path)].sort());
+  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/mascot/trancy-web-r1.webp','public-astro/assets/scripts/cinematic-hero-video.js','public-astro/assets/video/emerald-gateway-poster.webp','public-astro/assets/video/emerald-gateway-web.mp4','public-astro/assets/scripts/language-preference.js','public-astro/assets/scripts/apparel-image-carousel.js',...apparelMedia.map(asset=>'public-astro/'+asset.path)].sort());
   assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`),'es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)].sort());
 });
 

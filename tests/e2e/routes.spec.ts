@@ -45,7 +45,7 @@ for (const pageCase of pages) {
       expect(dimensions.document, `document overflow at ${width}px: ${JSON.stringify(dimensions)}`).toBeLessThanOrEqual(dimensions.viewport);
       expect(dimensions.body, `body overflow at ${width}px: ${JSON.stringify(dimensions)}`).toBeLessThanOrEqual(dimensions.viewport);
 
-      for (const img of await page.locator('img').all()) {
+      for (const img of await page.locator('img:visible').all()) {
         await img.scrollIntoViewIfNeeded();
         await expect.poll(() => img.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
       }
@@ -314,7 +314,7 @@ test('apparel presents hoodie mockups and the T-shirt concept outline without co
   await expect(photoFrames).toHaveCount(5);
   await expect(page.locator('.apparel-photo-grid a')).toHaveCount(0);
   const zoomImage = photoFrames.nth(1).locator('.apparel-photo-grid__trigger img');
-  const imageDialog = page.getByRole('dialog', { name: /hoodie/i }).first();
+  const imageDialog = page.locator('.apparel-image-dialog[open]');
   await expect(page.locator('.apparel-photo-grid__trigger')).toHaveCount(5);
   await photoFrames.nth(1).scrollIntoViewIfNeeded();
   const cardBounds = await photoFrames.nth(1).boundingBox();
@@ -326,11 +326,20 @@ test('apparel presents hoodie mockups and the T-shirt concept outline without co
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await photoFrames.nth(1).locator('.apparel-photo-grid__trigger').click();
   await expect(imageDialog).toBeVisible();
+  await expect(imageDialog.locator('img')).toHaveAttribute('alt', /Front of a black hoodie with a small white TT mark/);
+  await expect(imageDialog.getByRole('button', { name: 'Next image' })).toBeVisible();
+  await imageDialog.getByRole('button', { name: 'Next image' }).click();
+  await expect(imageDialog.locator('img')).toHaveAttribute('alt', /Angled close-up of white Gothic Tropical Trance lettering/);
+  await expect(imageDialog.locator('.apparel-image-dialog__position')).toHaveText('Image 3 of 5');
+  await imageDialog.getByRole('button', { name: 'Previous image' }).click();
+  await expect(imageDialog.locator('img')).toHaveAttribute('alt', /Front of a black hoodie with a small white TT mark/);
+  await page.keyboard.press('ArrowRight');
+  await expect(imageDialog.locator('img')).toHaveAttribute('alt', /Angled close-up of white Gothic Tropical Trance lettering/);
   await page.keyboard.press('Escape');
-  await expect(imageDialog).not.toBeVisible();
+  await expect(page.locator('.apparel-image-dialog[open]')).toHaveCount(0);
   await photoFrames.nth(1).locator('.apparel-photo-grid__trigger').click();
   await imageDialog.getByRole('button', { name: 'Close image preview' }).click();
-  await expect(imageDialog).not.toBeVisible();
+  await expect(page.locator('.apparel-image-dialog[open]')).toHaveCount(0);
   await expect(page.getByRole('img', { name: /T-shirt concept outline/ })).toBeVisible();
   await expect(page.getByText('Concept preview', { exact: true })).toHaveCount(2);
   await expect(page.getByText(/Product specifications and purchasing details are not approved/)).toBeVisible();
@@ -342,9 +351,12 @@ test('apparel presents hoodie mockups and the T-shirt concept outline without co
   await expect(page.locator('.apparel-photo-grid__trigger img')).toHaveCount(5);
   await expect(page.locator('.apparel-photo-grid a')).toHaveCount(0);
   await page.locator('.apparel-photo-grid__trigger').first().click();
-  const spanishDialog = page.getByRole('dialog', { name: /sudadera negra/i }).first();
+  const spanishDialog = page.locator('.apparel-image-dialog[open]');
   await expect(spanishDialog).toBeVisible();
   await expect(spanishDialog.getByRole('button', { name: 'Cerrar vista previa de imagen' })).toBeVisible();
+  await spanishDialog.getByRole('button', { name: 'Imagen anterior' }).click();
+  await expect(spanishDialog.locator('img')).toHaveAttribute('alt', /Frente de una sudadera negra con letras blancas invertidas/);
+  await expect(spanishDialog.locator('.apparel-image-dialog__position')).toHaveText('Imagen 5 de 5');
   await page.keyboard.press('Escape');
   await expect(spanishDialog).not.toBeVisible();
   await expect(page.getByRole('img', { name: /sudadera negra/i })).toHaveCount(3);

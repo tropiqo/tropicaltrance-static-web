@@ -8,6 +8,7 @@ import { prepareTrancyReview } from './prepare-trancy-review.mjs';
 import { loadTrancyReview } from './trancy-review-release.mjs';
 import { trancyReviewSelection as selected } from './trancy-review-identity.mjs';
 import { apparelMedia } from '../src/data/apparel-products.mjs';
+import { apparelCarouselAssets } from './apparel-static.mjs';
 const root = new URL('../', import.meta.url);
 loadRelease({ review: true });
 // The explicit local review command may prepare missing preview bytes; never repair drift.
@@ -21,6 +22,11 @@ mkdirSync(resolve('.review-build', 'review-media'), { recursive: true });
 copyFileSync(selected.path, resolve('.review-build', selected.outputPath));
 mkdirSync(resolve('.review-build', 'assets/scripts'), { recursive: true });
 copyFileSync(resolve('public-astro/assets/scripts/language-preference.js'), resolve('.review-build/assets/scripts/language-preference.js'));
+for (const asset of apparelCarouselAssets) {
+  const output = resolve('.review-build', asset.path.slice('public-astro/'.length));
+  mkdirSync(dirname(output), { recursive: true });
+  copyFileSync(resolve(asset.path), output);
+}
 for (const asset of apparelMedia) {
   const output = resolve('.review-build', asset.path);
   mkdirSync(dirname(output), { recursive: true });

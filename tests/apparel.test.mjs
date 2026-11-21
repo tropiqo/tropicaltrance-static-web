@@ -35,6 +35,8 @@ test('bilingual apparel routes show the hoodie gallery and T-shirt outline witho
     assert(!/<(?:form|input)\b/i.test(html));
     assert.equal((html.match(/<dialog\b/g)||[]).length,apparelMedia.length);
     assert.equal((html.match(/command="show-modal"/g)||[]).length,apparelMedia.length);
-    assert(!/add to cart|price|pricing|size picker|stock|inventory|wa\.me|whatsapp\.com|<script[^>]*apparel/i.test(html));
+    assert.equal((html.match(/data-carousel-step=/g)||[]).length,apparelMedia.length*2);
+    assert.equal((html.match(/<script type="module" src="\/assets\/scripts\/apparel-image-carousel\.js"><\/script>/g)||[]).length,1);
+    assert(!/add to cart|price|pricing|size picker|stock|inventory|wa\.me|whatsapp\.com|<script>(?!\s*<\/script>)/i.test(html));
   }
 });

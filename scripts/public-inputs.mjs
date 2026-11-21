@@ -7,6 +7,7 @@ import { parseJson, validateSchema } from './closed-json.mjs';
 import { fixtureDigests, fixtureMarker } from './fixture-guards.mjs';
 import { trancy, validateTrancy } from './trancy-static.mjs';
 import { emeraldGatewayAssets, emeraldGatewayMedia, localizationAssets } from './emerald-gateway-static.mjs';
+import { apparelCarouselAssets } from './apparel-static.mjs';
 import { channelsForFlavor, loadSalesChannels } from './sales-channels.mjs';
 import { apparelMedia, validateApparelProducts } from '../src/data/apparel-products.mjs';
 
@@ -210,7 +211,7 @@ function loadFlavorContent({base}) {
     same(digest(bytes),asset.contentId,'Apparel concept image digest mismatch');
     requireThat(bytes.length>8 && bytes.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])),'Apparel concept image is not a PNG');
   }
-  const selected=new Set([trancy.path,...deliveries.map(d=>d.path),...emeraldGatewayAssets.map(asset=>asset.path),...localizationAssets.map(asset=>asset.path),...apparelPaths]);
+  const selected=new Set([trancy.path,...deliveries.map(d=>d.path),...emeraldGatewayAssets.map(asset=>asset.path),...localizationAssets.map(asset=>asset.path),...apparelCarouselAssets.map(asset=>asset.path),...apparelPaths]);
   const trancyPath=safePath(base,trancy.path);
   requireThat(lstatSync(trancyPath).isFile(),'Expected regular static Trancy image');
   validateTrancy(readFileSync(trancyPath));
@@ -226,6 +227,11 @@ function loadFlavorContent({base}) {
     const bytes=readFileSync(safePath(base,asset.path));
     requireThat(bytes.length===asset.size,'Localization script byte size mismatch');
     same(digest(bytes),asset.contentId,'Localization script digest mismatch');
+  }
+  for (const asset of apparelCarouselAssets) {
+    const bytes=readFileSync(safePath(base,asset.path));
+    requireThat(bytes.length===asset.size,'Apparel carousel script byte size mismatch');
+    same(digest(bytes),asset.contentId,'Apparel carousel script digest mismatch');
   }
   same(inventory(base,'public-astro').sort(),[...selected].sort(),'Unlisted file would be copied by publicDir');
   return {site,flavors,review:false,deliveries,aboutHeroMedia:emeraldGatewayMedia};
