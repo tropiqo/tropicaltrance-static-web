@@ -240,7 +240,7 @@ def audit(root, indexing_authorized=False):
         except (ValueError, KeyError) as error:
             raise ValueError(f"{page}: {error}") from error
     for page, file in files.items():
-        if not page.endswith(".html") and page not in {"robots.txt", "sitemap.xml", "assets/apparel/.gitkeep"}:
+        if not page.endswith(".html") and page not in {"robots.txt", "sitemap.xml"}:
             require(page in referenced, f"Unreferenced output resource: {page}")
         if page.endswith(".css"):
             require(not re.search(r"url\s*\(|@import\b|sourceMappingURL", file.read_text(), re.I), f"Unreviewed CSS resource/map: {page}")

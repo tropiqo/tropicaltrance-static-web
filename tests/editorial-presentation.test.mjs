@@ -7,6 +7,7 @@ import { trancyMedia } from '../scripts/trancy-static.mjs';
 import { loadRelease, inventory, digest } from '../scripts/public-inputs.mjs';
 import { checkOutput, routes, checkSource } from '../scripts/check-static.mjs';
 import { checkReviewOutput } from '../scripts/check-review.mjs';
+import { apparelMedia } from '../src/data/apparel-products.mjs';
 const root = process.cwd();
 const text = path => readFileSync(resolve(root,path),'utf8');
 const normal = path => text('dist/'+path);
@@ -133,7 +134,7 @@ test('Spanish pages localize interface, metadata, accessibility text, flavor con
   const grapeRecord=loadRelease().flavors.find(flavor=>flavor.slug==='grape');
   for(const html of [home,about,collection,apparel,grape,contact])assert.match(html,/<html lang="es-MX"/);
   for(const phrase of ['Saltar al contenido','Inicio','Sabores','Acerca de','Ropa','Contacto','Sitio exclusivo de desarrollo.','Sigue con curiosidad. Vive lo tropical.'])assert(home.includes(phrase));
-  assert(apparel.includes('Dos ideas en contorno')&&apparel.includes('Vista previa conceptual')&&apparel.includes('Playera'));
+  assert(apparel.includes('Mockups de sudadera y contorno de playera')&&apparel.includes('Vista previa conceptual')&&apparel.includes('Playera'));
   assert(home.includes('Cada sabor. Una nueva aventura.'));
   assert(home.includes('Trancy, el camaleón verde de Tropical Trance'));
   assert(collection.includes('Desliza para explorar'));
@@ -151,13 +152,13 @@ test('decoration is hidden, static and separate from approved media; no remote C
   const release=loadRelease();
   for(const route of routes) {
     const html=normal(route);for(const block of html.matchAll(/<div class="decorative-background[^>]*>/g))assert.match(block[0],/aria-hidden="true"/);
-    assert.equal((html.match(/<svg\b/gi)||[]).length,route==='apparel/index.html'?2:0);
+    assert.equal((html.match(/<svg\b/gi)||[]).length,route==='apparel/index.html'?1:0);
     assert(!/<(?:canvas|audio|iframe)\b/i.test(html));
     assert.equal((html.match(/<video\b/g)||[]).length,route==='about/index.html'?1:0);
     assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?2:1);
     const expectedFlavorImages=['index.html','flavors/index.html'].includes(route)?release.flavors.length:0;
     const expectedTrancyImages=['index.html','about/index.html'].includes(route)?1:0;
-    assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages);
+    assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages+(route==='apparel/index.html'?apparelMedia.length:0));
   }
   const css=text('src/styles/global.css');assert.match(css,/object-fit: contain/);assert(!/object-fit:\s*cover|@font-face|https?:|url\(|@keyframes/.test(css));
   assert.match(text('src/components/DecorativeBackground.astro'),/aria-hidden="true"/);assert.match(css,/pointer-events: none/);
@@ -196,7 +197,7 @@ test('presentation reads validated props only; contracts, fixture roots and publ
     const source=text(`src/components/${name}.astro`);assert(!/readFile|loadRelease|fetch\s*\(|fixture-|grape|cherry|lime|JSON\.parse|content\//.test(source));
   }
   const release=loadRelease();
-  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/mascot/trancy-web-r1.webp','public-astro/assets/scripts/cinematic-hero-video.js','public-astro/assets/video/emerald-gateway-poster.webp','public-astro/assets/video/emerald-gateway-web.mp4','public-astro/assets/scripts/language-preference.js','public-astro/assets/apparel/.gitkeep'].sort());
+  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/mascot/trancy-web-r1.webp','public-astro/assets/scripts/cinematic-hero-video.js','public-astro/assets/video/emerald-gateway-poster.webp','public-astro/assets/video/emerald-gateway-web.mp4','public-astro/assets/scripts/language-preference.js',...apparelMedia.map(asset=>'public-astro/'+asset.path)].sort());
   assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`),'es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)].sort());
 });
 
@@ -216,7 +217,7 @@ test('local Trancy candidate anchors Home and About with one intact delivery', a
     const html=normal(route),images=[...html.matchAll(/<img\b[^>]*>/g)].map(match=>match[0]);
     assert(!html.includes('/review-media/'));
     assert.equal(images.filter(image=>image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','about/index.html'].includes(route)?1:0);
-    assert.equal(images.filter(image=>!image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','flavors/index.html'].includes(route)?release.flavors.length:0);
+    assert.equal(images.filter(image=>!image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','flavors/index.html'].includes(route)?release.flavors.length:route==='apparel/index.html'?apparelMedia.length:0);
   }
   for (const route of ['contact/index.html', '404.html', 'flavors/index.html', 'flavors/fixture-coral/index.html', 'flavors/fixture-orchid/index.html']) assert(!fixture(route).includes('/review-media/'));
 });

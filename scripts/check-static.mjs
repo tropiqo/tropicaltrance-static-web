@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { loadRelease, rejectFixture, digest } from './public-inputs.mjs';
 import { trancy, trancyMedia, validateTrancy } from './trancy-static.mjs';
-import { emeraldGatewayAssets, localizationAssets, apparelDirectoryMarker } from './emerald-gateway-static.mjs';
+import { emeraldGatewayAssets, localizationAssets } from './emerald-gateway-static.mjs';
 import { readdir, readFile, lstat } from 'node:fs/promises';
 import { resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,7 @@ import { auditRendered } from './rendered-audit.mjs';
 import sharp from 'sharp';
 import { getMessages } from '../src/i18n/messages.mjs';
 import { pageMetadata, seoBuildSettings, renderRobots, renderSitemap, sitemapEntries } from './seo-metadata.mjs';
-import { validateApparelProducts } from '../src/data/apparel-products.mjs';
+import { apparelMedia, validateApparelProducts } from '../src/data/apparel-products.mjs';
 
 export const routes = ['index.html', 'about/index.html', 'apparel/index.html', 'contact/index.html', 'flavors/index.html', '404.html'];
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -27,7 +27,7 @@ export function checkInventory(paths, deliveries = [], flavors = [], seoSettings
   const expectedRoutes = [...routes,...flavors.map(f=>'flavors/'+f.slug+'/index.html')];
   const spanishRoutes = ['es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
   const allRoutes = [...expectedRoutes,...spanishRoutes];
-  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length)), ...localizationAssets.map(asset => asset.path.slice('public-astro/'.length)), apparelDirectoryMarker.slice('public-astro/'.length)];
+  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length)), ...localizationAssets.map(asset => asset.path.slice('public-astro/'.length)), ...apparelMedia.map(asset=>asset.path)];
   assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), allRoutes.sort(), 'Unexpected static routes');
   assert.equal(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)).length, 1, 'Exactly one referenced stylesheet');
   const seoFiles = ['robots.txt', ...(seoSettings.indexingAuthorized ? ['sitemap.xml'] : [])];
@@ -187,6 +187,8 @@ export async function checkOutput(base = root) {
     if (servedPath === trancy.path) validateTrancy(bytes);
     else rejectFixture(bytes);
     if (delivery) assert.equal(digest(bytes),delivery.asset.contentId,'Output delivery digest mismatch');
+    const apparelAsset=apparelMedia.find(asset=>'public-astro/'+asset.path===servedPath);
+    if (apparelAsset) assert.equal(digest(bytes),apparelAsset.contentId,'Apparel concept output digest mismatch');
     const aboutAsset=[...emeraldGatewayAssets,...localizationAssets].find(asset=>asset.path===servedPath);
     if (aboutAsset) {
       assert.equal(bytes.length,aboutAsset.size,'Emerald Gateway output byte size mismatch');
@@ -205,7 +207,8 @@ export async function checkOutput(base = root) {
     const pageFlavors=isSpanish?release.flavors.map(f=>({...f,...(f.translations?.['es-MX']||{})})):release.flavors;
     const pageTrancy=isSpanish?{...trancyMedia,alt:getMessages('es-MX').home.trancyAlt}:trancyMedia;
     const detail = pageFlavors.find(f=>basePage==='flavors/'+f.slug+'/index.html');
-    const media = basePage==='index.html' ? [pageTrancy,...pageFlavors] : role ? [pageTrancy] : basePage==='flavors/index.html' ? pageFlavors : detail ? [detail] : [];
+    const pageApparel=basePage==='apparel/index.html'?apparelMedia.map(asset=>({mediaUrl:'/'+asset.path,alt:asset.alt[locale==='es-MX'?'es-MX':'en'],width:asset.width,height:asset.height})):[];
+    const media = basePage==='index.html' ? [pageTrancy,...pageFlavors] : role ? [pageTrancy] : basePage==='flavors/index.html' ? pageFlavors : detail ? [detail] : pageApparel;
     const salesChannels=detail?.salesChannels||[];
     const whatsappBusinessUrl=basePage==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
     const businessEmail=basePage==='contact/index.html' ? release.site.contact?.businessEmail ?? null : null;
@@ -215,10 +218,7 @@ export async function checkOutput(base = root) {
     const metadataDescription=pageKind==='home'?messages.home.metaDescription:pageKind==='about'?messages.about.metaDescription:pageKind==='apparel'?messages.apparel.metaDescription:pageKind==='flavors'?messages.flavors.metaDescription:pageKind==='contact'?messages.contact.metaDescription:pageKind==='detail'?detail.shortDescription:messages.notFound.description;
     const seo=pageMetadata({page:pageKind,locale,title:metadataTitle,description:metadataDescription,flavor:detail,settings:seoSettings});
     checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale,seo,seoSettings.indexingAuthorized,businessEmail);
-    if (basePage==='apparel/index.html') {
-      assert.equal((html.match(/<img\b/gi)||[]).length,0,'Apparel concept art must remain inline SVG without image delivery');
-      assert.equal((html.match(/<svg\b/gi)||[]).length,2,'Apparel page must contain exactly two inline concept outlines');
-    }
+    if (basePage==='apparel/index.html') assert.equal((html.match(/<svg\b/gi)||[]).length,1,'Apparel page must retain the T-shirt concept outline');
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = decodeAttribute(match[1]).split('#');

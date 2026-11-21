@@ -3,10 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { loadRelease } from './public-inputs.mjs';
 import { checkReviewOutput } from './check-review.mjs';
 import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { prepareTrancyReview } from './prepare-trancy-review.mjs';
 import { loadTrancyReview } from './trancy-review-release.mjs';
 import { trancyReviewSelection as selected } from './trancy-review-identity.mjs';
+import { apparelMedia } from '../src/data/apparel-products.mjs';
 const root = new URL('../', import.meta.url);
 loadRelease({ review: true });
 // The explicit local review command may prepare missing preview bytes; never repair drift.
@@ -20,5 +21,10 @@ mkdirSync(resolve('.review-build', 'review-media'), { recursive: true });
 copyFileSync(selected.path, resolve('.review-build', selected.outputPath));
 mkdirSync(resolve('.review-build', 'assets/scripts'), { recursive: true });
 copyFileSync(resolve('public-astro/assets/scripts/language-preference.js'), resolve('.review-build/assets/scripts/language-preference.js'));
+for (const asset of apparelMedia) {
+  const output = resolve('.review-build', asset.path);
+  mkdirSync(dirname(output), { recursive: true });
+  copyFileSync(resolve('public-astro', asset.path), output);
+}
 await checkReviewOutput();
 console.log('LOCAL MASCOT REVIEW ONLY + INTERNAL SYNTHETIC Flavor examples: isolated review build PASS');

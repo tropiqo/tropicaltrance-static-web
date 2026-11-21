@@ -36,5 +36,3 @@ export const localizationAssets = Object.freeze([
     format: 'js',
   }),
 ]);
-
-export const apparelDirectoryMarker = 'public-astro/assets/apparel/.gitkeep';

@@ -64,7 +64,7 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
 
 {page === 'apparel' && <SiteLayout page={page} locale={locale} title={t.apparel.metaTitle} description={t.apparel.metaDescription}>
   <EditorialHero title={t.apparel.title} description={t.apparel.description} eyebrow={t.apparel.eyebrow} decoration="orbit" atmosphere />
-  <ApparelShowcase messages={t.apparel} />
+  <ApparelShowcase messages={t.apparel} locale={locale} />
 </SiteLayout>}
 
 {page === 'detail' && <SiteLayout page={page} locale={locale} flavor={sourceFlavor} title={flavor.name} description={flavor.shortDescription}>

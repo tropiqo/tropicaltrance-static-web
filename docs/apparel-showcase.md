@@ -1,7 +1,7 @@
 # Apparel concept showcase
 
-The English and Mexican Spanish apparel routes render two temporary, inline SVG outlines: a hoodie and a T-shirt. Both are clearly labeled as concept previews. They are not approved garment artwork or product offers.
+The English and Mexican Spanish apparel routes show five owner-provided hoodie mockups and one temporary T-shirt outline. Every garment is labeled as a concept preview. The hoodie images are approved for concept display only; they do not establish final garment specifications, production approval, pricing, or a product offer.
 
-`src/data/apparel-products.mjs` records the media state for each item. The validator only accepts the inline concept state, with no local source path, digest, alt text, or owner approval. The closed `public-astro` inventory remains unchanged.
+`src/data/apparel-products.mjs` records the media state for each item. Hoodie images are pinned to exact local paths and SHA-256 digests and include descriptive English and Mexican Spanish alt text. `scripts/public-inputs.mjs` verifies their bytes and the closed `public-astro` inventory rejects any additional file. The T-shirt remains inline SVG because no T-shirt image was supplied.
 
-Replacing a concept with photography or approved artwork requires owner approval first. Add only local assets, record each exact path and SHA-256 in a closed inventory, provide descriptive English and Mexican Spanish alt text, and add checks for those bytes and rendered routes. Do not add remote images, commerce actions, or product details that have not been approved.
+Any new or replacement apparel image requires owner approval for its intended use, a local path and SHA-256 digest in the closed inventory, descriptive English and Mexican Spanish alt text, byte checks, and rendered-route verification. Approval to display a concept image does not approve production, publication, pricing, or purchasing details. Do not add remote images or commerce actions.

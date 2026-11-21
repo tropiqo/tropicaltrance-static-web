@@ -304,20 +304,22 @@ test('navigation works between primary routes and footer links are available', a
   }
 });
 
-test('apparel presents two accessible concept-only outlines without commerce controls', async ({ page }) => {
+test('apparel presents hoodie mockups and the T-shirt concept outline without commerce controls', async ({ page }) => {
   await page.goto('/apparel/');
   const gallery = page.getByRole('list', { name: 'Apparel concept previews' });
   await expect(gallery.getByRole('listitem')).toHaveCount(2);
-  await expect(page.getByRole('img', { name: /Hoodie concept outline/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /black hoodie/i })).toHaveCount(5);
+  await expect(page.locator('.apparel-photo-grid')).toHaveAccessibleName('Hoodie concept image gallery');
   await expect(page.getByRole('img', { name: /T-shirt concept outline/ })).toBeVisible();
   await expect(page.getByText('Concept preview', { exact: true })).toHaveCount(2);
-  await expect(page.getByText(/require owner approval before any product assets are added/)).toBeVisible();
-  await expect(page.locator('.apparel-showcase img, .apparel-showcase button, .apparel-showcase form, .apparel-showcase input')).toHaveCount(0);
-  await expect(page.locator('.apparel-showcase svg')).toHaveCount(2);
+  await expect(page.getByText(/Product specifications and purchasing details are not approved/)).toBeVisible();
+  await expect(page.locator('.apparel-showcase button, .apparel-showcase form, .apparel-showcase input')).toHaveCount(0);
+  await expect(page.locator('.apparel-showcase svg')).toHaveCount(1);
 
   await page.goto('/es/apparel/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Conceptos de ropa');
-  await expect(page.getByRole('img', { name: /Contorno conceptual de una sudadera/ })).toBeVisible();
+  await expect(page.locator('.apparel-photo-grid img')).toHaveCount(5);
+  await expect(page.getByRole('img', { name: /sudadera negra/i })).toHaveCount(3);
   await expect(page.getByRole('img', { name: /Contorno conceptual de una playera/ })).toBeVisible();
   const languageSelector = page.getByRole('group', { name: 'Elegir idioma' });
   await expect(languageSelector.getByRole('link', { name: 'Ver esta página en inglés' })).toHaveAttribute('href', '/apparel/');
