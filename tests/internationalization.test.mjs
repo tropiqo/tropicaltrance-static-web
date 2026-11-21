@@ -7,7 +7,7 @@ import { loadRelease } from '../scripts/public-inputs.mjs';
 test('English and Mexican Spanish dictionaries have the same complete, non-empty key set', () => {
   const keys = validateMessages();
   assert(keys.includes('about.playVideo'));
-  assert(keys.includes('apparel.products.hoodie.visualDescription'));
+  assert(keys.includes('apparel.products.tshirt.imageGalleryLabel'));
   assert(keys.includes('contact.whatsappLabel'));
   assert.equal(getMessages('en').language, 'en');
   assert.equal(getMessages('es-MX').language, 'es-MX');

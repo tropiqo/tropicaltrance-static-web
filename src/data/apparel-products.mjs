@@ -46,13 +46,44 @@ const hoodieConceptImages = Object.freeze([
   }),
 ]);
 
-const conceptArtwork = Object.freeze({
-  kind: 'inline-svg-concept',
-  sourcePath: null,
-  contentId: null,
-  alt: Object.freeze({ en: null, 'es-MX': null }),
-  ownerApproved: false,
-});
+const tshirtConceptImages = Object.freeze([
+  Object.freeze({
+    path: 'assets/apparel/tshirt/Front-Side-T-Shirt.png',
+    contentId: 'sha256:838107076c06a48d5d968ef127c0e405790f7630efb4bb3245659e8ddd32f49b',
+    width: 1122, height: 1402,
+    alt: Object.freeze({
+      en: 'Front of a black T-shirt with a small Tropical Trance chest mark, pink flower, and green leaf.',
+      'es-MX': 'Frente de una playera negra con una pequeña marca de Tropical Trance, una flor rosa y una hoja verde en el pecho.',
+    }),
+  }),
+  Object.freeze({
+    path: 'assets/apparel/tshirt/Front-Side-2-T-Shirt.png',
+    contentId: 'sha256:6772b398ad6da84a4af280e16fcf3f06630479b71806393f8f671ab2ab566ff7',
+    width: 1122, height: 1402,
+    alt: Object.freeze({
+      en: 'Angled front view of a black T-shirt with a small Tropical Trance chest mark, pink flower, and green leaf.',
+      'es-MX': 'Vista frontal en ángulo de una playera negra con una pequeña marca de Tropical Trance, una flor rosa y una hoja verde en el pecho.',
+    }),
+  }),
+  Object.freeze({
+    path: 'assets/apparel/tshirt/Back-Side-T-Shirt.png',
+    contentId: 'sha256:77954eaa3f61dc97264797a6d13b9c7ae0e58701ad22ab9673308b2bc5bdeb76',
+    width: 1122, height: 1402,
+    alt: Object.freeze({
+      en: 'Back of a black T-shirt with large warm-white Gothic Tropical Trance lettering.',
+      'es-MX': 'Parte trasera de una playera negra con letras góticas grandes en color crema de Tropical Trance.',
+    }),
+  }),
+  Object.freeze({
+    path: 'assets/apparel/tshirt/Back-Side-2-T-Shirt.png',
+    contentId: 'sha256:dc18fae37e578de0a11c700070a9f66f462c60092f3568066f9825acaeb77d86',
+    width: 1122, height: 1402,
+    alt: Object.freeze({
+      en: 'Angled back view of a black T-shirt with large warm-white Gothic Tropical Trance lettering.',
+      'es-MX': 'Vista trasera en ángulo de una playera negra con letras góticas grandes en color crema de Tropical Trance.',
+    }),
+  }),
+]);
 
 // Owner approval here covers display of these user-provided mockups as concepts only,
 // not production, sale, publication, or approval of garment specifications.
@@ -61,18 +92,23 @@ const hoodieArtwork = Object.freeze({
   ownerApproved: true,
   images: hoodieConceptImages,
 });
+const tshirtArtwork = Object.freeze({
+  kind: 'owner-approved-concept-images',
+  ownerApproved: true,
+  images: tshirtConceptImages,
+});
 
 export const apparelProducts = Object.freeze([
   Object.freeze({ id: 'hoodie', visual: 'hoodie-concept-gallery', artwork: hoodieArtwork }),
-  Object.freeze({ id: 'tshirt', visual: 'tshirt-outline', artwork: conceptArtwork }),
+  Object.freeze({ id: 'tshirt', visual: 'tshirt-concept-gallery', artwork: tshirtArtwork }),
 ]);
 
-export const apparelMedia = Object.freeze(hoodieConceptImages);
+export const apparelMedia = Object.freeze([...hoodieConceptImages, ...tshirtConceptImages]);
 
 const expectedProducts = Object.freeze(['hoodie', 'tshirt']);
 const expectedArtwork = new Map([
   ['hoodie', JSON.stringify(hoodieArtwork)],
-  ['tshirt', JSON.stringify(conceptArtwork)],
+  ['tshirt', JSON.stringify(tshirtArtwork)],
 ]);
 
 export function validateApparelProducts(products = apparelProducts) {
@@ -82,7 +118,7 @@ export function validateApparelProducts(products = apparelProducts) {
   for (const product of products) {
     const visualAllowed = product.id === 'hoodie'
       ? product.visual === 'hoodie-concept-gallery'
-      : product.visual === 'tshirt-outline';
+      : product.visual === 'tshirt-concept-gallery';
     if (!visualAllowed || JSON.stringify(product.artwork) !== expectedArtwork.get(product.id)) {
       throw new Error('Apparel media requires an exact local asset inventory and owner-approved concept state');
     }

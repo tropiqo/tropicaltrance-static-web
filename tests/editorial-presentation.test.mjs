@@ -134,7 +134,7 @@ test('Spanish pages localize interface, metadata, accessibility text, flavor con
   const grapeRecord=loadRelease().flavors.find(flavor=>flavor.slug==='grape');
   for(const html of [home,about,collection,apparel,grape,contact])assert.match(html,/<html lang="es-MX"/);
   for(const phrase of ['Saltar al contenido','Inicio','Sabores','Acerca de','Ropa','Contacto','Sitio exclusivo de desarrollo.','Sigue con curiosidad. Vive lo tropical.'])assert(home.includes(phrase));
-  assert(apparel.includes('Mockups de sudadera y contorno de playera')&&apparel.includes('Vista previa conceptual')&&apparel.includes('Playera'));
+  assert(apparel.includes('Mockups de sudadera y playera')&&apparel.includes('Vista previa conceptual')&&apparel.includes('Playera'));
   assert(home.includes('Cada sabor. Una nueva aventura.'));
   assert(home.includes('Trancy, el camaleón verde de Tropical Trance'));
   assert(collection.includes('Desliza para explorar'));
@@ -152,7 +152,7 @@ test('decoration is hidden, static and separate from approved media; no remote C
   const release=loadRelease();
   for(const route of routes) {
     const html=normal(route);for(const block of html.matchAll(/<div class="decorative-background[^>]*>/g))assert.match(block[0],/aria-hidden="true"/);
-    assert.equal((html.match(/<svg\b/gi)||[]).length,route==='apparel/index.html'?1:0);
+    assert.equal((html.match(/<svg\b/gi)||[]).length,0);
     assert(!/<(?:canvas|audio|iframe)\b/i.test(html));
     assert.equal((html.match(/<video\b/g)||[]).length,route==='about/index.html'?1:0);
     assert.equal((html.match(/<script\b/g)||[]).length,1+Number(route==='about/index.html')+Number(route==='apparel/index.html'));

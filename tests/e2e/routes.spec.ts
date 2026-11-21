@@ -304,18 +304,23 @@ test('navigation works between primary routes and footer links are available', a
   }
 });
 
-test('apparel presents hoodie mockups and the T-shirt concept outline without commerce controls', async ({ page }) => {
+test('apparel presents hoodie and T-shirt mockups without commerce controls', async ({ page }) => {
   await page.goto('/apparel/');
   const gallery = page.getByRole('list', { name: 'Apparel concept previews' });
   await expect(gallery.getByRole('listitem')).toHaveCount(2);
   await expect(page.getByRole('img', { name: /black hoodie/i })).toHaveCount(5);
-  await expect(page.locator('.apparel-photo-grid')).toHaveAccessibleName('Hoodie concept image gallery');
-  const photoFrames = page.locator('.apparel-photo-grid__item');
+  await expect(page.getByRole('img', { name: /black T-shirt/i })).toHaveCount(4);
+  const hoodieGallery = page.getByRole('group', { name: 'Hoodie concept image gallery' });
+  await expect(hoodieGallery).toBeVisible();
+  const tShirtGallery = page.locator('.apparel-photo-grid').nth(1);
+  await expect(tShirtGallery).toHaveAccessibleName('T-shirt concept image gallery');
+  await expect(tShirtGallery.locator('.apparel-photo-grid__trigger')).toHaveCount(4);
+  const photoFrames = hoodieGallery.locator('.apparel-photo-grid__item');
   await expect(photoFrames).toHaveCount(5);
   await expect(page.locator('.apparel-photo-grid a')).toHaveCount(0);
   const zoomImage = photoFrames.nth(1).locator('.apparel-photo-grid__trigger img');
   const imageDialog = page.locator('.apparel-image-dialog[open]');
-  await expect(page.locator('.apparel-photo-grid__trigger')).toHaveCount(5);
+  await expect(hoodieGallery.locator('.apparel-photo-grid__trigger')).toHaveCount(5);
   await photoFrames.nth(1).scrollIntoViewIfNeeded();
   const cardBounds = await photoFrames.nth(1).boundingBox();
   await photoFrames.nth(1).hover();
@@ -340,15 +345,20 @@ test('apparel presents hoodie mockups and the T-shirt concept outline without co
   await photoFrames.nth(1).locator('.apparel-photo-grid__trigger').click();
   await imageDialog.getByRole('button', { name: 'Close image preview' }).click();
   await expect(page.locator('.apparel-image-dialog[open]')).toHaveCount(0);
-  await expect(page.getByRole('img', { name: /T-shirt concept outline/ })).toBeVisible();
   await expect(page.getByText('Concept preview', { exact: true })).toHaveCount(2);
   await expect(page.getByText(/Product specifications and purchasing details are not approved/)).toBeVisible();
   await expect(page.locator('.apparel-showcase form, .apparel-showcase input')).toHaveCount(0);
-  await expect(page.locator('.apparel-showcase svg')).toHaveCount(1);
+  await expect(page.locator('.apparel-showcase svg')).toHaveCount(0);
+  await tShirtGallery.locator('.apparel-photo-grid__trigger').first().click();
+  const tShirtDialog = page.locator('.apparel-image-dialog[open]');
+  await expect(tShirtDialog.locator('img')).toHaveAttribute('alt', /Front of a black T-shirt/);
+  await tShirtDialog.getByRole('button', { name: 'Next image' }).click();
+  await expect(tShirtDialog.locator('img')).toHaveAttribute('alt', /Angled front view of a black T-shirt/);
+  await page.keyboard.press('Escape');
 
   await page.goto('/es/apparel/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Conceptos de ropa');
-  await expect(page.locator('.apparel-photo-grid__trigger img')).toHaveCount(5);
+  await expect(page.locator('.apparel-photo-grid__trigger img')).toHaveCount(9);
   await expect(page.locator('.apparel-photo-grid a')).toHaveCount(0);
   await page.locator('.apparel-photo-grid__trigger').first().click();
   const spanishDialog = page.locator('.apparel-image-dialog[open]');
@@ -360,7 +370,7 @@ test('apparel presents hoodie mockups and the T-shirt concept outline without co
   await page.keyboard.press('Escape');
   await expect(spanishDialog).not.toBeVisible();
   await expect(page.getByRole('img', { name: /sudadera negra/i })).toHaveCount(3);
-  await expect(page.getByRole('img', { name: /Contorno conceptual de una playera/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Frente de una playera negra/ })).toBeVisible();
   const languageSelector = page.getByRole('group', { name: 'Elegir idioma' });
   await expect(languageSelector.getByRole('link', { name: 'Ver esta página en inglés' })).toHaveAttribute('href', '/apparel/');
   await expect(languageSelector.getByRole('link', { name: 'Ver esta página en español' })).toHaveAttribute('aria-current', 'true');

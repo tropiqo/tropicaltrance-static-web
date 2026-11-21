@@ -221,7 +221,7 @@ export async function checkOutput(base = root) {
     const metadataDescription=pageKind==='home'?messages.home.metaDescription:pageKind==='about'?messages.about.metaDescription:pageKind==='apparel'?messages.apparel.metaDescription:pageKind==='flavors'?messages.flavors.metaDescription:pageKind==='contact'?messages.contact.metaDescription:pageKind==='detail'?detail.shortDescription:messages.notFound.description;
     const seo=pageMetadata({page:pageKind,locale,title:metadataTitle,description:metadataDescription,flavor:detail,settings:seoSettings});
     checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale,seo,seoSettings.indexingAuthorized,businessEmail);
-    if (basePage==='apparel/index.html') assert.equal((html.match(/<svg\b/gi)||[]).length,1,'Apparel page must retain the T-shirt concept outline');
+    if (basePage==='apparel/index.html') assert.equal((html.match(/<svg\b/gi)||[]).length,0,'Apparel imagery must use the closed, owner-approved local asset inventory');
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = decodeAttribute(match[1]).split('#');
