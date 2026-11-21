@@ -207,10 +207,6 @@ a:hover { text-decoration-thickness: 0.14em; }
 .apparel-card h3 { font-family: var(--font-display); font-size: var(--text-heading); font-weight: 400; line-height: 1.15; }
 .apparel-card__copy p { color: var(--color-muted); }
 .apparel-visual { display: grid; place-items: center; gap: var(--space-2); min-inline-size: 0; min-block-size: 18rem; padding: var(--space-3); overflow: hidden; border: 1px solid var(--color-border); border-radius: 44% 44% 1rem 1rem / 20% 20% 1rem 1rem; background: radial-gradient(ellipse at 50% 42%, var(--color-surface-raised), var(--color-surface) 72%); color: var(--accent-coral); }
-.apparel-art { display: block; inline-size: min(100%, 24rem); max-block-size: 25rem; color: var(--accent-coral); }
-.apparel-art__orbit { color: var(--accent-citrus); opacity: 0.48; }
-.apparel-art__garment { fill: none; stroke-width: 4; }
-.apparel-art__fill { fill: color-mix(in srgb, var(--accent-coral) 8%, var(--color-surface)); stroke-width: 5; }
 .apparel-photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); inline-size: 100%; align-content: center; }
 .apparel-photo-grid__item { position: relative; display: block; min-inline-size: 0; overflow: hidden; border-radius: var(--radius-sm); background: #f4f1eb; }
 .apparel-photo-grid__trigger { display: block; inline-size: 100%; padding: 0; overflow: hidden; border: 0; border-radius: inherit; background: #f4f1eb; cursor: zoom-in; }
