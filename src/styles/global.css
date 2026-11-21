@@ -212,8 +212,14 @@ a:hover { text-decoration-thickness: 0.14em; }
 .apparel-art__garment { fill: none; stroke-width: 4; }
 .apparel-art__fill { fill: color-mix(in srgb, var(--accent-coral) 8%, var(--color-surface)); stroke-width: 5; }
 .apparel-photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); inline-size: 100%; align-content: center; }
-.apparel-photo-grid img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 4 / 3; object-fit: contain; border-radius: var(--radius-sm); background: #f4f1eb; }
-.apparel-photo-grid img:first-child { grid-column: 1 / -1; aspect-ratio: 16 / 10; }
+.apparel-photo-grid__item { display: block; min-inline-size: 0; overflow: hidden; border-radius: var(--radius-sm); background: #f4f1eb; }
+.apparel-photo-grid__item:focus-visible { outline: 3px solid var(--accent-citrus); outline-offset: 3px; }
+.apparel-photo-grid img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 4 / 3; object-fit: contain; background: #f4f1eb; transition: transform 220ms ease; }
+.apparel-photo-grid__item:first-child { grid-column: 1 / -1; }
+.apparel-photo-grid__item:first-child img { aspect-ratio: 16 / 10; }
+@media (hover: hover) and (pointer: fine) {
+  .apparel-photo-grid__item:hover img, .apparel-photo-grid__item:focus-visible img { transform: scale(1.14); }
+}
 .apparel-visual figcaption { color: var(--color-muted); font-size: var(--text-small); text-align: center; }
 .apparel-approval-note { max-inline-size: 66ch; margin-block-start: var(--space-5); color: var(--color-muted); font-size: var(--text-small); }
 @media (min-width: 48rem) {
@@ -225,4 +231,5 @@ a:hover { text-decoration-thickness: 0.14em; }
 }
 @media (prefers-reduced-motion: reduce) {
   .apparel-card::before { transform: none; }
+  .apparel-photo-grid__item:hover img, .apparel-photo-grid__item:focus-visible img { transform: none; transition: none; }
 }

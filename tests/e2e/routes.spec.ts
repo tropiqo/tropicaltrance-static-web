@@ -310,6 +310,20 @@ test('apparel presents hoodie mockups and the T-shirt concept outline without co
   await expect(gallery.getByRole('listitem')).toHaveCount(2);
   await expect(page.getByRole('img', { name: /black hoodie/i })).toHaveCount(5);
   await expect(page.locator('.apparel-photo-grid')).toHaveAccessibleName('Hoodie concept image gallery');
+  const photoLinks = page.locator('.apparel-photo-grid__item');
+  await expect(photoLinks).toHaveCount(5);
+  await expect(photoLinks.nth(0)).toHaveAttribute('href', /\/assets\/apparel\/hoodie\/.+\.png$/);
+  await expect(photoLinks.nth(0)).toHaveAttribute('target', '_blank');
+  await expect(photoLinks.nth(0)).toHaveAttribute('rel', 'noopener noreferrer');
+  const zoomImage = photoLinks.nth(1).locator('img');
+  await photoLinks.nth(1).scrollIntoViewIfNeeded();
+  const cardBounds = await photoLinks.nth(1).boundingBox();
+  await photoLinks.nth(1).hover();
+  await expect.poll(() => zoomImage.evaluate((image) => getComputedStyle(image).transform)).not.toBe('none');
+  expect(await photoLinks.nth(1).boundingBox()).toEqual(cardBounds);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => zoomImage.evaluate((image) => getComputedStyle(image).transform)).toBe('none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(page.getByRole('img', { name: /T-shirt concept outline/ })).toBeVisible();
   await expect(page.getByText('Concept preview', { exact: true })).toHaveCount(2);
   await expect(page.getByText(/Product specifications and purchasing details are not approved/)).toBeVisible();
@@ -319,6 +333,7 @@ test('apparel presents hoodie mockups and the T-shirt concept outline without co
   await page.goto('/es/apparel/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Conceptos de ropa');
   await expect(page.locator('.apparel-photo-grid img')).toHaveCount(5);
+  await expect(page.locator('.apparel-photo-grid__item').first()).toHaveAccessibleName(/Abrir imagen conceptual en tamaño completo/);
   await expect(page.getByRole('img', { name: /sudadera negra/i })).toHaveCount(3);
   await expect(page.getByRole('img', { name: /Contorno conceptual de una playera/ })).toBeVisible();
   const languageSelector = page.getByRole('group', { name: 'Elegir idioma' });
