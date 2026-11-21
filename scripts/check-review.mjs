@@ -12,7 +12,7 @@ export async function checkReviewOutput(base = process.cwd()) {
   const expected = [...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`),...spanishRoutes];
   const files = inventory(base,'.review-build').map(p=>p.slice('.review-build/'.length));
   assert.deepEqual(files.filter(p=>p.endsWith('.html')).sort(),expected.sort());
-  const media = [...release.deliveries.map(m=>m.path.split('/').at(-1)), selected.outputPath, 'assets/language-preference.js'];
+  const media = [...release.deliveries.map(m=>m.path.split('/').at(-1)), selected.outputPath, 'assets/scripts/language-preference.js'];
   assert.deepEqual(files.filter(p=>!p.endsWith('.html') && !/^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p) && p!=='robots.txt').sort(), media.sort(), 'Exact review delivery inventory');
   assert(files.every(p=>expected.includes(p)||media.includes(p)||p==='robots.txt'||/^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)), 'Unexpected review output');
   assert.equal(readFileSync(resolve(base,'.review-build/robots.txt'),'utf8'),'User-agent: *\nDisallow: /\n','Review robots must disallow crawling');
@@ -21,7 +21,7 @@ export async function checkReviewOutput(base = process.cwd()) {
     assert.match(html,/INTERNAL SYNTHETIC TEST ONLY/); assert.match(html,/noindex, nofollow/);
     assert.match(html,/LOCAL MASCOT REVIEW ONLY/);
     assert.equal((html.match(/<script\b/g)||[]).length,1,'Only the shared language preference script is allowed in review output');
-    assert.match(html,/<script type="module" src="\/assets\/language-preference\.js"><\/script>/);
+    assert.match(html,/<script type="module" src="\/assets\/scripts\/language-preference\.js"><\/script>/);
     assert(!/<(?:iframe|form|astro-island)\b/i.test(html),'Unapproved client runtime');
     for (const match of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
       const link=match[1].split('#')[0]; if (!link) continue;

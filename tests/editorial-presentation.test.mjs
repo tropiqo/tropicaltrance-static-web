@@ -119,14 +119,14 @@ test('Contact and About contain restrained copy without invented contact endpoin
 });
 test('About uses the pinned Emerald Gateway delivery and preserves its copy; other routes have no video',()=>{
   const about=normal('about/index.html');
-  assert.match(about,/<video\b[^>]*src="\/assets\/emerald-gateway-web\.mp4"/);
-  assert.match(about,/poster="\/assets\/emerald-gateway-poster\.webp"/);
+  assert.match(about,/<video\b[^>]*src="\/assets\/video\/emerald-gateway-web\.mp4"/);
+  assert.match(about,/poster="\/assets\/video\/emerald-gateway-poster\.webp"/);
   assert.match(about,/<video\b[^>]*\bmuted\b[^>]*\bloop\b[^>]*\bplaysinline\b[^>]*preload="none"/);
   assert.match(about,/A camera approaches a luminous emerald gateway in a tropical forest before revealing a surreal waterfall landscape\./);
   assert.match(about,/Play Emerald Gateway video/);
   assert(!/autoplay(?:="[^"]*")?/.test(about));
   for(const route of routes.filter(route=>route!=='about/index.html')) assert(!/<video\b|emerald-gateway/.test(normal(route)));
-  for(const asset of ['public-astro/assets/emerald-gateway-web.mp4','public-astro/assets/emerald-gateway-poster.webp']) assert(readFileSync(resolve(root,asset)).length>0);
+  for(const asset of ['public-astro/assets/video/emerald-gateway-web.mp4','public-astro/assets/video/emerald-gateway-poster.webp']) assert(readFileSync(resolve(root,asset)).length>0);
 });
 test('Spanish pages localize interface, metadata, accessibility text, flavor content, and video controls',()=>{
   const home=normal('es/index.html'),about=normal('es/about/index.html'),collection=normal('es/flavors/index.html'),apparel=normal('es/apparel/index.html'),grape=normal('es/flavors/grape/index.html'),contact=normal('es/contact/index.html');
@@ -196,7 +196,7 @@ test('presentation reads validated props only; contracts, fixture roots and publ
     const source=text(`src/components/${name}.astro`);assert(!/readFile|loadRelease|fetch\s*\(|fixture-|grape|cherry|lime|JSON\.parse|content\//.test(source));
   }
   const release=loadRelease();
-  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/trancy-web-r1.webp','public-astro/assets/cinematic-hero-video.js','public-astro/assets/emerald-gateway-poster.webp','public-astro/assets/emerald-gateway-web.mp4','public-astro/assets/language-preference.js'].sort());
+  assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/mascot/trancy-web-r1.webp','public-astro/assets/scripts/cinematic-hero-video.js','public-astro/assets/video/emerald-gateway-poster.webp','public-astro/assets/video/emerald-gateway-web.mp4','public-astro/assets/scripts/language-preference.js','public-astro/assets/apparel/.gitkeep'].sort());
   assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`),'es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)].sort());
 });
 
@@ -241,6 +241,6 @@ test('tropical refinement keeps decorative depth behind content and a single com
 });
 
 test('approved static placements never activate the existing review URLs', () => {
-  assert.equal(trancyMedia.mediaUrl, '/assets/trancy-web-r1.webp');
+  assert.equal(trancyMedia.mediaUrl, '/assets/mascot/trancy-web-r1.webp');
   for (const route of ['index.html','about/index.html']) assert(!normal(route).includes('/review-media/'));
 });

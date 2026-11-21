@@ -670,8 +670,8 @@ test('About Emerald Gateway video keeps its scene ratio and page reflows at all 
   await page.goto('/about/');
   const video = page.locator('#emerald-gateway-video');
   await expect(video).toBeVisible();
-  await expect(video).toHaveAttribute('src', '/assets/emerald-gateway-web.mp4');
-  await expect(video).toHaveAttribute('poster', '/assets/emerald-gateway-poster.webp');
+  await expect(video).toHaveAttribute('src', '/assets/video/emerald-gateway-web.mp4');
+  await expect(video).toHaveAttribute('poster', '/assets/video/emerald-gateway-poster.webp');
   await expect(video).toHaveAttribute('muted', '');
   await expect(video).toHaveAttribute('loop', '');
   await expect(video).toHaveAttribute('playsinline', '');

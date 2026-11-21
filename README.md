@@ -37,7 +37,7 @@ npm run preview -- --port 4321
 
 Open <http://127.0.0.1:4321/>, `/about/`, `/flavors/`, each `/flavors/<slug>/` route or `/contact/`. Output is `dist/`: five base HTML pages plus one detail page per selected flavor, a disallow-all `robots.txt`, one stylesheet, the exact Trancy WebP and one selected WebP per flavor, with no fixture detail routes. A sitemap is omitted unless a future production-site record, verified origin, and explicit owner indexing authorization are all present.
 
-Flavor content uses one closed JSON file per flavor under `content/flavors/`, with the local WebP path and SHA-256 in that same record. The normal website build does not read Studio eligibility snapshots, authorization records, or Grape-specific source/recipe pins. This is a local website content model; it does not establish legal rights, commercial eligibility, or permission to deploy. The approved mascot is independently pinned at `public-astro/assets/trancy-web-r1.webp`. `public-astro/` has complete inventory enforcement: an unlisted asset fails validation. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
+Flavor content uses one closed JSON file per flavor under `content/flavors/`, with the local WebP path and SHA-256 in that same record. The normal website build does not read Studio eligibility snapshots, authorization records, or Grape-specific source/recipe pins. This is a local website content model; it does not establish legal rights, commercial eligibility, or permission to deploy. Assets are grouped under `public-astro/assets/{flavors,apparel,mascot,video,scripts}/`; the approved mascot is `mascot/trancy-web-r1.webp`. Apparel assets require owner approval before they can enter the closed public inventory. Legacy `assets/`, `_site/`, theme/demo files and private files are not normal public inputs.
 
 ## Isolated local review
 
@@ -92,7 +92,7 @@ Build first before standalone output audits or `verify:reproducible`. Structural
 ## Grape candidate and future artwork replacement
 
 The current Grape record retains its approved copy and exact WebP at
-`/assets/grape-web-r1.webp`, shared by collection/detail. Its source artwork and
+`/assets/flavors/grape-web-r1.webp`, shared by collection/detail. Its source artwork and
 Studio history remain outside the website content model.
 
 ### Add, update or remove a flavor locally

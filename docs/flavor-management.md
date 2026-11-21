@@ -2,7 +2,7 @@
 
 ## Overview
 
-Studio stores the original PNG artwork in `tropical-trance-studio/assets/flavors/`. The Website stores optimized WebP derivatives in `public-astro/assets/` and bilingual flavor content in `content/flavors/`. The `flavor:add` and `flavor:update` CLI workflows prepare a candidate, build an isolated local preview, and apply the change only after interactive confirmation.
+Studio stores the original PNG artwork in `tropical-trance-studio/assets/flavors/`. The Website stores optimized WebP derivatives in `public-astro/assets/flavors/` and bilingual flavor content in `content/flavors/`. Other public assets are grouped by type in `public-astro/assets/mascot/`, `public-astro/assets/video/`, and `public-astro/assets/scripts/`; `public-astro/assets/apparel/` is reserved for owner-approved garment images. The `flavor:add` and `flavor:update` CLI workflows prepare a candidate, build an isolated local preview, and apply the change only after interactive confirmation.
 
 The CLI is explicitly development-only. Development artwork authorization supports local implementation, testing, and owner review; it does not create formal source registration, production artwork approval, publication authorization, or deployment permission.
 
@@ -61,7 +61,7 @@ The CLI is explicitly development-only. Development artwork authorization suppor
 5. On confirmation, the generated files are:
 
    ```text
-   public-astro/assets/mango-web-r1.webp
+   public-astro/assets/flavors/mango-web-r1.webp
    content/flavors/mango.json
    ```
 
@@ -92,7 +92,7 @@ The CLI is explicitly development-only. Development artwork authorization suppor
 
    `--image` is required. If you omit metadata flags, the CLI shows existing values as prompt defaults. Press Enter to keep each existing value, or enter revised values when appropriate. For example, use `--alt "..."` and `--es-alt "..."` when the new image needs new accessible descriptions; descriptions can likewise be changed with `--description` and `--es-description`.
 
-3. The CLI increments the numeric revision and generates `public-astro/assets/grape-web-r2.webp` from a current `r1` record. The JSON remains at `content/flavors/grape.json`; it is updated with the new revision and image digest. Review the candidate in its isolated preview, including the English and Spanish Grape detail pages and both collections, before answering `y` to `Update this development-only flavor after review? [y/N]`. Enter or `n` cancels. After a confirmed update, validation runs; the former derivative is removed only if no other flavor references it and validation succeeds.
+3. The CLI increments the numeric revision and generates `public-astro/assets/flavors/grape-web-r2.webp` from a current `r1` record. The JSON remains at `content/flavors/grape.json`; it is updated with the new revision and image digest. Review the candidate in its isolated preview, including the English and Spanish Grape detail pages and both collections, before answering `y` to `Update this development-only flavor after review? [y/N]`. Enter or `n` cancels. After a confirmed update, validation runs; the former derivative is removed only if no other flavor references it and validation succeeds.
 
 4. The slug and localized routes remain `grape`, `/flavors/grape/`, and `/es/flavors/grape/`. Check both detail pages and the collection cards after the update. The source PNG is not modified by the Website workflow.
 

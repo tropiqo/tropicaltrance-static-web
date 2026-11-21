@@ -103,7 +103,7 @@ export async function createCandidate({mode,websiteRoot=root,slug,imagePath,name
       shortDescription:esShortDescription??existing?.translations?.['es-MX']?.shortDescription,
       alt:esAlt??existing?.translations?.['es-MX']?.alt,
     }},
-    media:{path:`assets/${chosen}-web-r${nextRevision}.webp`,contentId:''}
+    media:{path:`assets/flavors/${chosen}-web-r${nextRevision}.webp`,contentId:''}
   };
   for (const [key,value] of Object.entries({name:projection.name,shortDescription:projection.shortDescription,alt:projection.alt,esShortDescription:projection.translations['es-MX'].shortDescription,esAlt:projection.translations['es-MX'].alt})) {
     assert(typeof value==='string' && value.trim(),`${key} is required`);

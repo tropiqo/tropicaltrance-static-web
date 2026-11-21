@@ -44,7 +44,7 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
   <EditorialHero title={t.about.title} description={[t.about.description1, t.about.description2]} eyebrow="Tropical Trance" decoration={release.aboutHeroMedia ? 'none' : 'tide'} atmosphere>
     {release.aboutHeroMedia && <CinematicHeroVideo slot="visual" {...emeraldGatewayMedia} playLabel={t.about.playVideo} pauseLabel={t.about.pauseVideo} description={t.about.videoDescription} />}
   </EditorialHero>
-  {release.aboutHeroMedia && <Fragment set:html={'<script type="module" src="/assets/cinematic-hero-video.js"></script>'} />}
+  {release.aboutHeroMedia && <Fragment set:html={'<script type="module" src="/assets/scripts/cinematic-hero-video.js"></script>'} />}
   {release.brandMedia['about-mascot'] && <EditorialSection variant="split" title={t.about.meet} eyebrow="Tropical Trance" atmosphere>
     <p class="lead">{t.about.meetLead}</p><p>{t.about.meet1}</p><p>{t.about.meet2}</p>
     <TrancyMedia slot="visual" media={aboutMedia} />

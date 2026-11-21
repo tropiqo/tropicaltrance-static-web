@@ -174,7 +174,7 @@ function loadFlavorContent({base}) {
     const slug=path.slice('content/flavors/'.length,-'.json'.length);
     same(value.slug,slug,'Flavor slug/file name mismatch');
     const mediaPath='public-astro/'+value.media.path;
-    requireThat(value.media.path.startsWith('assets/') && value.media.path===`assets/${slug}-web-r${value.revision}.webp`,'Flavor media path mismatch');
+    requireThat(value.media.path.startsWith('assets/flavors/') && value.media.path===`assets/flavors/${slug}-web-r${value.revision}.webp`,'Flavor media path mismatch');
     const bytes=readFileSync(safePath(base,mediaPath));
     rejectFixture(bytes);
     requireThat(bytes.length>=16 && bytes.toString('ascii',0,4)==='RIFF' && bytes.toString('ascii',8,12)==='WEBP','Flavor delivery is not a WebP image');
@@ -202,7 +202,7 @@ function loadFlavorContent({base}) {
   const channelConfig = loadSalesChannels({base,flavors:flavors.map(flavor=>flavor.slug)});
   for (const flavor of flavors) flavor.salesChannels = channelsForFlavor(channelConfig,flavor);
   const deliveries=flavors.map(f=>({path:'public-astro/'+f.mediaUrl.slice(1),asset:{contentId:f.media.contentId}}));
-  const selected=new Set([trancy.path,...deliveries.map(d=>d.path),...emeraldGatewayAssets.map(asset=>asset.path),...localizationAssets.map(asset=>asset.path)]);
+  const selected=new Set([trancy.path,...deliveries.map(d=>d.path),...emeraldGatewayAssets.map(asset=>asset.path),...localizationAssets.map(asset=>asset.path),'public-astro/assets/apparel/.gitkeep']);
   const trancyPath=safePath(base,trancy.path);
   requireThat(lstatSync(trancyPath).isFile(),'Expected regular static Trancy image');
   validateTrancy(readFileSync(trancyPath));

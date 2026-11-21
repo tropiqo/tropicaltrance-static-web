@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { loadRelease, rejectFixture, digest } from './public-inputs.mjs';
 import { trancy, trancyMedia, validateTrancy } from './trancy-static.mjs';
-import { emeraldGatewayAssets, localizationAssets } from './emerald-gateway-static.mjs';
+import { emeraldGatewayAssets, localizationAssets, apparelDirectoryMarker } from './emerald-gateway-static.mjs';
 import { readdir, readFile, lstat } from 'node:fs/promises';
 import { resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +27,7 @@ export function checkInventory(paths, deliveries = [], flavors = [], seoSettings
   const expectedRoutes = [...routes,...flavors.map(f=>'flavors/'+f.slug+'/index.html')];
   const spanishRoutes = ['es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
   const allRoutes = [...expectedRoutes,...spanishRoutes];
-  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length)), ...localizationAssets.map(asset => asset.path.slice('public-astro/'.length))];
+  const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length)), ...localizationAssets.map(asset => asset.path.slice('public-astro/'.length)), apparelDirectoryMarker.slice('public-astro/'.length)];
   assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), allRoutes.sort(), 'Unexpected static routes');
   assert.equal(paths.filter(p => /^_astro\/[A-Za-z0-9_.-]+\.css$/.test(p)).length, 1, 'Exactly one referenced stylesheet');
   const seoFiles = ['robots.txt', ...(seoSettings.indexingAuthorized ? ['sitemap.xml'] : [])];
@@ -74,8 +74,8 @@ export function checkHtml(html, media = [], salesChannels = [], whatsappBusiness
   assert.equal(videoTags.length, aboutHeroMedia ? 1 : 0, 'Cinematic video belongs only to the About hero');
   assert.equal(scriptTags.length, aboutHeroMedia ? 2 : 1, 'Expected language script and optional About video controls');
   const scriptSources=scriptTags.map(tag=>htmlAttributes(tag[1]).get('src')).sort();
-  assert(scriptSources.includes('/assets/language-preference.js'),'Language preference script missing');
-  assert.deepEqual(scriptSources.filter(src=>src==='/assets/cinematic-hero-video.js').length,aboutHeroMedia?1:0);
+  assert(scriptSources.includes('/assets/scripts/language-preference.js'),'Language preference script missing');
+  assert.deepEqual(scriptSources.filter(src=>src==='/assets/scripts/cinematic-hero-video.js').length,aboutHeroMedia?1:0);
   if (aboutHeroMedia) {
     const attrs = htmlAttributes(videoTags[0][1]);
     assert.equal(attrs.get('src'), aboutHeroMedia.src);
