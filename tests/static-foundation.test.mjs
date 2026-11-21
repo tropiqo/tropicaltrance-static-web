@@ -18,7 +18,7 @@ test('server adapters and private/remote config fail', () => {
 
 test('normal HTML cannot gain an image merely through a recognized public destination', () => {
   const html = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
-  assert.throws(() => checkHtml(html.replace('</main>', '<img src="/assets/trancy-web-r1.webp" alt="Trancy" width="1440" height="1282" loading="eager" decoding="async"></main>')), /role image/);
+  assert.throws(() => checkHtml(html.replace('</main>', '<img src="/assets/mascot/trancy-web-r1.webp" alt="Trancy" width="1440" height="1282" loading="eager" decoding="async"></main>')), /role image/);
 });
 
 test('actual selected Grape route/media inventory is exact; omitted or extra detail is rejected',()=>{

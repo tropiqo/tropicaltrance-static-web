@@ -1,0 +1,70 @@
+---
+import { apparelProducts } from '../data/apparel-products.mjs';
+interface Props { messages: any; locale: 'en' | 'es-MX'; }
+const { messages, locale } = Astro.props;
+---
+<section class="apparel-showcase container" aria-labelledby="apparel-showcase-heading">
+  <div class="apparel-showcase__intro">
+    <p class="eyebrow">{messages.eyebrow}</p>
+    <h2 id="apparel-showcase-heading">{messages.galleryTitle}</h2>
+    <p class="lead">{messages.galleryLead}</p>
+  </div>
+  <ul class="apparel-grid" aria-label={messages.galleryLabel}>
+    {apparelProducts.map(product => {
+      const copy = messages.products[product.id];
+      const descriptionId = `${product.id}-visual-description`;
+      return <li>
+        <article class="apparel-card">
+          <div class="apparel-card__copy">
+            <span class="apparel-card__status">{messages.conceptLabel}</span>
+            <h3>{copy.name}</h3>
+            <p>{copy.description}</p>
+          </div>
+          <figure class="apparel-visual">
+            {product.artwork.kind === 'owner-approved-concept-images' ? <div class="apparel-photo-grid" role="group" aria-label={copy.imageGalleryLabel}>
+              {product.artwork.images.map((image, index) => {
+                const dialogId = `apparel-image-${product.id}-${index + 1}-${locale}`;
+                return <div class="apparel-photo-grid__item">
+                  <button class="apparel-photo-grid__trigger" type="button" command="show-modal" commandfor={dialogId} aria-label={messages.viewImageLabel.replace('{description}', image.alt[locale])}>
+                    <img
+                      src={`/${image.path}`}
+                      alt={image.alt[locale]}
+                      width={image.width}
+                      height={image.height}
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                  </button>
+                  <dialog class="apparel-image-dialog" id={dialogId} data-apparel-image-dialog data-image-index={index} aria-label={image.alt[locale]}>
+                    <img src={`/${image.path}`} alt={image.alt[locale]} width={image.width} height={image.height} loading="lazy" decoding="async" />
+                    <div class="apparel-image-dialog__controls" role="group" aria-label={messages.imageControlsLabel}>
+                      <button class="apparel-image-dialog__nav" type="button" data-carousel-step="-1" aria-label={messages.previousImage} hidden>←</button>
+                      <p class="apparel-image-dialog__position" aria-live="polite">{messages.imagePosition.replace('{current}', String(index + 1)).replace('{total}', String(product.artwork.images.length))}</p>
+                      <button class="apparel-image-dialog__nav" type="button" data-carousel-step="1" aria-label={messages.nextImage} hidden>→</button>
+                      <button class="apparel-image-dialog__close" type="button" command="close" commandfor={dialogId} aria-label={messages.closeImage}>×</button>
+                    </div>
+                  </dialog>
+                </div>;
+              })}
+            </div> : <svg class="apparel-art" viewBox="0 0 400 430" role="img" aria-label={copy.visualTitle} aria-describedby={descriptionId}>
+              <desc id={descriptionId}>{copy.visualDescription}</desc>
+              <g class="apparel-art__orbit" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M48 234c26-74 86-126 158-132 73-6 137 35 159 96 24 68-15 148-87 184-73 37-165 23-215-28-34-35-40-78-15-120Z" />
+                <path d="M79 309c45 49 121 66 188 45 55-17 94-58 106-106" />
+                <circle cx="317" cy="111" r="7" />
+              </g>
+              <g class="apparel-art__garment" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path class="apparel-art__fill" d="M139 100c-10 3-21 9-33 18L61 157l31 57 34-19v149c0 12 9 21 21 21h106c12 0 21-9 21-21V195l34 19 31-57-45-39c-12-9-23-15-33-18l-29-8h-64l-29 8Z" />
+                <path d="M166 96c2 24 14 38 34 38s32-14 34-38" fill="none" stroke-width="5" />
+                <path d="M146 112c6 24 24 38 54 38s48-14 54-38" fill="none" stroke-width="2.5" />
+                <path d="M126 195l-34 19m182-19 34 19M151 364c29 8 69 8 98 0" fill="none" stroke-width="3" />
+              </g>
+            </svg>}
+            <figcaption>{product.id === 'hoodie' ? messages.imagesCaption : messages.visualCaption}</figcaption>
+          </figure>
+        </article>
+      </li>;
+    })}
+  </ul>
+  <p class="apparel-approval-note">{messages.approvalNote}</p>
+</section>

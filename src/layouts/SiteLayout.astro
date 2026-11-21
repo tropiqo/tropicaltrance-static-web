@@ -34,6 +34,6 @@ const seo = pageMetadata({ page, locale, title, description, flavor, settings: s
     </aside> : release.site.kind === 'development-site' && <div class="development-note"><div class="container">{t.developmentNotice}</div></div>}
     <main id="main" tabindex="-1"><slot /></main>
     <SiteFooter locale={locale} />
-    <Fragment set:html={'<script type="module" src="/assets/language-preference.js"></script>'} />
+    <Fragment set:html={'<script type="module" src="/assets/scripts/language-preference.js"></script>'} />
   </body>
 </html>

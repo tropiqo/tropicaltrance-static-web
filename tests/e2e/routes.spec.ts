@@ -5,6 +5,7 @@ const pages = [
   { path: '/', heading: 'Escape the Ordinary.' },
   { path: '/about/', heading: 'Beyond the Ordinary' },
   { path: '/flavors/', heading: 'Flavors' },
+  { path: '/apparel/', heading: 'Apparel Concepts' },
   { path: '/flavors/cherry/', heading: 'Cherry' },
   { path: '/flavors/grape/', heading: 'Grape' },
   { path: '/flavors/lime/', heading: 'Lime' },
@@ -15,6 +16,7 @@ const navigation = [
   ['Home', '/'],
   ['Flavors', '/flavors/'],
   ['About', '/about/'],
+  ['Apparel', '/apparel/'],
   ['Contact', '/contact/'],
 ];
 
@@ -43,7 +45,7 @@ for (const pageCase of pages) {
       expect(dimensions.document, `document overflow at ${width}px: ${JSON.stringify(dimensions)}`).toBeLessThanOrEqual(dimensions.viewport);
       expect(dimensions.body, `body overflow at ${width}px: ${JSON.stringify(dimensions)}`).toBeLessThanOrEqual(dimensions.viewport);
 
-      for (const img of await page.locator('img').all()) {
+      for (const img of await page.locator('img:visible').all()) {
         await img.scrollIntoViewIfNeeded();
         await expect.poll(() => img.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
       }
@@ -302,6 +304,68 @@ test('navigation works between primary routes and footer links are available', a
   }
 });
 
+test('apparel presents hoodie mockups and the T-shirt concept outline without commerce controls', async ({ page }) => {
+  await page.goto('/apparel/');
+  const gallery = page.getByRole('list', { name: 'Apparel concept previews' });
+  await expect(gallery.getByRole('listitem')).toHaveCount(2);
+  await expect(page.getByRole('img', { name: /black hoodie/i })).toHaveCount(5);
+  await expect(page.locator('.apparel-photo-grid')).toHaveAccessibleName('Hoodie concept image gallery');
+  const photoFrames = page.locator('.apparel-photo-grid__item');
+  await expect(photoFrames).toHaveCount(5);
+  await expect(page.locator('.apparel-photo-grid a')).toHaveCount(0);
+  const zoomImage = photoFrames.nth(1).locator('.apparel-photo-grid__trigger img');
+  const imageDialog = page.locator('.apparel-image-dialog[open]');
+  await expect(page.locator('.apparel-photo-grid__trigger')).toHaveCount(5);
+  await photoFrames.nth(1).scrollIntoViewIfNeeded();
+  const cardBounds = await photoFrames.nth(1).boundingBox();
+  await photoFrames.nth(1).hover();
+  await expect.poll(() => zoomImage.evaluate((image) => getComputedStyle(image).transform)).not.toBe('none');
+  expect(await photoFrames.nth(1).boundingBox()).toEqual(cardBounds);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => zoomImage.evaluate((image) => getComputedStyle(image).transform)).toBe('none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await photoFrames.nth(1).locator('.apparel-photo-grid__trigger').click();
+  await expect(imageDialog).toBeVisible();
+  await expect(imageDialog.locator('img')).toHaveAttribute('alt', /Front of a black hoodie with a small white TT mark/);
+  await expect(imageDialog.getByRole('button', { name: 'Next image' })).toBeVisible();
+  await imageDialog.getByRole('button', { name: 'Next image' }).click();
+  await expect(imageDialog.locator('img')).toHaveAttribute('alt', /Angled close-up of white Gothic Tropical Trance lettering/);
+  await expect(imageDialog.locator('.apparel-image-dialog__position')).toHaveText('Image 3 of 5');
+  await imageDialog.getByRole('button', { name: 'Previous image' }).click();
+  await expect(imageDialog.locator('img')).toHaveAttribute('alt', /Front of a black hoodie with a small white TT mark/);
+  await page.keyboard.press('ArrowRight');
+  await expect(imageDialog.locator('img')).toHaveAttribute('alt', /Angled close-up of white Gothic Tropical Trance lettering/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.apparel-image-dialog[open]')).toHaveCount(0);
+  await photoFrames.nth(1).locator('.apparel-photo-grid__trigger').click();
+  await imageDialog.getByRole('button', { name: 'Close image preview' }).click();
+  await expect(page.locator('.apparel-image-dialog[open]')).toHaveCount(0);
+  await expect(page.getByRole('img', { name: /T-shirt concept outline/ })).toBeVisible();
+  await expect(page.getByText('Concept preview', { exact: true })).toHaveCount(2);
+  await expect(page.getByText(/Product specifications and purchasing details are not approved/)).toBeVisible();
+  await expect(page.locator('.apparel-showcase form, .apparel-showcase input')).toHaveCount(0);
+  await expect(page.locator('.apparel-showcase svg')).toHaveCount(1);
+
+  await page.goto('/es/apparel/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Conceptos de ropa');
+  await expect(page.locator('.apparel-photo-grid__trigger img')).toHaveCount(5);
+  await expect(page.locator('.apparel-photo-grid a')).toHaveCount(0);
+  await page.locator('.apparel-photo-grid__trigger').first().click();
+  const spanishDialog = page.locator('.apparel-image-dialog[open]');
+  await expect(spanishDialog).toBeVisible();
+  await expect(spanishDialog.getByRole('button', { name: 'Cerrar vista previa de imagen' })).toBeVisible();
+  await spanishDialog.getByRole('button', { name: 'Imagen anterior' }).click();
+  await expect(spanishDialog.locator('img')).toHaveAttribute('alt', /Frente de una sudadera negra con letras blancas invertidas/);
+  await expect(spanishDialog.locator('.apparel-image-dialog__position')).toHaveText('Imagen 5 de 5');
+  await page.keyboard.press('Escape');
+  await expect(spanishDialog).not.toBeVisible();
+  await expect(page.getByRole('img', { name: /sudadera negra/i })).toHaveCount(3);
+  await expect(page.getByRole('img', { name: /Contorno conceptual de una playera/ })).toBeVisible();
+  const languageSelector = page.getByRole('group', { name: 'Elegir idioma' });
+  await expect(languageSelector.getByRole('link', { name: 'Ver esta página en inglés' })).toHaveAttribute('href', '/apparel/');
+  await expect(languageSelector.getByRole('link', { name: 'Ver esta página en español' })).toHaveAttribute('aria-current', 'true');
+});
+
 test('disabled sales channels and unset customer contact methods stay placeholders', async ({ page }) => {
   for (const route of ['/flavors/grape/', '/flavors/lime/', '/es/flavors/grape/', '/es/flavors/lime/']) {
     await page.goto(route);
@@ -322,6 +386,7 @@ const spanishPages = [
   { path: '/es/', heading: 'Escapa de lo Ordinario.', en: '/' },
   { path: '/es/about/', heading: 'Más allá de lo ordinario', en: '/about/' },
   { path: '/es/flavors/', heading: 'Sabores', en: '/flavors/' },
+  { path: '/es/apparel/', heading: 'Conceptos de ropa', en: '/apparel/' },
   { path: '/es/flavors/cherry/', heading: 'Cherry', en: '/flavors/cherry/' },
   { path: '/es/flavors/grape/', heading: 'Grape', en: '/flavors/grape/' },
   { path: '/es/flavors/lime/', heading: 'Lime', en: '/flavors/lime/' },
@@ -419,7 +484,7 @@ for (const localized of spanishPages) {
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex,\s*nofollow/);
       await expect(page.getByText('Sitio exclusivo de desarrollo. El contenido público y la aprobación de lanzamiento están pendientes.')).toBeVisible();
       const primary = page.getByRole('navigation', { name: 'Principal' });
-      for (const [label, path] of [['Inicio', '/es/'], ['Sabores', '/es/flavors/'], ['Acerca de', '/es/about/'], ['Contacto', '/es/contact/']]) {
+      for (const [label, path] of [['Inicio', '/es/'], ['Sabores', '/es/flavors/'], ['Acerca de', '/es/about/'], ['Ropa', '/es/apparel/'], ['Contacto', '/es/contact/']]) {
         await expect(primary.getByRole('link', { name: label, exact: true })).toHaveAttribute('href', path);
       }
       const languageSelector = page.getByRole('group', { name: 'Elegir idioma' });
@@ -647,8 +712,8 @@ test('About Emerald Gateway video keeps its scene ratio and page reflows at all 
   await page.goto('/about/');
   const video = page.locator('#emerald-gateway-video');
   await expect(video).toBeVisible();
-  await expect(video).toHaveAttribute('src', '/assets/emerald-gateway-web.mp4');
-  await expect(video).toHaveAttribute('poster', '/assets/emerald-gateway-poster.webp');
+  await expect(video).toHaveAttribute('src', '/assets/video/emerald-gateway-web.mp4');
+  await expect(video).toHaveAttribute('poster', '/assets/video/emerald-gateway-poster.webp');
   await expect(video).toHaveAttribute('muted', '');
   await expect(video).toHaveAttribute('loop', '');
   await expect(video).toHaveAttribute('playsinline', '');

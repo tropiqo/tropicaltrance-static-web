@@ -6,13 +6,14 @@ import FlavorDiscovery from './FlavorDiscovery.astro';
 import FlavorCollection from './FlavorCollection.astro';
 import FlavorDetail from './FlavorDetail.astro';
 import ContactPanel from './ContactPanel.astro';
+import ApparelShowcase from './ApparelShowcase.astro';
 import TrancyMedia from './TrancyMedia.astro';
 import CinematicHeroVideo from './CinematicHeroVideo.astro';
 import SiteLayout from '../layouts/SiteLayout.astro';
 import { getMessages, localizePath } from '../i18n/messages.mjs';
 import { localizeFlavor } from '../i18n/localize.mjs';
 import { emeraldGatewayMedia } from '../../scripts/emerald-gateway-static.mjs';
-interface Props { page: 'home' | 'about' | 'flavors' | 'detail' | 'contact' | 'notFound'; locale?: 'en' | 'es-MX'; flavor?: any; }
+interface Props { page: 'home' | 'about' | 'flavors' | 'apparel' | 'detail' | 'contact' | 'notFound'; locale?: 'en' | 'es-MX'; flavor?: any; }
 const { page, locale = 'en', flavor: sourceFlavor } = Astro.props;
 const t = getMessages(locale);
 const flavors = release.flavors.map(flavor => localizeFlavor(flavor, locale, release.review));
@@ -43,7 +44,7 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
   <EditorialHero title={t.about.title} description={[t.about.description1, t.about.description2]} eyebrow="Tropical Trance" decoration={release.aboutHeroMedia ? 'none' : 'tide'} atmosphere>
     {release.aboutHeroMedia && <CinematicHeroVideo slot="visual" {...emeraldGatewayMedia} playLabel={t.about.playVideo} pauseLabel={t.about.pauseVideo} description={t.about.videoDescription} />}
   </EditorialHero>
-  {release.aboutHeroMedia && <Fragment set:html={'<script type="module" src="/assets/cinematic-hero-video.js"></script>'} />}
+  {release.aboutHeroMedia && <Fragment set:html={'<script type="module" src="/assets/scripts/cinematic-hero-video.js"></script>'} />}
   {release.brandMedia['about-mascot'] && <EditorialSection variant="split" title={t.about.meet} eyebrow="Tropical Trance" atmosphere>
     <p class="lead">{t.about.meetLead}</p><p>{t.about.meet1}</p><p>{t.about.meet2}</p>
     <TrancyMedia slot="visual" media={aboutMedia} />
@@ -59,6 +60,12 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
 {page === 'flavors' && <SiteLayout page={page} locale={locale} title={t.flavors.metaTitle} description={t.flavors.metaDescription}>
   <EditorialHero title={t.flavors.title} description={flavors.length === 1 ? flavors[0].shortDescription : t.flavors.heroDescription} eyebrow={t.flavors.eyebrow} />
   <FlavorCollection flavors={flavors} locale={locale} messages={t} />
+</SiteLayout>}
+
+{page === 'apparel' && <SiteLayout page={page} locale={locale} title={t.apparel.metaTitle} description={t.apparel.metaDescription}>
+  <EditorialHero title={t.apparel.title} description={t.apparel.description} eyebrow={t.apparel.eyebrow} decoration="orbit" atmosphere />
+  <ApparelShowcase messages={t.apparel} locale={locale} />
+  <Fragment set:html={'<script type="module" src="/assets/scripts/apparel-image-carousel.js"></script>'} />
 </SiteLayout>}
 
 {page === 'detail' && <SiteLayout page={page} locale={locale} flavor={sourceFlavor} title={flavor.name} description={flavor.shortDescription}>

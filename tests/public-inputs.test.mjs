@@ -16,7 +16,7 @@ function sandbox(fn) {
     for(const name of readdirSync(join(base,'content/flavors')))if(name!=='grape.json')rmSync(join(base,'content/flavors',name));
     if(existsSync(join(base,'content/editorial')))for(const name of readdirSync(join(base,'content/editorial')))if(name!=='grape.json')rmSync(join(base,'content/editorial',name),{recursive:true,force:true});
     const grape=JSON.parse(readFileSync(join(base,'content/flavors/grape.json'),'utf8'));
-    for(const name of readdirSync(join(base,'public-astro/assets')))if(/-web-r[0-9]+\.webp$/.test(name)&&![grape.media.path.slice('assets/'.length),'trancy-web-r1.webp'].includes(name))rmSync(join(base,'public-astro/assets',name));
+    for(const name of readdirSync(join(base,'public-astro/assets/flavors')))if(/-web-r[0-9]+\.webp$/.test(name)&&name!==grape.media.path.slice('assets/flavors/'.length))rmSync(join(base,'public-astro/assets/flavors',name));
     return fn(base);
   }
   finally { rmSync(base,{recursive:true,force:true}); }
@@ -26,7 +26,7 @@ const write=(base,path,value)=>writeFileSync(join(base,path),JSON.stringify(valu
 const selectedGrapeMedia=base=>join(base,'public-astro',read(base,'content/flavors/grape.json').media.path);
 function webp(label='sample') { const body=Buffer.from(label);const b=Buffer.alloc(12+body.length);b.write('RIFF',0);b.writeUInt32LE(b.length-8,4);b.write('WEBP',8);body.copy(b,12);return b; }
 function addFlavor(base,slug='mango',bytes=webp()) {
-  const path=`assets/${slug}-web-r1.webp`;
+  const path=`assets/flavors/${slug}-web-r1.webp`;
   writeFileSync(join(base,'public-astro',path),bytes);
   writeFileSync(join(base,`content/flavors/${slug}.json`),JSON.stringify({contractVersion:'1',slug,revision:'1',name:slug[0].toUpperCase()+slug.slice(1),shortDescription:`Explore ${slug}.`,alt:`${slug} flavor artwork.`,translations:{'es-MX':{shortDescription:`Explora ${slug}.`,alt:`Ilustración de ${slug}.`}},media:{path,contentId:digest(bytes)}},null,2)+'\n');
 }
@@ -44,7 +44,7 @@ test('current Grape maps through the simple local content record and exact deliv
  assert.equal(grape.slug,'grape');assert.equal(grape.media.contentId,r.deliveries.find(d=>d.path.endsWith(grape.mediaUrl.slice(1))).asset.contentId);
 });
 test('normal release derives multiple detail routes and deliveries from validated flavor records without eligibility or release manifests',()=>sandbox(base=>{
- addFlavor(base);const r=loadRelease({base});assert.deepEqual(r.flavors.map(f=>f.slug),['grape','mango']);assert.equal(r.deliveries.length,2);assert.equal(r.flavors[1].mediaUrl,'/assets/mango-web-r1.webp');
+ addFlavor(base);const r=loadRelease({base});assert.deepEqual(r.flavors.map(f=>f.slug),['grape','mango']);assert.equal(r.deliveries.length,2);assert.equal(r.flavors[1].mediaUrl,'/assets/flavors/mango-web-r1.webp');
 }));
 test('normal loader accepts zero, one, and multiple associated editorial records',()=>sandbox(base=>{
  rmSync(join(base,'content/editorial'),{recursive:true,force:true});
@@ -77,8 +77,8 @@ test('media digest mismatch, wrong signature, and wrong path are rejected',()=>s
  const value=read(base,'content/flavors/grape.json');value.media.contentId='sha256:'+'0'.repeat(64);write(base,'content/flavors/grape.json',value);assert.throws(()=>loadRelease({base}),/digest/);
  cpSync(join(root,'content/flavors/grape.json'),join(base,'content/flavors/grape.json'));
  addFlavor(base,'mango',Buffer.from('not webp'));assert.throws(()=>loadRelease({base}),/WebP/);
- rmSync(join(base,'content/flavors/mango.json'));rmSync(join(base,'public-astro/assets/mango-web-r1.webp'));
- const changed=read(base,'content/flavors/grape.json');changed.media.path='assets/renamed-web-r1.webp';write(base,'content/flavors/grape.json',changed);assert.throws(()=>loadRelease({base}),/path mismatch/);
+ rmSync(join(base,'content/flavors/mango.json'));rmSync(join(base,'public-astro/assets/flavors/mango-web-r1.webp'));
+ const changed=read(base,'content/flavors/grape.json');changed.media.path='assets/flavors/renamed-web-r1.webp';write(base,'content/flavors/grape.json',changed);assert.throws(()=>loadRelease({base}),/path mismatch/);
 }));
 test('matching digest cannot make a corrupt WebP decode as valid media',async()=>{
  const base=mkdtempSync(join(tmpdir(),'tt-bad-webp-'));

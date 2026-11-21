@@ -144,20 +144,21 @@ class Document(HTMLParser):
         scripts = self.find("script")
         videos = self.find("video")
         about = page in {"about/index.html", "es/about/index.html"}
+        apparel = page in {"apparel/index.html", "es/apparel/index.html"}
         require(len(videos) <= 1 and (not videos or about), "Unexpected video placement/count")
-        require(len(scripts) == 1 + len(videos), "Unexpected client script count")
+        require(len(scripts) == 1 + len(videos) + int(apparel), "Unexpected client script count")
         script_sources = [node.attrs.get("src") for node in scripts]
-        require(script_sources.count("/assets/language-preference.js") == 1 and script_sources.count("/assets/cinematic-hero-video.js") == len(videos), "Unexpected client script source/count")
+        require(script_sources.count("/assets/scripts/language-preference.js") == 1 and script_sources.count("/assets/scripts/cinematic-hero-video.js") == len(videos) and script_sources.count("/assets/scripts/apparel-image-carousel.js") == int(apparel), "Unexpected client script source/count")
         for n in self.nodes:
             require(n.tag not in {"iframe", "form", "input", "object", "embed", "audio", "canvas", "astro-island"}, f"Unexpected runtime/control: {n.tag}")
             if n.tag == "script":
-                require(set(n.attrs) == {"type", "src"} and n.attrs["type"] == "module" and n.attrs["src"] in {"/assets/cinematic-hero-video.js", "/assets/language-preference.js"}, "Unexpected script source/attributes")
+                require(set(n.attrs) == {"type", "src"} and n.attrs["type"] == "module" and n.attrs["src"] in {"/assets/scripts/cinematic-hero-video.js", "/assets/scripts/language-preference.js", "/assets/scripts/apparel-image-carousel.js"}, "Unexpected script source/attributes")
                 require(not n.text().strip(), "Inline script is forbidden")
             if n.tag == "video":
                 required = {"src", "poster", "muted", "loop", "playsinline", "preload", "aria-describedby", "tabindex", "class", "id"}
                 scoped = {name for name in n.attrs if re.fullmatch(r"data-astro-cid-[a-z0-9]+", name)}
                 require(set(n.attrs) == required | scoped, "Unexpected video attributes")
-                require(n.attrs["src"] == "/assets/emerald-gateway-web.mp4" and n.attrs["poster"] == "/assets/emerald-gateway-poster.webp", "Unexpected About video assets")
+                require(n.attrs["src"] == "/assets/video/emerald-gateway-web.mp4" and n.attrs["poster"] == "/assets/video/emerald-gateway-poster.webp", "Unexpected About video assets")
                 require(all(name in n.attrs for name in ["muted", "loop", "playsinline"]) and n.attrs["preload"] == "none", "Unsafe video playback attributes")
                 require("autoplay" not in n.attrs and n.attrs["aria-describedby"] == "emerald-gateway-description", "Video autoplay/accessibility mismatch")
                 require(n.attrs["tabindex"] == "-1" and n.attrs["id"] == "emerald-gateway-video", "Unexpected video focus behavior")

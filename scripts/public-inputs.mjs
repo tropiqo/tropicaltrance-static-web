@@ -7,7 +7,9 @@ import { parseJson, validateSchema } from './closed-json.mjs';
 import { fixtureDigests, fixtureMarker } from './fixture-guards.mjs';
 import { trancy, validateTrancy } from './trancy-static.mjs';
 import { emeraldGatewayAssets, emeraldGatewayMedia, localizationAssets } from './emerald-gateway-static.mjs';
+import { apparelCarouselAssets } from './apparel-static.mjs';
 import { channelsForFlavor, loadSalesChannels } from './sales-channels.mjs';
+import { apparelMedia, validateApparelProducts } from '../src/data/apparel-products.mjs';
 
 export const digest = bytes => 'sha256:' + createHash('sha256').update(bytes).digest('hex');
 const requireThat = (ok, message) => { if (!ok) throw Error(message); };
@@ -174,7 +176,7 @@ function loadFlavorContent({base}) {
     const slug=path.slice('content/flavors/'.length,-'.json'.length);
     same(value.slug,slug,'Flavor slug/file name mismatch');
     const mediaPath='public-astro/'+value.media.path;
-    requireThat(value.media.path.startsWith('assets/') && value.media.path===`assets/${slug}-web-r${value.revision}.webp`,'Flavor media path mismatch');
+    requireThat(value.media.path.startsWith('assets/flavors/') && value.media.path===`assets/flavors/${slug}-web-r${value.revision}.webp`,'Flavor media path mismatch');
     const bytes=readFileSync(safePath(base,mediaPath));
     rejectFixture(bytes);
     requireThat(bytes.length>=16 && bytes.toString('ascii',0,4)==='RIFF' && bytes.toString('ascii',8,12)==='WEBP','Flavor delivery is not a WebP image');
@@ -202,7 +204,14 @@ function loadFlavorContent({base}) {
   const channelConfig = loadSalesChannels({base,flavors:flavors.map(flavor=>flavor.slug)});
   for (const flavor of flavors) flavor.salesChannels = channelsForFlavor(channelConfig,flavor);
   const deliveries=flavors.map(f=>({path:'public-astro/'+f.mediaUrl.slice(1),asset:{contentId:f.media.contentId}}));
-  const selected=new Set([trancy.path,...deliveries.map(d=>d.path),...emeraldGatewayAssets.map(asset=>asset.path),...localizationAssets.map(asset=>asset.path)]);
+  validateApparelProducts();
+  const apparelPaths=apparelMedia.map(asset=>'public-astro/'+asset.path);
+  for (const asset of apparelMedia) {
+    const bytes=readFileSync(safePath(base,'public-astro/'+asset.path));
+    same(digest(bytes),asset.contentId,'Apparel concept image digest mismatch');
+    requireThat(bytes.length>8 && bytes.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])),'Apparel concept image is not a PNG');
+  }
+  const selected=new Set([trancy.path,...deliveries.map(d=>d.path),...emeraldGatewayAssets.map(asset=>asset.path),...localizationAssets.map(asset=>asset.path),...apparelCarouselAssets.map(asset=>asset.path),...apparelPaths]);
   const trancyPath=safePath(base,trancy.path);
   requireThat(lstatSync(trancyPath).isFile(),'Expected regular static Trancy image');
   validateTrancy(readFileSync(trancyPath));
@@ -218,6 +227,11 @@ function loadFlavorContent({base}) {
     const bytes=readFileSync(safePath(base,asset.path));
     requireThat(bytes.length===asset.size,'Localization script byte size mismatch');
     same(digest(bytes),asset.contentId,'Localization script digest mismatch');
+  }
+  for (const asset of apparelCarouselAssets) {
+    const bytes=readFileSync(safePath(base,asset.path));
+    requireThat(bytes.length===asset.size,'Apparel carousel script byte size mismatch');
+    same(digest(bytes),asset.contentId,'Apparel carousel script digest mismatch');
   }
   same(inventory(base,'public-astro').sort(),[...selected].sort(),'Unlisted file would be copied by publicDir');
   return {site,flavors,review:false,deliveries,aboutHeroMedia:emeraldGatewayMedia};
