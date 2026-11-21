@@ -57,9 +57,9 @@ test('isolated website-only builds: deterministic normal and fixture outputs, no
   const selectedBytes=Object.fromEntries(selectedPaths.map(p=>[p,readFileSync(join(base,p))]));
   rmSync(editorialPath,{recursive:true,force:true});
   for(const p of selectedPaths)rmSync(join(base,p));
-  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,17);
+  run(base,'normal-build.mjs');await checkOutput(base);const empty=snapshot(base,'dist');assert.equal(empty.length,19);
   // A page-level style update changes the shared CSS asset URL; pin the resulting documents.
-  const baselineHashes={'index.html':'11f3e479cf8a3a561aa00e49a3308cb1666d5001ad522291ae1a61fb6839f4bf','about/index.html':'bcd467a086073b205a62c03a71a2b0bc398b6d53a63fdf6f332df807e255708e','flavors/index.html':'94ca818dce1d6f2248b563ceb5c3d95b4026f3d7ec8e5346861b82235108060b','es/flavors/index.html':'b25f53305ccef5230bd512edbd62835c9c051c7915004bebee2e1d620f2e101b','es/index.html':'26e7fdef5904b4ce8ef56c77d10fc3c5855e657c5a1a13ee5784ae9d1780db5e'};
+  const baselineHashes={'index.html':'ef99228303b5ef2a317ab2e093df59016564c20fb7b2659bc0d542e13555d1e0','about/index.html':'7b50e276a5a9d70d74d073ab2b985acc8e39160cd592fea48989b02b2ac5d450','flavors/index.html':'0565a8799ea67bd418642baa9012f5baef8951da385c450aebfd91871e635083','es/flavors/index.html':'65347ba54a5ac60bc6fc372085bf41af27831c74f2bc00c518124b3a8b6c53ec','es/index.html':'e8c9ddecb4aa3f88e886e30cc6a44bf94971dfbef7ed3b7218dd66dcbe984aa9'};
   const baselineMismatches=[];
   for(const [p,h]of empty){if(p in baselineHashes){if(h!=='sha256:'+baselineHashes[p])baselineMismatches.push([p,h]);}else assert.equal(h,normal.find(([n])=>n===p)[1],p);}
   assert.deepEqual(baselineMismatches,[],'Empty-release pinned HTML outputs changed');

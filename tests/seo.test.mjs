@@ -37,6 +37,10 @@ test('sitemap contains only existing localized page pairs and no default alias',
   const entries=sitemapEntries({origin:'https://tropicaltrance.example',flavors});
   assert(entries.some(entry=>entry.location==='https://tropicaltrance.example/'));
   assert(entries.some(entry=>entry.location==='https://tropicaltrance.example/es/'));
+  const apparel=entries.find(entry=>entry.location==='https://tropicaltrance.example/apparel/');
+  assert(apparel);
+  assert.deepEqual(apparel.alternates.map(alternate=>alternate.location),['https://tropicaltrance.example/apparel/','https://tropicaltrance.example/es/apparel/']);
+  assert(entries.some(entry=>entry.location==='https://tropicaltrance.example/es/apparel/'));
   assert(entries.some(entry=>entry.location==='https://tropicaltrance.example/flavors/cherry/'));
   assert(entries.some(entry=>entry.location==='https://tropicaltrance.example/es/flavors/cherry/'));
   assert(entries.some(entry=>entry.location==='https://tropicaltrance.example/flavors/mango/' && entry.alternates.length===1));
@@ -59,6 +63,8 @@ test('current development site stays noindex with origin and auth flags and omit
       ['es/index.html','Escapa de lo Ordinario','Explora Tropical Trance: un universo creativo'],
       ['about/index.html','Our Creative World','Meet Trancy and explore the creative world'],
       ['es/about/index.html','Nuestro universo creativo','Conoce a Trancy y el universo creativo'],
+      ['apparel/index.html','Apparel Concept Previews','Explore concept-only hoodie and T-shirt outlines'],
+      ['es/apparel/index.html','Vistas previas de ropa conceptual','Explora contornos conceptuales de una sudadera con capucha'],
       ['flavors/index.html','Explore the Flavors','Explore the Tropical Trance flavor collection'],
       ['es/flavors/index.html','Explora los sabores','Explora la colección de sabores de Tropical Trance'],
       ['contact/index.html','Get in Touch','Questions about Tropical Trance?'],
@@ -100,6 +106,7 @@ test('explicitly authorized production output has bilingual metadata, reciprocal
     const pairs=[
       ['index.html','es/index.html','https://tropicaltrance.example/','https://tropicaltrance.example/es/','Escape the Ordinary','Escapa de lo Ordinario','Explore Tropical Trance, a creative universe','Explora Tropical Trance: un universo creativo'],
       ['about/index.html','es/about/index.html','https://tropicaltrance.example/about/','https://tropicaltrance.example/es/about/','Our Creative World','Nuestro universo creativo','Meet Trancy and explore the creative world','Conoce a Trancy y el universo creativo'],
+      ['apparel/index.html','es/apparel/index.html','https://tropicaltrance.example/apparel/','https://tropicaltrance.example/es/apparel/','Apparel Concept Previews','Vistas previas de ropa conceptual','Explore concept-only hoodie and T-shirt outlines','Explora contornos conceptuales de una sudadera con capucha'],
       ['flavors/cherry/index.html','es/flavors/cherry/index.html','https://tropicaltrance.example/flavors/cherry/','https://tropicaltrance.example/es/flavors/cherry/','Cherry Flavor','Sabor Cherry','Explore the Cherry flavor','Explora el sabor Cherry'],
     ];
     for (const [englishPath,spanishPath,canonical,alternate,englishTitle,spanishTitle,englishDescription,spanishDescription] of pairs) {

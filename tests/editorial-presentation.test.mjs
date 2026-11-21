@@ -18,7 +18,7 @@ before(() => {
 });
 const headings = (html,level) => [...html.matchAll(new RegExp(`<h${level}\\b[^>]*>([\\s\\S]*?)<\\/h${level}>`,'g'))].map(m=>m[1]);
 
-test('shared shell, semantic heading and working static primary/footer navigation on all five normal routes', async () => {
+test('shared shell, semantic heading and working static primary/footer navigation on all fixed normal routes', async () => {
   await checkOutput(); await checkSource();
   for (const route of routes) {
     const html = normal(route);
@@ -31,7 +31,7 @@ test('shared shell, semantic heading and working static primary/footer navigatio
     assert.equal((nav[0].match(/aria-current="page"/g)||[]).length, expected ? 1 : 0);
     if (expected) assert.match(nav[0], new RegExp('href="' + expected + '" aria-current="page"'));
     assert.match(nav[0],/aria-label="Primary"/); assert.match(nav[1],/aria-label="Footer"/);
-    for (const part of nav) { assert.deepEqual([...part.matchAll(/href="([^"]+)"/g)].map(m=>m[1]),['/','/flavors/','/about/','/contact/']); assert(!/world|Trancy/i.test(part)); }
+    for (const part of nav) { assert.deepEqual([...part.matchAll(/href="([^"]+)"/g)].map(m=>m[1]),['/','/flavors/','/about/','/apparel/','/contact/']); assert(!/world|Trancy/i.test(part)); }
     assert.match(html,/<a[^>]*class="skip-link"[^>]*href="#main"/);assert.match(html,/<main id="main" tabindex="-1"/);
     assert(!/<(?:iframe|form|input|astro-island)\b/i.test(html));
     assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?2:1);
@@ -129,10 +129,11 @@ test('About uses the pinned Emerald Gateway delivery and preserves its copy; oth
   for(const asset of ['public-astro/assets/emerald-gateway-web.mp4','public-astro/assets/emerald-gateway-poster.webp']) assert(readFileSync(resolve(root,asset)).length>0);
 });
 test('Spanish pages localize interface, metadata, accessibility text, flavor content, and video controls',()=>{
-  const home=normal('es/index.html'),about=normal('es/about/index.html'),collection=normal('es/flavors/index.html'),grape=normal('es/flavors/grape/index.html'),contact=normal('es/contact/index.html');
+  const home=normal('es/index.html'),about=normal('es/about/index.html'),collection=normal('es/flavors/index.html'),apparel=normal('es/apparel/index.html'),grape=normal('es/flavors/grape/index.html'),contact=normal('es/contact/index.html');
   const grapeRecord=loadRelease().flavors.find(flavor=>flavor.slug==='grape');
-  for(const html of [home,about,collection,grape,contact])assert.match(html,/<html lang="es-MX"/);
-  for(const phrase of ['Saltar al contenido','Inicio','Sabores','Acerca de','Contacto','Sitio exclusivo de desarrollo.','Sigue con curiosidad. Vive lo tropical.'])assert(home.includes(phrase));
+  for(const html of [home,about,collection,apparel,grape,contact])assert.match(html,/<html lang="es-MX"/);
+  for(const phrase of ['Saltar al contenido','Inicio','Sabores','Acerca de','Ropa','Contacto','Sitio exclusivo de desarrollo.','Sigue con curiosidad. Vive lo tropical.'])assert(home.includes(phrase));
+  assert(apparel.includes('Dos ideas en contorno')&&apparel.includes('Vista previa conceptual')&&apparel.includes('Playera'));
   assert(home.includes('Cada sabor. Una nueva aventura.'));
   assert(home.includes('Trancy, el camaleón verde de Tropical Trance'));
   assert(collection.includes('Desliza para explorar'));
@@ -150,7 +151,8 @@ test('decoration is hidden, static and separate from approved media; no remote C
   const release=loadRelease();
   for(const route of routes) {
     const html=normal(route);for(const block of html.matchAll(/<div class="decorative-background[^>]*>/g))assert.match(block[0],/aria-hidden="true"/);
-    assert(!/<(?:svg|canvas|audio|iframe)\b/i.test(html));
+    assert.equal((html.match(/<svg\b/gi)||[]).length,route==='apparel/index.html'?2:0);
+    assert(!/<(?:canvas|audio|iframe)\b/i.test(html));
     assert.equal((html.match(/<video\b/g)||[]).length,route==='about/index.html'?1:0);
     assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?2:1);
     const expectedFlavorImages=['index.html','flavors/index.html'].includes(route)?release.flavors.length:0;
@@ -195,7 +197,7 @@ test('presentation reads validated props only; contracts, fixture roots and publ
   }
   const release=loadRelease();
   assert.deepEqual(inventory(root,'public-astro',true).sort(), [...release.deliveries.map(d=>d.path),'public-astro/assets/trancy-web-r1.webp','public-astro/assets/cinematic-hero-video.js','public-astro/assets/emerald-gateway-poster.webp','public-astro/assets/emerald-gateway-web.mp4','public-astro/assets/language-preference.js'].sort());
-  assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`),'es/index.html','es/about/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)].sort());
+  assert.deepEqual(inventory(root,'dist').filter(p=>p.endsWith('.html')).map(p=>p.slice(5)).sort(),[...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`),'es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)].sort());
 });
 
 test('local Trancy candidate anchors Home and About with one intact delivery', async () => {

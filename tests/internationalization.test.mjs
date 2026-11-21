@@ -7,6 +7,7 @@ import { loadRelease } from '../scripts/public-inputs.mjs';
 test('English and Mexican Spanish dictionaries have the same complete, non-empty key set', () => {
   const keys = validateMessages();
   assert(keys.includes('about.playVideo'));
+  assert(keys.includes('apparel.products.hoodie.visualDescription'));
   assert(keys.includes('contact.whatsappLabel'));
   assert.equal(getMessages('en').language, 'en');
   assert.equal(getMessages('es-MX').language, 'es-MX');
@@ -14,10 +15,10 @@ test('English and Mexican Spanish dictionaries have the same complete, non-empty
 });
 
 test('locale URL mapping keeps page and flavor slug and falls back home for unsupported routes', () => {
-  for (const path of ['/', '/about/', '/flavors/', '/flavors/cherry/', '/flavors/grape/', '/flavors/lime/', '/contact/', '/404.html']) {
+  for (const path of ['/', '/about/', '/flavors/', '/apparel/', '/flavors/cherry/', '/flavors/grape/', '/flavors/lime/', '/contact/', '/404.html']) {
     assert.equal(localizePath(path, 'es-MX'), path === '/' ? '/es/' : path === '/404.html' ? '/es/404/' : `/es${path}`);
   }
-  for (const path of ['/es/', '/es/about/', '/es/flavors/cherry/', '/es/flavors/grape/', '/es/flavors/lime/', '/es/contact/', '/es/404/']) {
+  for (const path of ['/es/', '/es/about/', '/es/flavors/cherry/', '/es/flavors/grape/', '/es/flavors/lime/', '/es/apparel/', '/es/contact/', '/es/404/']) {
     assert.equal(localizePath(path, 'en'), path === '/es/' ? '/' : path === '/es/404/' ? '/404.html' : path.slice(3));
   }
   assert.equal(localizePath('/unsupported/', 'es-MX'), '/es/');

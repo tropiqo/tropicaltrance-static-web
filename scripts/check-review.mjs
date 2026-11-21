@@ -8,7 +8,7 @@ import { trancyReviewSelection as selected } from './trancy-review-identity.mjs'
 import { auditRendered } from './rendered-audit.mjs';
 export async function checkReviewOutput(base = process.cwd()) {
   const release = loadTrancyReview(base);
-  const spanishRoutes=['es/index.html','es/about/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
+  const spanishRoutes=['es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
   const expected = [...routes,...release.flavors.map(f=>`flavors/${f.slug}/index.html`),...spanishRoutes];
   const files = inventory(base,'.review-build').map(p=>p.slice('.review-build/'.length));
   assert.deepEqual(files.filter(p=>p.endsWith('.html')).sort(),expected.sort());

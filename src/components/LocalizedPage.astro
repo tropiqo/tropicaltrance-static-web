@@ -6,13 +6,14 @@ import FlavorDiscovery from './FlavorDiscovery.astro';
 import FlavorCollection from './FlavorCollection.astro';
 import FlavorDetail from './FlavorDetail.astro';
 import ContactPanel from './ContactPanel.astro';
+import ApparelShowcase from './ApparelShowcase.astro';
 import TrancyMedia from './TrancyMedia.astro';
 import CinematicHeroVideo from './CinematicHeroVideo.astro';
 import SiteLayout from '../layouts/SiteLayout.astro';
 import { getMessages, localizePath } from '../i18n/messages.mjs';
 import { localizeFlavor } from '../i18n/localize.mjs';
 import { emeraldGatewayMedia } from '../../scripts/emerald-gateway-static.mjs';
-interface Props { page: 'home' | 'about' | 'flavors' | 'detail' | 'contact' | 'notFound'; locale?: 'en' | 'es-MX'; flavor?: any; }
+interface Props { page: 'home' | 'about' | 'flavors' | 'apparel' | 'detail' | 'contact' | 'notFound'; locale?: 'en' | 'es-MX'; flavor?: any; }
 const { page, locale = 'en', flavor: sourceFlavor } = Astro.props;
 const t = getMessages(locale);
 const flavors = release.flavors.map(flavor => localizeFlavor(flavor, locale, release.review));
@@ -59,6 +60,11 @@ const aboutMedia = locale === 'en' ? release.brandMedia['about-mascot'] : { ...r
 {page === 'flavors' && <SiteLayout page={page} locale={locale} title={t.flavors.metaTitle} description={t.flavors.metaDescription}>
   <EditorialHero title={t.flavors.title} description={flavors.length === 1 ? flavors[0].shortDescription : t.flavors.heroDescription} eyebrow={t.flavors.eyebrow} />
   <FlavorCollection flavors={flavors} locale={locale} messages={t} />
+</SiteLayout>}
+
+{page === 'apparel' && <SiteLayout page={page} locale={locale} title={t.apparel.metaTitle} description={t.apparel.metaDescription}>
+  <EditorialHero title={t.apparel.title} description={t.apparel.description} eyebrow={t.apparel.eyebrow} decoration="orbit" atmosphere />
+  <ApparelShowcase messages={t.apparel} />
 </SiteLayout>}
 
 {page === 'detail' && <SiteLayout page={page} locale={locale} flavor={sourceFlavor} title={flavor.name} description={flavor.shortDescription}>

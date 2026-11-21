@@ -9,8 +9,9 @@ import { auditRendered } from './rendered-audit.mjs';
 import sharp from 'sharp';
 import { getMessages } from '../src/i18n/messages.mjs';
 import { pageMetadata, seoBuildSettings, renderRobots, renderSitemap, sitemapEntries } from './seo-metadata.mjs';
+import { validateApparelProducts } from '../src/data/apparel-products.mjs';
 
-export const routes = ['index.html', 'about/index.html', 'contact/index.html', 'flavors/index.html', '404.html'];
+export const routes = ['index.html', 'about/index.html', 'apparel/index.html', 'contact/index.html', 'flavors/index.html', '404.html'];
 const root = fileURLToPath(new URL('../', import.meta.url));
 async function files(dir) {
   const result = [];
@@ -24,7 +25,7 @@ async function files(dir) {
 }
 export function checkInventory(paths, deliveries = [], flavors = [], seoSettings = seoBuildSettings()) {
   const expectedRoutes = [...routes,...flavors.map(f=>'flavors/'+f.slug+'/index.html')];
-  const spanishRoutes = ['es/index.html','es/about/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
+  const spanishRoutes = ['es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
   const allRoutes = [...expectedRoutes,...spanishRoutes];
   const assets = [trancy.path.slice('public-astro/'.length), ...deliveries.map(m => m.path.slice('public-astro/'.length)), ...emeraldGatewayAssets.map(asset => asset.path.slice('public-astro/'.length)), ...localizationAssets.map(asset => asset.path.slice('public-astro/'.length))];
   assert.deepEqual(paths.filter(p => p.endsWith('.html')).sort(), allRoutes.sort(), 'Unexpected static routes');
@@ -152,7 +153,7 @@ export async function checkSource(base = root) {
   checkConfig(config);
   const source = await files(resolve(base, 'src'));
   const pages = source.map(p => relative(resolve(base, 'src/pages'), p)).filter(p => !p.startsWith('..'));
-  assert.deepEqual(pages.sort(), ['404.astro','about.astro','contact.astro','flavors/[slug].astro','flavors/index.astro','index.astro','robots.txt.ts','es/index.astro','es/about.astro','es/contact.astro','es/404.astro','es/flavors/index.astro','es/flavors/[slug].astro'].sort());
+  assert.deepEqual(pages.sort(), ['404.astro','about.astro','apparel/index.astro','contact.astro','flavors/[slug].astro','flavors/index.astro','index.astro','robots.txt.ts','es/index.astro','es/about.astro','es/apparel/index.astro','es/contact.astro','es/404.astro','es/flavors/index.astro','es/flavors/[slug].astro'].sort());
   for (const path of source) {
     const text = await readFile(path, 'utf8');
     assert(!/fetch\s*\(|https?:|tropical-trance-studio|artwork-workspace|prerender\s*=\s*false|astro:actions|astro:content/.test(text), `Forbidden source dependency: ${path}`);
@@ -161,6 +162,7 @@ export async function checkSource(base = root) {
   assert.match(await readFile(resolve(base, 'src/pages/flavors/[slug].astro'), 'utf8'), /release\.flavors\.map/);
   assert.match(await readFile(resolve(base, 'src/pages/es/flavors/[slug].astro'), 'utf8'), /release\.flavors\.(?:filter\([^\n]+\)\.)?map/);
   const selected = loadRelease({base}).flavors;
+  assert(validateApparelProducts(),'Apparel concepts must remain owner-approval gated');
   assert(selected.every(f=>/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(f.slug) && f.flavor.id===f.slug), 'Invalid normal Flavor selection');
   await checkFlavorMedia(base,{flavors:selected});
   const packageJson = JSON.parse(await readFile(resolve(base, 'package.json'), 'utf8'));
@@ -192,7 +194,7 @@ export async function checkOutput(base = root) {
     }
     assert(!/tropical-trance-studio|artwork-workspace:|(?:\/Users\/|\/private\/)|authorityEvidence|reviewEvidenceContentId|candidateContentId|publication-decision|projection\.schema\.json/.test(bytes.toString('utf8')), 'Private schema/evidence/output leak');
   }
-  const spanishRoutes=['es/index.html','es/about/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
+  const spanishRoutes=['es/index.html','es/about/index.html','es/apparel/index.html','es/contact/index.html','es/404/index.html','es/flavors/index.html',...release.flavors.map(f=>`es/flavors/${f.slug}/index.html`)];
   for (const page of [...routes,...release.flavors.map(f=>'flavors/'+f.slug+'/index.html'),...spanishRoutes]) {
     const path = resolve(dist, page);
     const html = await readFile(path, 'utf8');
@@ -208,11 +210,15 @@ export async function checkOutput(base = root) {
     const whatsappBusinessUrl=basePage==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
     const businessEmail=basePage==='contact/index.html' ? release.site.contact?.businessEmail ?? null : null;
     const messages=getMessages(locale);
-    const pageKind=basePage==='index.html'?'home':basePage==='about/index.html'?'about':basePage==='flavors/index.html'?'flavors':basePage==='contact/index.html'?'contact':basePage==='404.html'||basePage==='404/index.html'?'notFound':detail?'detail':'notFound';
-    const metadataTitle=pageKind==='home'?messages.home.metaTitle:pageKind==='about'?messages.about.metaTitle:pageKind==='flavors'?messages.flavors.metaTitle:pageKind==='contact'?messages.contact.metaTitle:pageKind==='detail'?detail.name:messages.notFound.title;
-    const metadataDescription=pageKind==='home'?messages.home.metaDescription:pageKind==='about'?messages.about.metaDescription:pageKind==='flavors'?messages.flavors.metaDescription:pageKind==='contact'?messages.contact.metaDescription:pageKind==='detail'?detail.shortDescription:messages.notFound.description;
+    const pageKind=basePage==='index.html'?'home':basePage==='about/index.html'?'about':basePage==='apparel/index.html'?'apparel':basePage==='flavors/index.html'?'flavors':basePage==='contact/index.html'?'contact':basePage==='404.html'||basePage==='404/index.html'?'notFound':detail?'detail':'notFound';
+    const metadataTitle=pageKind==='home'?messages.home.metaTitle:pageKind==='about'?messages.about.metaTitle:pageKind==='apparel'?messages.apparel.metaTitle:pageKind==='flavors'?messages.flavors.metaTitle:pageKind==='contact'?messages.contact.metaTitle:pageKind==='detail'?detail.name:messages.notFound.title;
+    const metadataDescription=pageKind==='home'?messages.home.metaDescription:pageKind==='about'?messages.about.metaDescription:pageKind==='apparel'?messages.apparel.metaDescription:pageKind==='flavors'?messages.flavors.metaDescription:pageKind==='contact'?messages.contact.metaDescription:pageKind==='detail'?detail.shortDescription:messages.notFound.description;
     const seo=pageMetadata({page:pageKind,locale,title:metadataTitle,description:metadataDescription,flavor:detail,settings:seoSettings});
     checkHtml(html,media,salesChannels,whatsappBusinessUrl,basePage==='about/index.html'?release.aboutHeroMedia:null,locale,seo,seoSettings.indexingAuthorized,businessEmail);
+    if (basePage==='apparel/index.html') {
+      assert.equal((html.match(/<img\b/gi)||[]).length,0,'Apparel concept art must remain inline SVG without image delivery');
+      assert.equal((html.match(/<svg\b/gi)||[]).length,2,'Apparel page must contain exactly two inline concept outlines');
+    }
     if (!role) assert(!html.includes(trancyMedia.mediaUrl),'Trancy referenced outside Home/About');
     for (const match of html.matchAll(/href="([^"]+)"/g)) {
       const [href, fragment] = decodeAttribute(match[1]).split('#');

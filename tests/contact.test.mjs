@@ -56,7 +56,7 @@ test('Contact and footer show the placeholder without a destination and retain s
       assert.match(html, /Stay Curious\. Stay Tropical\./);
       assert.match(html, /Follow your curiosity into a world where imagination takes the lead\./);
       assert.match(html, /aria-label="Footer"/);
-      for (const href of ['/', '/flavors/', '/about/', '/contact/']) assert(html.includes(`href="${href}"`));
+      for (const href of ['/', '/flavors/', '/about/', '/apparel/', '/contact/']) assert(html.includes(`href="${href}"`));
       assert.match(html, /Local development preview — not a public release\./);
       assert.match(html, /name="robots" content="noindex, nofollow"/);
     }

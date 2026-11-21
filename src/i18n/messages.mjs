@@ -4,7 +4,7 @@ export const messages = Object.freeze({
   en: Object.freeze({
     language: 'en', skip: 'Skip to content', brand: 'Tropical Trance',
     selectorLabel: 'Choose language', englishLabel: 'View this page in English', spanishLabel: 'View this page in Spanish',
-    nav: { primary: 'Primary', footer: 'Footer', home: 'Home', flavors: 'Flavors', about: 'About', contact: 'Contact' },
+    nav: { primary: 'Primary', footer: 'Footer', home: 'Home', flavors: 'Flavors', about: 'About', apparel: 'Apparel', contact: 'Contact' },
     developmentNotice: 'Development-only foundation. Public content and release approval are pending.',
     footer: { tagline: 'Stay Curious. Stay Tropical.', statement: 'Follow your curiosity into a world where imagination takes the lead.', note: 'Local development preview — not a public release.' },
     home: {
@@ -20,6 +20,13 @@ export const messages = Object.freeze({
       exploreWorlds: 'Explore the Worlds', explore: 'Explore the Flavors', videoDescription: 'A camera approaches a luminous emerald gateway in a tropical forest before revealing a surreal waterfall landscape.', playVideo: 'Play Emerald Gateway video', pauseVideo: 'Pause Emerald Gateway video',
     },
     flavors: { title: 'Flavors', metaTitle: 'Explore the Flavors', metaDescription: 'Explore the Tropical Trance flavor collection, where each flavor has its own illustrated world.', description: 'Explore the Tropical Trance flavor collection.', emptyDescription: 'Empty development-only collection.', heroDescription: 'Local development preview — not a public release.', eyebrow: 'Tropical Trance', collectionLabel: 'Flavors collection', swipe: 'Swipe to explore', listLabel: 'Tropical Trance flavors', detailEyebrow: 'Flavors', return: 'Return to Flavors', storyLabel: 'Flavor story', storyEyebrow: 'Flavor story', storyTitle: 'Trancy’s Worlds', find: 'Find this flavor', where: 'Where to Find Us', channelLinkLabel: 'Find {flavor} at {channel} (opens in a new tab)', previewOnly: 'Preview only' },
+    apparel: {
+      title: 'Apparel Concepts', metaTitle: 'Apparel Concept Previews', metaDescription: 'Explore concept-only hoodie and T-shirt outlines from Tropical Trance. Garment artwork and product details are pending owner approval.', description: 'A first look at two apparel silhouettes. These are concept previews; no garment artwork or product details are approved.', eyebrow: 'Tropical Trance apparel', galleryTitle: 'Two ideas in outline', galleryLead: 'Hoodie and T-shirt silhouettes, presented as concepts while future designs are considered.', galleryLabel: 'Apparel concept previews', conceptLabel: 'Concept preview', visualCaption: 'Outline illustration · concept only', approvalNote: 'Concept visuals only. Garment artwork and product details require owner approval before any product assets are added.',
+      products: {
+        hoodie: { name: 'Hoodie', description: 'A simple hoodie outline for a future design direction. Final artwork and garment details remain pending approval.', visualTitle: 'Hoodie concept outline', visualDescription: 'A plain hoodie silhouette drawn as a temporary concept preview, with no garment artwork.' },
+        tshirt: { name: 'T-shirt', description: 'A simple T-shirt outline for a future design direction. Final artwork and garment details remain pending approval.', visualTitle: 'T-shirt concept outline', visualDescription: 'A plain T-shirt silhouette drawn as a temporary concept preview, with no garment artwork.' },
+      },
+    },
     empty: { description: 'No flavors are included in this development build.', about: 'About' },
     contact: { title: "Let's Connect", metaTitle: 'Get in Touch', metaDescription: 'Questions about Tropical Trance? Get in touch with us.', description: "Have a question or want to connect with Tropical Trance? We'd love to hear from you.", eyebrow: 'Contact', heading: 'Choose how to reach us', emailHeading: 'Business email', emailAction: 'Email Tropical Trance', emailLabel: 'Email Tropical Trance at {email}', whatsappDescription: 'Connect with our team directly.', whatsappAction: 'Message us on WhatsApp', developmentPlaceholder: 'Contact destinations are not configured in this development build.', return: 'Return Home', whatsappLabel: 'Message Tropical Trance on WhatsApp (opens in a new tab)' },
     notFound: { title: 'Page not found', description: 'Development-only missing-page recovery.', message: 'The requested page is not available in this local foundation.', return: 'Return Home', flavors: 'Flavors' },
@@ -27,7 +34,7 @@ export const messages = Object.freeze({
   'es-MX': Object.freeze({
     language: 'es-MX', skip: 'Saltar al contenido', brand: 'Tropical Trance',
     selectorLabel: 'Elegir idioma', englishLabel: 'Ver esta página en inglés', spanishLabel: 'Ver esta página en español',
-    nav: { primary: 'Principal', footer: 'Pie de página', home: 'Inicio', flavors: 'Sabores', about: 'Acerca de', contact: 'Contacto' },
+    nav: { primary: 'Principal', footer: 'Pie de página', home: 'Inicio', flavors: 'Sabores', about: 'Acerca de', apparel: 'Ropa', contact: 'Contacto' },
     developmentNotice: 'Sitio exclusivo de desarrollo. El contenido público y la aprobación de lanzamiento están pendientes.',
     footer: { tagline: 'Sigue con curiosidad. Vive lo tropical.', statement: 'Sigue tu curiosidad hacia un mundo donde la imaginación marca el camino.', note: 'Vista previa de desarrollo local — no es un lanzamiento público.' },
     home: {
@@ -43,6 +50,13 @@ export const messages = Object.freeze({
       exploreWorlds: 'Explora los mundos', explore: 'Explora los sabores', videoDescription: 'Una cámara se acerca a un portal esmeralda luminoso en un bosque tropical y revela un paisaje surrealista con una cascada.', playVideo: 'Reproducir video de la Puerta Esmeralda', pauseVideo: 'Pausar video de la Puerta Esmeralda',
     },
     flavors: { title: 'Sabores', metaTitle: 'Explora los sabores', metaDescription: 'Explora la colección de sabores de Tropical Trance: cada uno tiene su propio mundo ilustrado.', description: 'Explora la colección de sabores de Tropical Trance.', emptyDescription: 'Colección vacía de desarrollo.', heroDescription: 'Vista previa de desarrollo local — no es un lanzamiento público.', eyebrow: 'Tropical Trance', collectionLabel: 'Colección de sabores', swipe: 'Desliza para explorar', listLabel: 'Sabores de Tropical Trance', detailEyebrow: 'Sabores', return: 'Volver a sabores', storyLabel: 'Historia del sabor', storyEyebrow: 'Historia del sabor', storyTitle: 'Los mundos de Trancy', find: 'Encuentra este sabor', where: 'Dónde encontrarnos', channelLinkLabel: 'Encontrar {flavor} en {channel} (se abre en una pestaña nueva)', previewOnly: 'Solo vista previa' },
+    apparel: {
+      title: 'Conceptos de ropa', metaTitle: 'Vistas previas de ropa conceptual', metaDescription: 'Explora contornos conceptuales de una sudadera con capucha y una playera de Tropical Trance. El diseño y los detalles de las prendas requieren aprobación del titular.', description: 'Un primer vistazo a dos siluetas de ropa. Son conceptos; el diseño y los detalles de las prendas aún no están aprobados.', eyebrow: 'Ropa Tropical Trance', galleryTitle: 'Dos ideas en contorno', galleryLead: 'Siluetas de una sudadera con capucha y una playera, presentadas como conceptos para explorar futuros diseños.', galleryLabel: 'Vistas previas conceptuales de ropa', conceptLabel: 'Vista previa conceptual', visualCaption: 'Ilustración de contorno · solo concepto', approvalNote: 'Solo son conceptos visuales. El diseño y los detalles de las prendas requieren aprobación del titular antes de agregar recursos de producto.',
+      products: {
+        hoodie: { name: 'Sudadera con capucha', description: 'Un contorno sencillo de sudadera para explorar una futura dirección de diseño. El arte final y los detalles de la prenda requieren aprobación.', visualTitle: 'Contorno conceptual de una sudadera', visualDescription: 'Silueta sencilla de una sudadera, dibujada como vista previa conceptual temporal y sin diseño gráfico.' },
+        tshirt: { name: 'Playera', description: 'Un contorno sencillo de playera para explorar una futura dirección de diseño. El arte final y los detalles de la prenda requieren aprobación.', visualTitle: 'Contorno conceptual de una playera', visualDescription: 'Silueta sencilla de una playera, dibujada como vista previa conceptual temporal y sin diseño gráfico.' },
+      },
+    },
     empty: { description: 'Esta versión de desarrollo no incluye sabores.', about: 'Acerca de' },
     contact: { title: 'Conectemos', metaTitle: 'Ponte en contacto', metaDescription: '¿Tienes preguntas sobre Tropical Trance? Ponte en contacto con nosotros.', description: '¿Tienes alguna pregunta o quieres conectar con Tropical Trance? Nos encantará saber de ti.', eyebrow: 'Contacto', heading: 'Elige cómo contactarnos', emailHeading: 'Correo de negocios', emailAction: 'Escribir a Tropical Trance', emailLabel: 'Enviar correo a Tropical Trance a {email}', whatsappDescription: 'Conecta directamente con nuestro equipo.', whatsappAction: 'Escríbenos por WhatsApp', developmentPlaceholder: 'Los destinos de contacto no están configurados en esta versión de desarrollo.', return: 'Volver al inicio', whatsappLabel: 'Enviar mensaje a Tropical Trance por WhatsApp (se abre en una pestaña nueva)' },
     notFound: { title: 'Página no encontrada', description: 'Recuperación de página ausente para desarrollo.', message: 'La página solicitada no está disponible en este sitio local.', return: 'Volver al inicio', flavors: 'Sabores' },
@@ -74,7 +88,7 @@ validateMessages();
 
 export function localizePath(pathname, locale) {
   const path = pathname === '/es/404/' ? '/404.html' : pathname.startsWith('/es/') ? pathname.slice(3) : pathname === '/es' ? '/' : pathname;
-  const supported = path === '/' || ['/about/', '/flavors/', '/contact/', '/404.html'].includes(path) || /^\/flavors\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(path);
+  const supported = path === '/' || ['/about/', '/flavors/', '/apparel/', '/contact/', '/404.html'].includes(path) || /^\/flavors\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(path);
   const safePath = supported ? path : '/';
   return locale === 'es-MX' ? (safePath === '/' ? '/es/' : safePath === '/404.html' ? '/es/404/' : `/es${safePath}`) : safePath;
 }

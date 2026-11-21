@@ -3,7 +3,7 @@ import { getMessages, localizePath } from '../i18n/messages.mjs';
 interface Props { locale?: 'en' | 'es-MX'; }
 const { locale = 'en' } = Astro.props;
 const t = getMessages(locale);
-const navigation = [['/', t.nav.home], ['/flavors/', t.nav.flavors], ['/about/', t.nav.about], ['/contact/', t.nav.contact]];
+const navigation = [['/', t.nav.home], ['/flavors/', t.nav.flavors], ['/about/', t.nav.about], ['/apparel/', t.nav.apparel], ['/contact/', t.nav.contact]];
 ---
 <footer class="site-footer">
   <div class="container footer-inner">

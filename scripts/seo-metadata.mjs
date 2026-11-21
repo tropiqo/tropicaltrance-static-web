@@ -1,5 +1,5 @@
 const LOCALES = Object.freeze(['en', 'es-MX']);
-const FIXED_PATHS = Object.freeze({ home: '/', about: '/about/', flavors: '/flavors/', contact: '/contact/' });
+const FIXED_PATHS = Object.freeze({ home: '/', about: '/about/', flavors: '/flavors/', apparel: '/apparel/', contact: '/contact/' });
 
 export function validateCanonicalOrigin(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -49,7 +49,7 @@ export function pageMetadata({ page, locale = 'en', title, description, flavor =
 
 export function sitemapEntries({ origin, flavors = [] }) {
   if (!validateCanonicalOrigin(origin)) throw new Error('Sitemap requires a valid HTTPS canonical origin');
-  const pages = ['home', 'about', 'flavors', 'contact'];
+  const pages = ['home', 'about', 'flavors', 'apparel', 'contact'];
   const entries = [];
   for (const page of pages) {
     const pair = LOCALES.map(locale => ({ locale, path: pagePath(page, locale) }));
