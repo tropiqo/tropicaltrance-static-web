@@ -158,7 +158,7 @@ test('decoration is hidden, static and separate from approved media; no remote C
     assert.equal((html.match(/<script\b/g)||[]).length,route==='about/index.html'?2:1);
     const expectedFlavorImages=['index.html','flavors/index.html'].includes(route)?release.flavors.length:0;
     const expectedTrancyImages=['index.html','about/index.html'].includes(route)?1:0;
-    assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages+(route==='apparel/index.html'?apparelMedia.length:0));
+    assert.equal((html.match(/<img\b/g)||[]).length,expectedFlavorImages+expectedTrancyImages+(route==='apparel/index.html'?apparelMedia.length*2:0));
   }
   const css=text('src/styles/global.css');assert.match(css,/object-fit: contain/);assert(!/object-fit:\s*cover|@font-face|https?:|url\(|@keyframes/.test(css));
   assert.match(text('src/components/DecorativeBackground.astro'),/aria-hidden="true"/);assert.match(css,/pointer-events: none/);
@@ -179,7 +179,10 @@ test('CSS protects reflow, keyboard focus, touch targets and reduced motion with
   assert.match(css,/min-block-size: 2\.75rem/);assert.match(css,/grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);assert.match(css,/overflow-wrap: anywhere/);
   for(const width of ['48','72','96'])assert.match(css,new RegExp('@media \\(min-width: '+width+'rem\\)'));
   assert.match(css,/@media \(prefers-reduced-motion: reduce\)[\s\S]*animation: none !important; transition: none !important; scroll-behavior: auto !important/);
-  assert(!/overflow-x:\s*hidden|position:\s*(fixed|sticky)|\border\s*:|grid-auto-flow:\s*dense/.test(css));
+  const flowCss=css.replace(/\.apparel-image-dialog(?:__close|::backdrop)?\s*\{[^}]*\}/g,'');
+  assert(!/overflow-x:\s*hidden|position:\s*(fixed|sticky)|\border\s*:|grid-auto-flow:\s*dense/.test(flowCss));
+  assert.match(css,/\.apparel-image-dialog\s*\{[^}]*position: fixed/);
+  assert.match(css,/\.apparel-image-dialog::backdrop\s*\{[^}]*background:/);
 });
 function luminance(hex) {
   const rgb=hex.match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16)/255).map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
@@ -217,7 +220,7 @@ test('local Trancy candidate anchors Home and About with one intact delivery', a
     const html=normal(route),images=[...html.matchAll(/<img\b[^>]*>/g)].map(match=>match[0]);
     assert(!html.includes('/review-media/'));
     assert.equal(images.filter(image=>image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','about/index.html'].includes(route)?1:0);
-    assert.equal(images.filter(image=>!image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','flavors/index.html'].includes(route)?release.flavors.length:route==='apparel/index.html'?apparelMedia.length:0);
+    assert.equal(images.filter(image=>!image.includes(`src="${trancyMedia.mediaUrl}"`)).length,['index.html','flavors/index.html'].includes(route)?release.flavors.length:route==='apparel/index.html'?apparelMedia.length*2:0);
   }
   for (const route of ['contact/index.html', '404.html', 'flavors/index.html', 'flavors/fixture-coral/index.html', 'flavors/fixture-orchid/index.html']) assert(!fixture(route).includes('/review-media/'));
 });

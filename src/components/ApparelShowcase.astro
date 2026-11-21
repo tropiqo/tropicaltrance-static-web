@@ -22,16 +22,25 @@ const { messages, locale } = Astro.props;
           </div>
           <figure class="apparel-visual">
             {product.artwork.kind === 'owner-approved-concept-images' ? <div class="apparel-photo-grid" role="group" aria-label={copy.imageGalleryLabel}>
-              {product.artwork.images.map((image, index) => <div class="apparel-photo-grid__item">
-                <img
-                  src={`/${image.path}`}
-                  alt={image.alt[locale]}
-                  width={image.width}
-                  height={image.height}
-                  loading={index === 0 ? 'eager' : 'lazy'}
-                  decoding="async"
-                />
-              </div>)}
+              {product.artwork.images.map((image, index) => {
+                const dialogId = `apparel-image-${product.id}-${index + 1}-${locale}`;
+                return <div class="apparel-photo-grid__item">
+                  <button class="apparel-photo-grid__trigger" type="button" command="show-modal" commandfor={dialogId} aria-label={messages.viewImageLabel.replace('{description}', image.alt[locale])}>
+                    <img
+                      src={`/${image.path}`}
+                      alt={image.alt[locale]}
+                      width={image.width}
+                      height={image.height}
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                  </button>
+                  <dialog class="apparel-image-dialog" id={dialogId} aria-label={image.alt[locale]}>
+                    <img src={`/${image.path}`} alt={image.alt[locale]} width={image.width} height={image.height} loading="lazy" decoding="async" />
+                    <button class="apparel-image-dialog__close" type="button" command="close" commandfor={dialogId} aria-label={messages.closeImage}>×</button>
+                  </dialog>
+                </div>;
+              })}
             </div> : <svg class="apparel-art" viewBox="0 0 400 430" role="img" aria-label={copy.visualTitle} aria-describedby={descriptionId}>
               <desc id={descriptionId}>{copy.visualDescription}</desc>
               <g class="apparel-art__orbit" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">

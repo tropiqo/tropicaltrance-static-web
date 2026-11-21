@@ -28,10 +28,13 @@ test('bilingual apparel routes show the hoodie gallery and T-shirt outline witho
     const html = readFileSync(path, 'utf8');
     assert.match(html, new RegExp(`<h1\\b[^>]*>${heading}<\\/h1>`));
     assert.equal((html.match(/<svg\b/g) || []).length, 1);
-    assert.equal((html.match(/<img\b/g) || []).length, apparelMedia.length);
+    assert.equal((html.match(/<img\b/g) || []).length, apparelMedia.length * 2);
     for (const image of apparelMedia) assert(html.includes(`src="/${image.path}"`));
     assert.equal((html.match(new RegExp(conceptLabel, 'g')) || []).length, 2);
-    assert(!/<(?:button|form|input)\b/i.test(html));
+    assert(!/<a\b[^>]*href="\/assets\/apparel\/hoodie\//i.test(html));
+    assert(!/<(?:form|input)\b/i.test(html));
+    assert.equal((html.match(/<dialog\b/g)||[]).length,apparelMedia.length);
+    assert.equal((html.match(/command="show-modal"/g)||[]).length,apparelMedia.length);
     assert(!/add to cart|price|pricing|size picker|stock|inventory|wa\.me|whatsapp\.com|<script[^>]*apparel/i.test(html));
   }
 });

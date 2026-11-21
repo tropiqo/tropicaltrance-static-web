@@ -207,7 +207,8 @@ export async function checkOutput(base = root) {
     const pageFlavors=isSpanish?release.flavors.map(f=>({...f,...(f.translations?.['es-MX']||{})})):release.flavors;
     const pageTrancy=isSpanish?{...trancyMedia,alt:getMessages('es-MX').home.trancyAlt}:trancyMedia;
     const detail = pageFlavors.find(f=>basePage==='flavors/'+f.slug+'/index.html');
-    const pageApparel=basePage==='apparel/index.html'?apparelMedia.map(asset=>({mediaUrl:'/'+asset.path,alt:asset.alt[locale==='es-MX'?'es-MX':'en'],width:asset.width,height:asset.height})):[];
+    // Each owner-approved apparel image appears once in the gallery and once in its same-page native dialog.
+    const pageApparel=basePage==='apparel/index.html'?apparelMedia.flatMap(asset=>{const image={mediaUrl:'/'+asset.path,alt:asset.alt[locale==='es-MX'?'es-MX':'en'],width:asset.width,height:asset.height};return [image,image];}):[];
     const media = basePage==='index.html' ? [pageTrancy,...pageFlavors] : role ? [pageTrancy] : basePage==='flavors/index.html' ? pageFlavors : detail ? [detail] : pageApparel;
     const salesChannels=detail?.salesChannels||[];
     const whatsappBusinessUrl=basePage==='contact/index.html' ? release.site.contact?.whatsappBusinessUrl ?? null : null;
