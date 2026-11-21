@@ -22,13 +22,7 @@ const { messages, locale } = Astro.props;
           </div>
           <figure class="apparel-visual">
             {product.artwork.kind === 'owner-approved-concept-images' ? <div class="apparel-photo-grid" role="group" aria-label={copy.imageGalleryLabel}>
-              {product.artwork.images.map((image, index) => <a
-                class="apparel-photo-grid__item"
-                href={`/${image.path}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={messages.imageZoomLabel.replace('{description}', image.alt[locale])}
-              >
+              {product.artwork.images.map((image, index) => <div class="apparel-photo-grid__item">
                 <img
                   src={`/${image.path}`}
                   alt={image.alt[locale]}
@@ -37,7 +31,7 @@ const { messages, locale } = Astro.props;
                   loading={index === 0 ? 'eager' : 'lazy'}
                   decoding="async"
                 />
-              </a>)}
+              </div>)}
             </div> : <svg class="apparel-art" viewBox="0 0 400 430" role="img" aria-label={copy.visualTitle} aria-describedby={descriptionId}>
               <desc id={descriptionId}>{copy.visualDescription}</desc>
               <g class="apparel-art__orbit" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
