@@ -166,14 +166,14 @@ test('decoration is hidden, static and separate from approved media; no remote C
   }
   const css=text('src/styles/global.css');assert.match(css,/object-fit: contain/);assert(!/object-fit:\s*cover|@font-face|https?:|url\(|@keyframes/.test(css));
   assert.match(text('src/components/DecorativeBackground.astro'),/aria-hidden="true"/);assert.match(css,/pointer-events: none/);
-  assert(!/transform:|filter:/.test(css.match(/\.media-frame img\s*\{([^}]+)\}/)[1]));
+  const image = css.match(/(?:^|})\s*\.media-frame img\s*\{([^}]+)\}/)?.[1] ?? '';
+  assert(!/transform:|filter:/.test(image));
   for (const [route,flavors] of [['flavors/index.html',release.flavors],['flavors/grape/index.html',[release.flavors.find(f=>f.slug==='grape')]]]) {
     const html = normal(route);assert.match(html, /class="media-frame"/);
     for(const flavor of flavors)assert(html.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`));
     assert.equal((html.match(/<img\b/g)||[]).length,flavors.length);
   }
   const frame = css.match(/\.media-frame\s*\{([^}]+)\}/)?.[1] ?? '';
-  const image = css.match(/\.media-frame img\s*\{([^}]+)\}/)?.[1] ?? '';
   assert(!/padding:|background:|min-block-size:|border-radius:/.test(frame));
   assert.match(image, /inline-size:\s*100%/); assert.match(image, /block-size:\s*auto/);
   assert.match(image, /max-block-size:\s*none/); assert(!/object-fit:\s*cover|transform:|filter:/.test(frame + image));
