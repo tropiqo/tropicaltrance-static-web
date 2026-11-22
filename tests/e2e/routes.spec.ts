@@ -226,7 +226,7 @@ test('fine-pointer hover zoom clips within the collection artwork frame without 
     await expect(image).toHaveCSS('transform', 'none');
 
     await image.hover();
-    await expect.poll(() => image.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).a)).toBeCloseTo(1.05, 2);
+    await expect.poll(() => image.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).a)).toBeCloseTo(1.12, 2);
     const after = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       pageWidth: document.documentElement.scrollWidth,
@@ -324,7 +324,7 @@ test('apparel presents hoodie and T-shirt mockups without commerce controls', as
   await photoFrames.nth(1).scrollIntoViewIfNeeded();
   const cardBounds = await photoFrames.nth(1).boundingBox();
   await photoFrames.nth(1).hover();
-  await expect.poll(() => zoomImage.evaluate((image) => getComputedStyle(image).transform)).not.toBe('none');
+  await expect.poll(() => zoomImage.evaluate((image) => new DOMMatrixReadOnly(getComputedStyle(image).transform).a)).toBeCloseTo(1.22, 2);
   expect(await photoFrames.nth(1).boundingBox()).toEqual(cardBounds);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect.poll(() => zoomImage.evaluate((image) => getComputedStyle(image).transform)).toBe('none');

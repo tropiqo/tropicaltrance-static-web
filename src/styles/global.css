@@ -90,7 +90,7 @@ a:hover { text-decoration-thickness: 0.14em; }
 .collection-section .flavor-card > .media-frame { overflow: hidden; }
 @media (hover: hover) and (pointer: fine) {
   .collection-section .flavor-card > figure.media-frame > img { transform-origin: center; transition: transform 450ms ease; }
-  .collection-section .flavor-card > figure.media-frame:hover > img { transform: scale(1.05); }
+  .collection-section .flavor-card > figure.media-frame:hover > img { transform: scale(1.12); }
 }
 .media-frame { display: block; min-inline-size: 0; color: var(--color-text); }
 .media-frame img { display: block; max-inline-size: none; max-block-size: none; inline-size: 100%; block-size: auto; object-fit: contain; }
@@ -226,7 +226,7 @@ a:hover { text-decoration-thickness: 0.14em; }
 .apparel-image-dialog__position { position: absolute; inset-block-end: var(--space-2); inset-inline-start: 50%; margin: 0; padding: 0.4rem 0.75rem; transform: translateX(-50%); border-radius: 999px; background: var(--color-surface); color: var(--color-text); font-size: var(--text-small); pointer-events: auto; }
 .apparel-image-dialog__nav:focus-visible, .apparel-image-dialog__close:focus-visible { outline: 3px solid var(--accent-citrus); outline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) {
-  .apparel-photo-grid__item:hover .apparel-photo-grid__trigger img { transform: scale(1.14); }
+  .apparel-photo-grid__item:hover .apparel-photo-grid__trigger img { transform: scale(1.22); }
 }
 .apparel-visual figcaption { color: var(--color-muted); font-size: var(--text-small); text-align: center; }
 .apparel-approval-note { max-inline-size: 66ch; margin-block-start: var(--space-5); color: var(--color-muted); font-size: var(--text-small); }
