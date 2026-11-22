@@ -54,6 +54,8 @@ test('Home uses approved copy and renders release-derived flavor previews',()=>{
   assert.match(html,/Follow the Tropical Trance journey and discover what(?:'|&#39;)s coming next\./);
   assert.match(html,/Contact Us/);
   assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);
+  const imageLinks=[...html.matchAll(/<a\b([^>]*)><img\b[^>]*>/g)].map(match=>({attributes:match[1]})).filter(link=>/\bclass="media-frame__link"/.test(link.attributes)).map(link=>link.attributes.match(/\bhref="([^"]+)"/)?.[1]);
+  assert.deepEqual(imageLinks,release.flavors.map(flavor=>`/flavors/${flavor.slug}/`));
   for (const flavor of release.flavors) assert(html.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`) && html.includes(`/flavors/${flavor.slug}/`));
   const hero = trancyMedia;
   assert.equal((html.match(/<img\b/g)||[]).length, release.flavors.length + (hero ? 1 : 0));
@@ -69,6 +71,8 @@ test('normal collection/detail derive from all selected flavors and preserve the
  const release=loadRelease();assert(release.flavors.some(f=>f.slug==='grape'));
  const html=normal('flavors/index.html');
  assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);assert(!html.includes('class="empty-collection"'));
+ const imageLinks=[...html.matchAll(/<a\b([^>]*)><img\b[^>]*>/g)].map(match=>({attributes:match[1]})).filter(link=>/\bclass="media-frame__link"/.test(link.attributes)).map(link=>link.attributes.match(/\bhref="([^"]+)"/)?.[1]);
+ assert.deepEqual(imageLinks,release.flavors.map(flavor=>`/flavors/${flavor.slug}/`));
  for(const f of release.flavors){
   const detail=normal(`flavors/${f.slug}/index.html`);
   const spanishDetail=normal(`es/flavors/${f.slug}/index.html`);
@@ -162,14 +166,14 @@ test('decoration is hidden, static and separate from approved media; no remote C
   }
   const css=text('src/styles/global.css');assert.match(css,/object-fit: contain/);assert(!/object-fit:\s*cover|@font-face|https?:|url\(|@keyframes/.test(css));
   assert.match(text('src/components/DecorativeBackground.astro'),/aria-hidden="true"/);assert.match(css,/pointer-events: none/);
-  assert(!/transform:|filter:/.test(css.match(/\.media-frame img\s*\{([^}]+)\}/)[1]));
+  const image = css.match(/(?:^|})\s*\.media-frame img\s*\{([^}]+)\}/)?.[1] ?? '';
+  assert(!/transform:|filter:/.test(image));
   for (const [route,flavors] of [['flavors/index.html',release.flavors],['flavors/grape/index.html',[release.flavors.find(f=>f.slug==='grape')]]]) {
     const html = normal(route);assert.match(html, /class="media-frame"/);
     for(const flavor of flavors)assert(html.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`));
     assert.equal((html.match(/<img\b/g)||[]).length,flavors.length);
   }
   const frame = css.match(/\.media-frame\s*\{([^}]+)\}/)?.[1] ?? '';
-  const image = css.match(/\.media-frame img\s*\{([^}]+)\}/)?.[1] ?? '';
   assert(!/padding:|background:|min-block-size:|border-radius:/.test(frame));
   assert.match(image, /inline-size:\s*100%/); assert.match(image, /block-size:\s*auto/);
   assert.match(image, /max-block-size:\s*none/); assert(!/object-fit:\s*cover|transform:|filter:/.test(frame + image));

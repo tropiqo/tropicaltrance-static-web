@@ -7,6 +7,6 @@ const { flavors, locale = 'en', messages } = Astro.props;
 ---
 <section class="collection-section" aria-label={messages.flavors.collectionLabel}>
   <div class="container">
-    {flavors.length === 0 ? <EmptyCollectionState locale={locale} messages={messages} /> : <FlavorDiscovery flavors={flavors} locale={locale} messages={messages} />}
+    {flavors.length === 0 ? <EmptyCollectionState locale={locale} messages={messages} /> : <FlavorDiscovery flavors={flavors} locale={locale} messages={messages} linkImages />}
   </div>
 </section>

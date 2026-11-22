@@ -122,6 +122,8 @@ test('flavor collection keeps its carousel behavior and compacts artwork only ab
     const cards = grid.locator('.flavor-card');
     const links = await cards.locator('h2 a').evaluateAll(anchors => anchors.map(anchor => (anchor as HTMLAnchorElement).getAttribute('href')));
     expect(links).toEqual(expectedLinks);
+    const imageLinks = await cards.locator('.media-frame__link').evaluateAll(anchors => anchors.map(anchor => (anchor as HTMLAnchorElement).getAttribute('href')));
+    expect(imageLinks).toEqual(expectedLinks);
     await expect(cards).toHaveCount(3);
 
     const layout = await page.locator('.collection-section .flavor-card').first().evaluate(card => {
@@ -167,8 +169,9 @@ test('flavor collection keeps its carousel behavior and compacts artwork only ab
         await page.waitForTimeout(350);
         const scrollLeft = await grid.evaluate(element => element.scrollLeft);
         expect(scrollLeft).toBeGreaterThan(0);
-        await cards.nth(0).getByRole('link').focus();
-        await expect(cards.nth(0).getByRole('link')).toBeFocused();
+        const firstImageLink = cards.nth(0).locator('.media-frame__link');
+        await firstImageLink.focus();
+        await expect(firstImageLink).toBeFocused();
       }
     } else {
       expect(layout.compact).toBeCloseTo(0.72, 2);
@@ -206,6 +209,19 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   await context.close();
 });
 
+test('home flavor images link to the matching detail in each language', async ({ page }) => {
+  for (const [route, destinations] of [
+    ['/', ['/flavors/cherry/', '/flavors/grape/', '/flavors/lime/']],
+    ['/es/', ['/es/flavors/cherry/', '/es/flavors/grape/', '/es/flavors/lime/']],
+  ] as const) {
+    await page.goto(route);
+    const imageLinks = page.locator('.flavor-discovery .media-frame__link');
+    await expect.poll(() => imageLinks.evaluateAll(links => links.map(link => (link as HTMLAnchorElement).getAttribute('href')))).toEqual(destinations);
+    await imageLinks.first().click();
+    await expect(page).toHaveURL(new RegExp(`${route === '/' ? '' : '/es'}/flavors/cherry/`));
+  }
+});
+
 test('fine-pointer hover zoom clips within the collection artwork frame without changing layout', async ({ page }) => {
   for (const width of [1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -226,7 +242,7 @@ test('fine-pointer hover zoom clips within the collection artwork frame without 
     await expect(image).toHaveCSS('transform', 'none');
 
     await image.hover();
-    await expect.poll(() => image.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).a)).toBeCloseTo(1.05, 2);
+    await expect.poll(() => image.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).a)).toBeCloseTo(1.12, 2);
     const after = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       pageWidth: document.documentElement.scrollWidth,
@@ -246,7 +262,7 @@ test('fine-pointer hover zoom clips within the collection artwork frame without 
     expect(after.imageTransform).not.toBe('none');
 
     if (width === 1440) {
-      await card.getByRole('link', { name: 'Cherry' }).click();
+      await card.getByRole('link', { name: 'Cherry', exact: true }).click();
       await expect(page).toHaveURL(/\/flavors\/cherry\/$/);
     }
   }
@@ -275,8 +291,9 @@ test('touch viewports keep the carousel and never activate artwork hover zoom', 
     await expect(grid).toHaveCSS('overflow-x', 'auto');
     await expect(grid).toHaveCSS('scroll-snap-type', 'inline mandatory');
     await expect(frame).toHaveCSS('overflow', 'hidden');
-    await image.tap();
     await expect(image).toHaveCSS('transform', 'none');
+    await image.tap();
+    await expect(page).toHaveURL(/\/flavors\/cherry\/$/);
     const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }));
     expect(dimensions.page).toBeLessThanOrEqual(dimensions.viewport);
   }
@@ -324,7 +341,7 @@ test('apparel presents hoodie and T-shirt mockups without commerce controls', as
   await photoFrames.nth(1).scrollIntoViewIfNeeded();
   const cardBounds = await photoFrames.nth(1).boundingBox();
   await photoFrames.nth(1).hover();
-  await expect.poll(() => zoomImage.evaluate((image) => getComputedStyle(image).transform)).not.toBe('none');
+  await expect.poll(() => zoomImage.evaluate((image) => new DOMMatrixReadOnly(getComputedStyle(image).transform).a)).toBeCloseTo(1.22, 2);
   expect(await photoFrames.nth(1).boundingBox()).toEqual(cardBounds);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect.poll(() => zoomImage.evaluate((image) => getComputedStyle(image).transform)).toBe('none');
@@ -688,7 +705,9 @@ test('flavor links stay keyboard reachable with visible focus', async ({ page })
   await page.goto('/flavors/');
   const track = page.getByRole('list', { name: 'Tropical Trance flavors' });
   const grape = track.getByRole('link', { name: 'Grape', exact: true });
+  const grapeImage = track.getByRole('link', { name: /Black Tropical Trance pouch labeled Grape Paradise/ });
   const lime = track.getByRole('link', { name: 'Lime', exact: true });
+  const limeImage = track.getByRole('link', { name: /Black Tropical Trance pouch labeled Lemon Spice/ });
   const limeVisibleFraction = () => track.evaluate(element => {
     const link = element.querySelector<HTMLAnchorElement>('a[href="/flavors/lime/"]');
     if (!link || link.getBoundingClientRect().width === 0) return 0;
@@ -700,7 +719,14 @@ test('flavor links stay keyboard reachable with visible focus', async ({ page })
     return visibleWidth / linkBounds.width;
   });
   const initiallyVisibleFraction = await limeVisibleFraction();
-  await grape.focus();
+  await grapeImage.focus();
+  await expect(grapeImage).toHaveCSS('outline-width', '3px');
+  await page.keyboard.press('Tab');
+  await expect(grape).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(limeImage).toBeFocused();
+  await expect(limeImage).toHaveCSS('outline-width', '3px');
+  await expect.poll(limeVisibleFraction).toBeGreaterThanOrEqual(0.4);
   await page.keyboard.press('Tab');
   await expect(lime).toBeFocused();
   await expect(lime).toHaveCSS('outline-width', '3px');
