@@ -1,14 +1,14 @@
 ---
 import type { LocalizedFlavor } from './public-view';
-interface Props { flavor: LocalizedFlavor; locale?: 'en' | 'es-MX'; }
+interface Props { flavor: LocalizedFlavor; locale?: 'en' | 'es-MX'; linkImage?: boolean; }
 import MediaFrame from './MediaFrame.astro';
 import { localizePath } from '../i18n/messages.mjs';
-const { flavor } = Astro.props;
+const { flavor, linkImage = false } = Astro.props;
 const { locale = 'en' } = Astro.props;
 const dimensions = 'media' in flavor ? flavor.media : undefined;
 ---
 <article class="flavor-card" role="listitem">
-  <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} width={dimensions?.width} height={dimensions?.height} />
+  <MediaFrame src={flavor.mediaUrl} alt={flavor.alt} width={dimensions?.width} height={dimensions?.height} href={linkImage ? localizePath(`/flavors/${flavor.slug}/`, locale) : undefined} />
   <h2><a href={localizePath(`/flavors/${flavor.slug}/`, locale)}>{flavor.name}</a></h2>
   <p>{flavor.shortDescription}</p>
 </article>

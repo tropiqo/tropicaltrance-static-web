@@ -69,6 +69,8 @@ test('normal collection/detail derive from all selected flavors and preserve the
  const release=loadRelease();assert(release.flavors.some(f=>f.slug==='grape'));
  const html=normal('flavors/index.html');
  assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);assert(!html.includes('class="empty-collection"'));
+ const imageLinks=[...html.matchAll(/<a\b([^>]*)><img\b[^>]*>/g)].map(match=>({attributes:match[1]})).filter(link=>/\bclass="media-frame__link"/.test(link.attributes)).map(link=>link.attributes.match(/\bhref="([^"]+)"/)?.[1]);
+ assert.deepEqual(imageLinks,release.flavors.map(flavor=>`/flavors/${flavor.slug}/`));
  for(const f of release.flavors){
   const detail=normal(`flavors/${f.slug}/index.html`);
   const spanishDetail=normal(`es/flavors/${f.slug}/index.html`);

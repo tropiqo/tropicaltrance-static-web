@@ -122,6 +122,8 @@ test('flavor collection keeps its carousel behavior and compacts artwork only ab
     const cards = grid.locator('.flavor-card');
     const links = await cards.locator('h2 a').evaluateAll(anchors => anchors.map(anchor => (anchor as HTMLAnchorElement).getAttribute('href')));
     expect(links).toEqual(expectedLinks);
+    const imageLinks = await cards.locator('.media-frame__link').evaluateAll(anchors => anchors.map(anchor => (anchor as HTMLAnchorElement).getAttribute('href')));
+    expect(imageLinks).toEqual(expectedLinks);
     await expect(cards).toHaveCount(3);
 
     const layout = await page.locator('.collection-section .flavor-card').first().evaluate(card => {
@@ -688,7 +690,9 @@ test('flavor links stay keyboard reachable with visible focus', async ({ page })
   await page.goto('/flavors/');
   const track = page.getByRole('list', { name: 'Tropical Trance flavors' });
   const grape = track.getByRole('link', { name: 'Grape', exact: true });
+  const grapeImage = track.getByRole('link', { name: /Black Tropical Trance pouch labeled Grape Paradise/ });
   const lime = track.getByRole('link', { name: 'Lime', exact: true });
+  const limeImage = track.getByRole('link', { name: /Black Tropical Trance pouch labeled Lemon Spice/ });
   const limeVisibleFraction = () => track.evaluate(element => {
     const link = element.querySelector<HTMLAnchorElement>('a[href="/flavors/lime/"]');
     if (!link || link.getBoundingClientRect().width === 0) return 0;
@@ -700,7 +704,14 @@ test('flavor links stay keyboard reachable with visible focus', async ({ page })
     return visibleWidth / linkBounds.width;
   });
   const initiallyVisibleFraction = await limeVisibleFraction();
-  await grape.focus();
+  await grapeImage.focus();
+  await expect(grapeImage).toHaveCSS('outline-width', '3px');
+  await page.keyboard.press('Tab');
+  await expect(grape).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(limeImage).toBeFocused();
+  await expect(limeImage).toHaveCSS('outline-width', '3px');
+  await expect.poll(limeVisibleFraction).toBeGreaterThanOrEqual(0.4);
   await page.keyboard.press('Tab');
   await expect(lime).toBeFocused();
   await expect(lime).toHaveCSS('outline-width', '3px');
