@@ -208,6 +208,19 @@ test('a touch swipe still advances and snaps the flavor carousel', async ({ brow
   await context.close();
 });
 
+test('home flavor images link to the matching detail in each language', async ({ page }) => {
+  for (const [route, destinations] of [
+    ['/', ['/flavors/cherry/', '/flavors/grape/', '/flavors/lime/']],
+    ['/es/', ['/es/flavors/cherry/', '/es/flavors/grape/', '/es/flavors/lime/']],
+  ] as const) {
+    await page.goto(route);
+    const imageLinks = page.locator('.flavor-discovery .media-frame__link');
+    await expect.poll(() => imageLinks.evaluateAll(links => links.map(link => (link as HTMLAnchorElement).getAttribute('href')))).toEqual(destinations);
+    await imageLinks.first().click();
+    await expect(page).toHaveURL(new RegExp(`${route === '/' ? '' : '/es'}/flavors/cherry/`));
+  }
+});
+
 test('fine-pointer hover zoom clips within the collection artwork frame without changing layout', async ({ page }) => {
   for (const width of [1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });

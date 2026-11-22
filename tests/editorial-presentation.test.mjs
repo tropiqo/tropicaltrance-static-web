@@ -54,6 +54,8 @@ test('Home uses approved copy and renders release-derived flavor previews',()=>{
   assert.match(html,/Follow the Tropical Trance journey and discover what(?:'|&#39;)s coming next\./);
   assert.match(html,/Contact Us/);
   assert.equal((html.match(/class="flavor-card"/g)||[]).length,release.flavors.length);
+  const imageLinks=[...html.matchAll(/<a\b([^>]*)><img\b[^>]*>/g)].map(match=>({attributes:match[1]})).filter(link=>/\bclass="media-frame__link"/.test(link.attributes)).map(link=>link.attributes.match(/\bhref="([^"]+)"/)?.[1]);
+  assert.deepEqual(imageLinks,release.flavors.map(flavor=>`/flavors/${flavor.slug}/`));
   for (const flavor of release.flavors) assert(html.includes(`src="${flavor.mediaUrl}" alt="${flavor.alt}"`) && html.includes(`/flavors/${flavor.slug}/`));
   const hero = trancyMedia;
   assert.equal((html.match(/<img\b/g)||[]).length, release.flavors.length + (hero ? 1 : 0));
