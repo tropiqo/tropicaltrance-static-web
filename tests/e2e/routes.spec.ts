@@ -169,8 +169,9 @@ test('flavor collection keeps its carousel behavior and compacts artwork only ab
         await page.waitForTimeout(350);
         const scrollLeft = await grid.evaluate(element => element.scrollLeft);
         expect(scrollLeft).toBeGreaterThan(0);
-        await cards.nth(0).getByRole('link').focus();
-        await expect(cards.nth(0).getByRole('link')).toBeFocused();
+        const firstImageLink = cards.nth(0).locator('.media-frame__link');
+        await firstImageLink.focus();
+        await expect(firstImageLink).toBeFocused();
       }
     } else {
       expect(layout.compact).toBeCloseTo(0.72, 2);
@@ -261,7 +262,7 @@ test('fine-pointer hover zoom clips within the collection artwork frame without 
     expect(after.imageTransform).not.toBe('none');
 
     if (width === 1440) {
-      await card.getByRole('link', { name: 'Cherry' }).click();
+      await card.getByRole('link', { name: 'Cherry', exact: true }).click();
       await expect(page).toHaveURL(/\/flavors\/cherry\/$/);
     }
   }
@@ -290,8 +291,9 @@ test('touch viewports keep the carousel and never activate artwork hover zoom', 
     await expect(grid).toHaveCSS('overflow-x', 'auto');
     await expect(grid).toHaveCSS('scroll-snap-type', 'inline mandatory');
     await expect(frame).toHaveCSS('overflow', 'hidden');
-    await image.tap();
     await expect(image).toHaveCSS('transform', 'none');
+    await image.tap();
+    await expect(page).toHaveURL(/\/flavors\/cherry\/$/);
     const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }));
     expect(dimensions.page).toBeLessThanOrEqual(dimensions.viewport);
   }
